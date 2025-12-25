@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android' // Kotlin plugin pour Android
+    id 'dev.flutter.flutter-gradle-plugin' // Flutter Gradle Plugin
+}
+
+android {
+    namespace 'com.example.photo_app' // Remplacez par le namespace de votre application
+    compileSdk 34 // SDK de compilation
+
+    defaultConfig {
+        applicationId 'com.example.photo_app' // Identifiant unique de l'application
+        minSdk 23 // Minimum SDK supporté
+        targetSdk 34 // SDK cible
+        versionCode 1 // Numéro de version de build
+        versionName '1.0.0' // Nom de la version
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17 // Compatibilité source
+        targetCompatibility JavaVersion.VERSION_17 // Compatibilité cible
+    }
+
+    kotlinOptions {
+        jvmTarget = '17' // Cible JVM pour Kotlin
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file("${System.properties['user.home']}/.android/debug.keystore") // Clé de débogage par défaut
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+
+        release {
+            storeFile file("${System.properties['user.home']}/.android/release.keystore") // Chemin de la clé de signature (à remplacer)
+            storePassword 'release_password' // Mot de passe (remplacez-le)
+            keyAlias 'release_key_alias' // Alias de la clé (remplacez-le)
+            keyPassword 'release_key_password' // Mot de passe de la clé (remplacez-le)
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release // Utilise la clé de release
+            minifyEnabled false // Désactiver Proguard pour simplifier le build
+            shrinkResources false // Ne pas réduire les ressources
+        }
+        debug {
+            signingConfig signingConfigs.debug // Utilise la clé de debug
+        }
+    }
+}
