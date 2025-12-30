@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <p>Welcome to the admin dashboard!</p>
+    <p>Number of users: <span th:text="${users.size()}"></span></p>
+    <p>Number of photos: <span th:text="${photos.size()}"></span></p>
+    <a href="/admin/users">Manage Users</a><br>
+    <a href="/admin/photos">Manage Photos</a>
+</body>
+</html>
