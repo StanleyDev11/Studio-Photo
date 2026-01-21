@@ -176,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBody: true,
       body: Stack(
         children: [
-          const AnimatedBackground(),
+          // const AnimatedBackground(),
           _buildFixedTopBar(context),
           Padding(
             padding: EdgeInsets.only(
