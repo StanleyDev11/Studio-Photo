@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'dart:async';
 import 'dart:ui';
 import 'package:carousel_slider/carousel_slider.dart';
@@ -174,10 +176,12 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBody: true,
       body: Stack(
         children: [
-          const AnimatedBackground(),
+          // const AnimatedBackground(),
           _buildFixedTopBar(context),
           Padding(
-            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 60), // Adjusted top padding
+            padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top +
+                    60), // Adjusted top padding
             child: _buildBody(),
           ),
         ],
@@ -187,15 +191,17 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: _quickPhotoOrder,
         backgroundColor: AppColors.accent,
         child: const Icon(Icons.add_a_photo, color: Colors.white),
-      ).animate(
-        onComplete: (controller) => controller.repeat(reverse: true),
-      ).scale(
-        delay: 1000.ms,
-        duration: 500.ms,
-        begin: const Offset(1, 1),
-        end: const Offset(1.1, 1.1),
-        curve: Curves.easeInOut,
-      ),
+      )
+          .animate(
+            onComplete: (controller) => controller.repeat(reverse: true),
+          )
+          .scale(
+            delay: 1000.ms,
+            duration: 500.ms,
+            begin: const Offset(1, 1),
+            end: const Offset(1.1, 1.1),
+            curve: Curves.easeInOut,
+          ),
     );
   }
 
@@ -210,26 +216,48 @@ class _HomeScreenState extends State<HomeScreen> {
           filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
           child: Container(
             color: AppColors.primary,
-            padding: EdgeInsets.fromLTRB(24.0, MediaQuery.of(context).padding.top + 2, 10.0, 2.0), // Adjusted vertical padding
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            padding: EdgeInsets.fromLTRB(
+                10.0, MediaQuery.of(context).padding.top + 2, 10.0, 2.0),
+            child: Stack(
+              alignment: Alignment.center, // Centrer le contenu principal
               children: [
-                Text(
-                  'Ravi de vous revoir, ${widget.userName}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14, // Smaller font size
-                  ),
+                Column(
+                  mainAxisSize:
+                      MainAxisSize.min, // Prend juste l'espace nécessaire
+                  children: [
+                    Image.asset(
+                      'assets/images/pro.png',
+                      height: 35, // Taille réduite pour le logo
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(
+                        height: 4), // Petit espace entre le logo et le texte
+                    Text(
+                      'Ravi de vous revoir, ${widget.userName}',
+                      textAlign: TextAlign.center, // Centrer le texte
+                      style: const TextStyle(
+                        color: Colors.white,
+                        // fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.notifications_none, color: Colors.white, size: 20), // Smaller icon
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const NotificationsScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.notifications_none,
+                        color: Colors.white, size: 20),
+                  ),
                 ),
               ],
             ),
@@ -310,19 +338,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Card(
                         clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0)),
                         child: Image.network(
                           imageUrl,
                           fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()),
-                          errorBuilder: (context, error, stack) => const Icon(Icons.broken_image, size: 50),
+                          loadingBuilder: (context, child, progress) =>
+                              progress == null
+                                  ? child
+                                  : const Center(
+                                      child: CircularProgressIndicator()),
+                          errorBuilder: (context, error, stack) =>
+                              const Icon(Icons.broken_image, size: 50),
                         ),
                       ),
                       if (isSelected)
                         const Positioned(
                           top: 8,
                           right: 8,
-                          child: Icon(Icons.check_circle, color: AppColors.accent, size: 30),
+                          child: Icon(Icons.check_circle,
+                              color: AppColors.accent, size: 30),
                         ),
                     ],
                   ),
@@ -338,61 +373,75 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCommandsTab() {
     return Container(
       color: AppColors.background,
-      padding: const EdgeInsets.only(bottom: 120, top: 5), // Adjusted bottom padding
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding:
+          const EdgeInsets.only(bottom: 120, top: 5), // Adjusted bottom padding
+      child: Stack(
+        // Added Stack for background
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SegmentedButton<CartMode>(
-              segments: const [
-                ButtonSegment(value: CartMode.detail, label: Text('Par détail')),
-                ButtonSegment(value: CartMode.batch, label: Text('Par lot')),
-              ],
-              selected: {_selectedMode},
-              onSelectionChanged: (Set<CartMode> newSelection) {
-                setState(() {
-                  _selectedMode = newSelection.first;
-                  _calculateTotal();
-                });
-              },
-            ),
+          const Positioned.fill(
+            child: GeometricBackground(), // Apply geometric background here
           ),
-          Expanded(
-            child: _selectedImages.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.shopping_cart_outlined, size: 80, color: AppColors.textSecondary),
-                        SizedBox(height: 16),
-                        Text(
-                          'Votre panier est vide.\nSélectionnez des photos pour commencer une commande !',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 18, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  )
-                : _selectedMode == CartMode.detail
-                    ? _buildDetailCart()
-                    : _buildBatchCart(),
-          ),
-          if (_selectedImages.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: ElevatedButton.icon(
-                onPressed: _showValidationPopup,
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Valider'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SegmentedButton<CartMode>(
+                  segments: const [
+                    ButtonSegment(
+                        value: CartMode.detail, label: Text('Par détail')),
+                    ButtonSegment(
+                        value: CartMode.batch, label: Text('Par lot')),
+                  ],
+                  selected: {_selectedMode},
+                  onSelectionChanged: (Set<CartMode> newSelection) {
+                    setState(() {
+                      _selectedMode = newSelection.first;
+                      _calculateTotal();
+                    });
+                  },
                 ),
               ),
-            ),
+              Expanded(
+                child: _selectedImages.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.shopping_cart_outlined,
+                                size: 80, color: AppColors.textSecondary),
+                            SizedBox(height: 16),
+                            Text(
+                              'Votre panier est vide.\nSélectionnez des photos pour commencer une commande !',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontSize: 18, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _selectedMode == CartMode.detail
+                        ? _buildDetailCart()
+                        : _buildBatchCart(),
+              ),
+              if (_selectedImages.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: ElevatedButton.icon(
+                    onPressed: _showValidationPopup,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Valider'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -433,7 +482,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8.0),
           clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ExpansionTile(
             key: ValueKey(imageUrl),
             title: Row(
@@ -441,19 +491,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
                   child: (imageUrl.startsWith('http'))
-                      ? Image.network(imageUrl, width: 60, height: 60, fit: BoxFit.cover)
-                      : Image.file(File(imageUrl), width: 60, height: 60, fit: BoxFit.cover),
+                      ? Image.network(imageUrl,
+                          width: 60, height: 60, fit: BoxFit.cover)
+                      : Image.file(File(imageUrl),
+                          width: 60, height: 60, fit: BoxFit.cover),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Photo ${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Photo ${index + 1}',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text(
                         '${subtotal.toStringAsFixed(0)} FCFA',
-                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -465,7 +520,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Color.fromARGB(255, 236, 7, 7), // Blue background
                       shape: BoxShape.circle, // Circular shape
                     ),
-                    child: const Icon(Icons.delete, size: 18, color: Colors.white), // White icon
+                    child: const Icon(Icons.delete,
+                        size: 18, color: Colors.white), // White icon
                   ),
                   onPressed: () {
                     setState(() {
@@ -479,7 +535,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Column(
                   children: [
                     Row(
@@ -488,7 +545,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         const Text('Taille :'),
                         DropdownButton<String>(
                           value: photoDetails['size'],
-                          items: _prices.keys.map((size) => DropdownMenuItem(value: size, child: Text(size))).toList(),
+                          items: _prices.keys
+                              .map((size) => DropdownMenuItem(
+                                  value: size, child: Text(size)))
+                              .toList(),
                           onChanged: (value) {
                             if (value != null) {
                               setState(() {
@@ -506,21 +566,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         const Text('Quantité :'),
                         Row(
                           children: [
-                            IconButton(icon: const Icon(Icons.remove), onPressed: () {
-                              if (photoDetails['quantity'] > 1) {
-                                setState(() {
-                                  _photoDetails[imageUrl]!['quantity'] -= 1;
-                                  _calculateTotal();
-                                });
-                              }
-                            }),
+                            IconButton(
+                                icon: const Icon(Icons.remove),
+                                onPressed: () {
+                                  if (photoDetails['quantity'] > 1) {
+                                    setState(() {
+                                      _photoDetails[imageUrl]!['quantity'] -= 1;
+                                      _calculateTotal();
+                                    });
+                                  }
+                                }),
                             Text('${photoDetails['quantity']}'),
-                            IconButton(icon: const Icon(Icons.add), onPressed: () {
-                              setState(() {
-                                _photoDetails[imageUrl]!['quantity'] += 1;
-                                _calculateTotal();
-                              });
-                            }),
+                            IconButton(
+                                icon: const Icon(Icons.add),
+                                onPressed: () {
+                                  setState(() {
+                                    _photoDetails[imageUrl]!['quantity'] += 1;
+                                    _calculateTotal();
+                                  });
+                                }),
                           ],
                         ),
                       ],
@@ -539,7 +603,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // For batch mode, we need a way to set dimensions for all photos
     String? commonSize;
     if (_photoDetails.isNotEmpty) {
-      final sizes = _photoDetails.values.map((d) => d['size'] as String).toSet();
+      final sizes =
+          _photoDetails.values.map((d) => d['size'] as String).toSet();
       if (sizes.length == 1) {
         commonSize = sizes.first;
       }
@@ -560,10 +625,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12), // Rounded borders
                   ),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  prefixIcon: const Icon(Icons.straighten, size: 20), // Added icon
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  prefixIcon:
+                      const Icon(Icons.straighten, size: 20), // Added icon
                 ),
-                items: _prices.keys.map((size) => DropdownMenuItem(value: size, child: Text(size))).toList(),
+                items: _prices.keys
+                    .map((size) =>
+                        DropdownMenuItem(value: size, child: Text(size)))
+                    .toList(),
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {
@@ -607,11 +677,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 238, 33, 6), // Blue background
-                          borderRadius: BorderRadius.circular(10), // Keep rounded corners
+                          color: const Color.fromARGB(
+                              255, 238, 33, 6), // Blue background
+                          borderRadius:
+                              BorderRadius.circular(10), // Keep rounded corners
                         ),
                         padding: const EdgeInsets.all(4),
-                        child: const Icon(Icons.close, size: 12, color: Colors.white), // White icon
+                        child: const Icon(Icons.close,
+                            size: 12, color: Colors.white), // White icon
                       ),
                     ),
                   ),
@@ -634,100 +707,154 @@ class _HomeScreenState extends State<HomeScreen> {
         return Align(
           alignment: Alignment.topCenter,
           child: SlideTransition(
-            position: Tween(begin: const Offset(0, -1), end: const Offset(0, 0)).animate(anim1),
+            position: Tween(begin: const Offset(0, -1), end: const Offset(0, 0))
+                .animate(anim1),
             child: Material(
               color: Colors.transparent,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75), // Increased height
-                child: AlertDialog(
-                  contentPadding: EdgeInsets.zero,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
-                  ),
-                  content: Stack(
-                    children: [
-                      const Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
-                          child: GeometricBackground(),
-                        ),
+              child: Container(
+                width: MediaQuery.of(context).size.width, // Full width
+                height: MediaQuery.of(context).size.height *
+                    0.35, // Reduced screen height further
+                decoration: const BoxDecoration(
+                  color: AppColors
+                      .background, // Set a background color for the container
+                  borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(30)), // Rounded bottom border
+                ),
+                child: Stack(
+                  children: [
+                    const Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius:
+                            BorderRadius.vertical(bottom: Radius.circular(30)),
+                        child: GeometricBackground(),
                       ),
-                      SingleChildScrollView( // Make content scrollable
-                        padding: const EdgeInsets.all(24.0),
+                    ),
+                    SingleChildScrollView(
+                      // Make content scrollable
+                      padding:
+                          const EdgeInsets.all(30.0), // Reduced padding further
+                      child: ConstrainedBox(
+                        // Constrain width for better readability in landscape
+                        constraints: const BoxConstraints(
+                            maxWidth: 600), // Max width for content
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Text(
                               'Résumé de la commande',
-                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                              textAlign: TextAlign.center, // Centered title
+                              style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary), // Darker text
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 15), // Reduced height
                             // Delivery Options
                             Card(
                               color: Colors.white.withOpacity(0.9),
                               margin: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              child: Column(
-                                children: [
-                                  RadioListTile<bool>(
-                                    title: const Text('Livraison Standard', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    subtitle: const Text('Livraison classique, sans coût additionnel.'),
-                                    value: false,
-                                    groupValue: _isExpress,
-                                    onChanged: (bool? value) {
-                                      setState(() {
-                                        _isExpress = value!;
-                                        _calculateTotal();
-                                      });
-                                    },
-                                  ),
-                                  RadioListTile<bool>(
-                                    title: const Text('Livraison Xpress', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    subtitle: Text(_selectedImages.length > 10
-                                        ? 'Le surplus sera discuté avec le propriétaire'
-                                        : 'Livraison rapide (+ 1500 FCFA)'),
-                                    value: true,
-                                    groupValue: _isExpress,
-                                    onChanged: (bool? value) {
-                                      setState(() {
-                                        _isExpress = value!;
-                                        _calculateTotal();
-                                      });
-                                    },
-                                  ),
-                                ],
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              child: SwitchListTile(
+                                title: const Text('Livraison Xpress',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text(_selectedImages.length > 10
+                                    ? 'Le surplus sera discuté avec le propriétaire'
+                                    : 'Livraison rapide (+ 1500 FCFA)'),
+                                value: _isExpress,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isExpress = value;
+                                    _calculateTotal();
+                                  });
+                                },
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            const Text('Montant Total', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                            Text(
-                              '${_totalPrice.toStringAsFixed(0)} FCFA',
-                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 15), // Reduced height
+                            const Text('Montant Total',
+                                style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 16)), // Darker text
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withOpacity(
+                                    0.9), // Distinct background color
+                                borderRadius:
+                                    BorderRadius.circular(30), // Rounded badge
+                              ),
+                              child: Text(
+                                '${_totalPrice.toStringAsFixed(0)} FCFA',
+                                style: const TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        Colors.white), // White text for badge
+                              ),
+                            )
+                                .animate(key: ValueKey(_totalPrice))
+                                .fadeIn(duration: 300.ms)
+                                .scale(begin: const Offset(0.8, 0.8)),
+                            const SizedBox(height: 20), // Reduced height
                             ElevatedButton(
                               onPressed: () {
                                 Navigator.of(context).pop(); // Close the dialog
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => OrderSummaryScreen(orderDetails: _photoDetails)));
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            OrderSummaryScreen(
+                                                orderDetails: _photoDetails)));
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: AppColors.primary,
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
                                 minimumSize: const Size(double.infinity, 50),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
                               ),
-                              child: const Text('Voir le récapitulatif complet', style: TextStyle(fontSize: 16)),
+                              child: const Text(
+                                'Voir le récapitulatif complet',
+                                style: TextStyle(fontSize: 16),
+                                textAlign: TextAlign.center,
+                              ), // Centered button text
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8), // Reduced height
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Modifier la commande', style: TextStyle(color: Colors.white, fontSize: 16)),
+                              child: const Text(
+                                'Modifier la commande',
+                                style: TextStyle(
+                                    color: AppColors.textPrimary, fontSize: 16),
+                                textAlign: TextAlign.center,
+                              ), // Darker text and centered
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Positioned(
+                      // Close button
+                      top: 20,
+                      left: 10,
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close,
+                              color: AppColors.textPrimary),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -750,12 +877,21 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: _changeAvatar,
               child: CircleAvatar(
                 radius: 60,
-                backgroundImage: _avatar != null ? FileImage(_avatar!) as ImageProvider : const AssetImage('assets/images/pro.png'),
-                child: _avatar == null ? const Icon(Icons.camera_alt, size: 30, color: AppColors.textOnPrimary) : null,
+                backgroundImage: _avatar != null
+                    ? FileImage(_avatar!) as ImageProvider
+                    : const AssetImage('assets/images/pro1.png'),
+                child: _avatar == null
+                    ? const Icon(Icons.camera_alt,
+                        size: 30, color: AppColors.textOnPrimary)
+                    : null,
               ),
             ),
             const SizedBox(height: 20),
-            Text(widget.userName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            Text(widget.userName,
+                style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary)),
             const SizedBox(height: 30),
             ElevatedButton.icon(
               onPressed: _logout,
@@ -771,47 +907,52 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopCard() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8.0, 0, 8.0, 4.0),
+      padding: const EdgeInsets.fromLTRB(6.0, 0, 6.0, 30.0), // Ajout de padding en bas pour le bouton
       child: Card(
-        clipBehavior: Clip.antiAlias,
+        clipBehavior: Clip.none, // Permet au bouton de déborder
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 4,
         child: SizedBox(
-          height: 220, // Enlarged card height
+          height: 150,
           child: Stack(
-            alignment: Alignment.center, // Center the button
+            clipBehavior: Clip.none, // Permet au bouton de déborder
+            alignment: Alignment.center,
             children: [
               Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(5),
                   border: Border.all(color: AppColors.primary, width: 2),
                 ),
                 child: Image.asset(
-                  'assets/images/pro.png',
-                  height: 280,
+                  'assets/carousel/mxx.jpeg', //image dans le card d'accueil au homescreen
+                  height: double.infinity,
                   width: double.infinity,
-                  fit: BoxFit.contain, // Ensure image is fully visible
+                  fit: BoxFit.cover,
                 ),
               ),
               Positioned(
-                bottom: 12,
+                bottom: -25.0, // Descendu pour chevaucher la bordure
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.print, size: 24), // Print icon
-                  label: const Text("Imprimer une photo", style: TextStyle(fontSize: 16)), // Larger text
-                  onPressed: () => _onTabTapped(1), // Switch to Photos tab
+                  icon: const Icon(Icons.help_outline, size: 24),
+                  label: const Text("Comment ça marche ?",
+                      style: TextStyle(fontSize: 16)),
+                  onPressed: () => _showHowItWorksDialog(),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent, // Dominant color
+                    backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
                     shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                   ),
-                ).animate(
-                  onComplete: (controller) => controller.repeat(),
-                ).shimmer(
-                  delay: 2000.milliseconds,
-                  duration: 1000.milliseconds,
-                  color: Colors.white.withOpacity(0.5), // Glimmer effect
-                ),
+                )
+                    .animate(
+                      onComplete: (controller) => controller.repeat(),
+                    )
+                    .shimmer(
+                      delay: 2000.milliseconds,
+                      duration: 1000.milliseconds,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
               )
             ],
           ),
@@ -831,17 +972,22 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildQuickActionButton(
             icon: Icons.photo_album,
             label: 'Portfolio',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PortfolioScreen())),
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const PortfolioScreen())),
           ),
           _buildQuickActionButton(
             icon: Icons.archive_outlined,
             label: 'Mes commandes',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryScreen())),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const HistoryScreen())),
           ),
           _buildQuickActionButton(
             icon: Icons.straighten,
             label: 'Prix & dimensions',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PricingScreen())),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const PricingScreen())),
           ),
           _buildQuickActionButton(
             icon: Icons.flash_on,
@@ -856,8 +1002,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text("Comment ça marche ?"),
-                  content: const Text(
-                      "1️⃣ Choisissez vos photos\n"
+                  content: const Text("1️⃣ Choisissez vos photos\n"
                       "2️⃣ Sélectionnez la dimension et la quantité\n"
                       "3️⃣ Payez en toute sécurité\n"
                       "4️⃣ Recevez vos souvenirs !"),
@@ -874,14 +1019,18 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildQuickActionButton(
             icon: Icons.chat_bubble_outline,
             label: 'Nous contacter',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ContactScreen())),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const ContactScreen())),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActionButton({required IconData icon, required String label, required VoidCallback onTap}) {
+  Widget _buildQuickActionButton(
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
@@ -897,7 +1046,8 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               label,
               textAlign: TextAlign.center, // Center the text
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
+              style:
+                  const TextStyle(color: AppColors.textPrimary, fontSize: 12),
             ),
           ],
         ),
@@ -906,7 +1056,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHistorySection() {
-    final recentHistory = _mockHistory.where((req) => req.date.isAfter(DateTime.now().subtract(const Duration(days: 7)))).take(3).toList();
+    final recentHistory = _mockHistory
+        .where((req) =>
+            req.date.isAfter(DateTime.now().subtract(const Duration(days: 7))))
+        .take(3)
+        .toList();
 
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 16.0),
@@ -918,10 +1072,16 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'Historique récent',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 OutlinedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryScreen())),
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const HistoryScreen())),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.primary),
                     shape: const StadiumBorder(),
@@ -932,27 +1092,33 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
             ...recentHistory.map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
-                    child: Icon(item.icon, color: AppColors.primary),
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        child: Icon(item.icon, color: AppColors.primary),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item.title,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w500)),
+                            Text(DateFormat('dd MMM yyyy').format(item.date),
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios,
+                          size: 16, color: AppColors.textSecondary),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item.title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                        Text(DateFormat('dd MMM yyyy').format(item.date), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
-                ],
-              ),
-            )),
+                )),
           ],
         ),
       ),
@@ -985,13 +1151,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ? Image.asset(path, fit: BoxFit.contain)
               : Image.network(path, fit: BoxFit.contain),
         ),
-      ).animate(
-        onComplete: (controller) => controller.repeat(),
-      ).shimmer(
-        delay: 2000.milliseconds,
-        duration: 1000.milliseconds,
-        color: AppColors.background.withOpacity(0.5),
-      );
+      )
+          .animate(
+            onComplete: (controller) => controller.repeat(),
+          )
+          .shimmer(
+            delay: 2000.milliseconds,
+            duration: 1000.milliseconds,
+            color: AppColors.background.withOpacity(0.5),
+          );
     }
 
     Widget buildLocalCarousel(String message) {
@@ -999,7 +1167,8 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           CarouselSlider.builder(
             itemCount: localImages.length,
-            itemBuilder: (context, index, realIndex) => buildItem(localImages[index], true),
+            itemBuilder: (context, index, realIndex) =>
+                buildItem(localImages[index], true),
             options: CarouselOptions(
                 height: 140.0,
                 viewportFraction: 0.8,
@@ -1018,7 +1187,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return _isOffline
-        ? buildLocalCarousel("Impossible de charger les promotions. Mode hors-ligne.")
+        ? buildLocalCarousel(
+            "Impossible de charger les promotions. Mode hors-ligne.")
         : FutureBuilder<List<String>>(
             future: Future.delayed(const Duration(seconds: 2), () => []),
             builder: (context, snapshot) {
@@ -1027,13 +1197,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 140,
                     child: Center(child: CircularProgressIndicator()));
               }
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                return buildLocalCarousel("Impossible de charger les promotions en ligne.");
+              if (snapshot.hasError ||
+                  !snapshot.hasData ||
+                  snapshot.data!.isEmpty) {
+                return buildLocalCarousel(
+                    "Impossible de charger les promotions en ligne.");
               }
               final onlineImages = snapshot.data!;
               return CarouselSlider.builder(
                 itemCount: onlineImages.length,
-                itemBuilder: (context, index, realIndex) => buildItem(onlineImages[index], false),
+                itemBuilder: (context, index, realIndex) =>
+                    buildItem(onlineImages[index], false),
                 options: CarouselOptions(
                     height: 140.0,
                     autoPlay: true,
@@ -1070,11 +1244,162 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icon(Icons.photo_album), label: 'Photos'),
               BottomNavigationBarItem(
                   icon: Icon(Icons.shopping_cart), label: 'Commandes'),
-              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.person), label: 'Profil'),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _showHowItWorksDialog() {
+    final steps = [
+      {
+        'icon': Icons.photo_library_outlined,
+        'title': 'Étape 1: Sélectionnez vos photos',
+        'subtitle':
+            'Parcourez votre galerie et choisissez les souvenirs que vous souhaitez immortaliser.',
+      },
+      {
+        'icon': Icons.straighten_outlined,
+        'title': 'Étape 2: Choisissez format et quantité',
+        'subtitle':
+            'Pour chaque photo, sélectionnez la taille d\'impression et le nombre de copies désirées.',
+      },
+      {
+        'icon': Icons.payment_outlined,
+        'title': 'Étape 3: Validez et payez',
+        'subtitle':
+            'Vérifiez votre commande, choisissez votre mode de paiement et réglez en toute sécurité.',
+      },
+      {
+        'icon': Icons.local_shipping_outlined,
+        'title': 'Étape 4: Recevez votre commande',
+        'subtitle':
+            'Nous préparons vos photos avec soin et vous notifions dès qu\'elles sont prêtes !',
+      },
+    ];
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) => Container(),
+      transitionBuilder: (context, anim1, anim2, child) {
+        return ScaleTransition(
+          scale: anim1,
+          child: AlertDialog(
+            backgroundColor: Colors.transparent,
+            contentPadding: EdgeInsets.zero,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+            content: Stack(
+              children: [
+                const ClipRRect(
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                  child: GeometricBackground(),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Comment ça marche ?",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 20),
+                      ...steps.asMap().entries.map((entry) {
+                        int idx = entry.key;
+                        Map<String, Object> step = entry.value;
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8.0),
+                          color: AppColors.primary.withOpacity(0.05),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            side: BorderSide(
+                                color: AppColors.primary.withOpacity(0.2)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              children: [
+                                Icon(step['icon'] as IconData,
+                                    color: AppColors.primary, size: 40),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        step['title'] as String,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        step['subtitle'] as String,
+                                        style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                            .animate()
+                            .fadeIn(
+                                delay: (200 * (idx + 1)).ms,
+                                duration: 500.ms)
+                            .slideX(begin: -0.2, curve: Curves.easeOut);
+                      }).toList(),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: Colors.white,
+                          shape: const StadiumBorder(),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 12),
+                        ),
+                        child: const Text("J'ai compris !",
+                            style: TextStyle(fontSize: 16)),
+                      )
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child:
+                          const Icon(Icons.close, color: AppColors.textPrimary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
