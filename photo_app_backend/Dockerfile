@@ -19,8 +19,8 @@ COPY src src
 RUN mvn clean package -DskipTests
 
 # Étape 2: Création de l'image finale
-# Utilise une image légère avec seulement l'environnement d'exécution Java 21
-FROM openjdk:21-jre-slim
+# Utilise une image plus légère avec JDK 21
+FROM openjdk:21-jdk-slim
 
 # Définit le répertoire de travail
 WORKDIR /app
