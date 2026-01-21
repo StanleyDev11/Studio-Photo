@@ -1,6 +1,4 @@
-# Étape 1: Build de l'application avec Maven
-# Utilise une image OpenJDK 21 standard
-FROM openjdk:21-jdk AS build
+FROM eclipse-temurin:21-jdk-jammy AS build
 
 # Installe Maven
 # openjdk:21-jdk est basée sur Debian, donc utilise apt
@@ -19,12 +17,12 @@ COPY .mvn .mvn
 COPY src src
 
 # Lance la commande Maven pour packager l'application en un fichier .jar
-# -DskipTests pour ne pas lancer les tests unitaires pendant le build de l'image
 RUN mvn clean package -DskipTests
 
+
 # Étape 2: Création de l'image finale
-# Utilise une image plus générale avec JDK 21
-FROM openjdk:21-jdk
+# Utilise une image légère avec seulement l'environnement d'exécution Java 21
+FROM eclipse-temurin:21-jre-jammy
 
 # Définit le répertoire de travail
 WORKDIR /app
