@@ -268,7 +268,7 @@ class _SignupScreenState extends State<SignupScreen> {
 }
 
 class _PinCreationSheet extends StatefulWidget {
-  const _PinCreationSheet({super.key});
+  const _PinCreationSheet();
 
   @override
   State<_PinCreationSheet> createState() => _PinCreationSheetState();

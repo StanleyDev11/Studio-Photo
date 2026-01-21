@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:photo_app/login_screen.dart';
+import 'package:photo_app/login_screen.dart'; // Assurez-vous que le chemin est correct
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -10,40 +11,54 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  late VideoPlayerController _controller1;
-  late VideoPlayerController _controller2;
-  bool _showSecondVideo = false;
+  VideoPlayerController? _controller;
+  int _currentVideoIndex = 0;
+  final List<String> _videoAssets = [
+    'assets/splash.mp4',
+    'assets/splash1.mp4',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _controller1 = VideoPlayerController.asset('assets/splash.mp4')
-      ..initialize().then((_) {
-        // Ensure the first frame is shown
-        setState(() {});
-        _controller1.play();
-        _controller1.setLooping(true);
-      });
+    _playVideo(index: 0);
+  }
 
-    _controller2 = VideoPlayerController.asset('assets/splash1.mp4')
-      ..initialize().then((_) {
-        setState(() {});
-        _controller2.setLooping(true);
-      });
+  void _playVideo({required int index}) {
+    // Si on a joué toutes les vidéos, on navigue
+    if (index >= _videoAssets.length) {
+      _navigateToHome();
+      return;
+    }
 
-    // Timer to switch to the second video
+    // Met à jour l'index actuel
+    _currentVideoIndex = index;
+
+    // Nettoie l'ancien contrôleur s'il existe
+    _controller?.dispose();
+
+    // Initialise le nouveau contrôleur
+    _controller = VideoPlayerController.asset(_videoAssets[_currentVideoIndex])
+      ..initialize().then((_) {
+        // Met à jour l'interface et démarre la vidéo
+        if (mounted) {
+          setState(() {});
+          _controller?.play();
+        }
+      });
+      
+    // Planifie la prochaine action dans 2.5 secondes
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
-        setState(() {
-          _showSecondVideo = true;
-          _controller1.pause();
-          _controller2.play();
-        });
+        // Passe à la vidéo suivante
+        _playVideo(index: _currentVideoIndex + 1);
       }
     });
+  }
 
-    // Timer to navigate to LoginScreen
-    Future.delayed(const Duration(seconds: 5), () {
+  void _navigateToHome() {
+    // Assurez-vous que la navigation se fait après la construction de l'arbre de widgets
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -54,8 +69,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   void dispose() {
-    _controller1.dispose();
-    _controller2.dispose();
+    // Nettoie le contrôleur pour éviter les fuites de mémoire
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -64,24 +79,15 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: AnimatedCrossFade(
-          firstChild: _buildVideoPlayer(_controller1),
-          secondChild: _buildVideoPlayer(_controller2),
-          crossFadeState: _showSecondVideo
-              ? CrossFadeState.showSecond
-              : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 300),
-        ),
+        child: _controller != null && _controller!.value.isInitialized
+            ? AspectRatio(
+                aspectRatio: _controller!.value.aspectRatio,
+                child: VideoPlayer(_controller!),
+              )
+            : const CircularProgressIndicator( // Indicateur de chargement en attendant
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+              ),
       ),
     );
-  }
-
-  Widget _buildVideoPlayer(VideoPlayerController controller) {
-    return controller.value.isInitialized
-        ? AspectRatio(
-            aspectRatio: controller.value.aspectRatio,
-            child: VideoPlayer(controller),
-          )
-        : const CircularProgressIndicator();
   }
 }

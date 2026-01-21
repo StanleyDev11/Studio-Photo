@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'dart:async';
 import 'dart:ui';
 import 'package:carousel_slider/carousel_slider.dart';
@@ -215,31 +217,47 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             color: AppColors.primary,
             padding: EdgeInsets.fromLTRB(
-                24.0,
-                MediaQuery.of(context).padding.top + 2,
-                10.0,
-                2.0), // Adjusted vertical padding
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                10.0, MediaQuery.of(context).padding.top + 2, 10.0, 2.0),
+            child: Stack(
+              alignment: Alignment.center, // Centrer le contenu principal
               children: [
-                Text(
-                  'Ravi de vous revoir, ${widget.userName}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14, // Smaller font size
-                  ),
+                Column(
+                  mainAxisSize:
+                      MainAxisSize.min, // Prend juste l'espace nécessaire
+                  children: [
+                    Image.asset(
+                      'assets/images/pro.png',
+                      height: 35, // Taille réduite pour le logo
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(
+                        height: 4), // Petit espace entre le logo et le texte
+                    Text(
+                      'Ravi de vous revoir, ${widget.userName}',
+                      textAlign: TextAlign.center, // Centrer le texte
+                      style: const TextStyle(
+                        color: Colors.white,
+                        // fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NotificationsScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.notifications_none,
-                      color: Colors.white, size: 20), // Smaller icon
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const NotificationsScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.notifications_none,
+                        color: Colors.white, size: 20),
+                  ),
                 ),
               ],
             ),
@@ -695,7 +713,8 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.transparent,
               child: Container(
                 width: MediaQuery.of(context).size.width, // Full width
-                height: MediaQuery.of(context).size.height * 0.35, // Reduced screen height further
+                height: MediaQuery.of(context).size.height *
+                    0.35, // Reduced screen height further
                 decoration: const BoxDecoration(
                   color: AppColors
                       .background, // Set a background color for the container
@@ -713,7 +732,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     SingleChildScrollView(
                       // Make content scrollable
-                      padding: const EdgeInsets.all(30.0), // Reduced padding further
+                      padding:
+                          const EdgeInsets.all(30.0), // Reduced padding further
                       child: ConstrainedBox(
                         // Constrain width for better readability in landscape
                         constraints: const BoxConstraints(
@@ -721,65 +741,99 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                                                        const Text(
-                                                          'Résumé de la commande',
-                                                          textAlign: TextAlign.center, // Centered title
-                                                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary), // Darker text
-                                                        ),
-                                                        const SizedBox(height: 15), // Reduced height
-                                                        // Delivery Options
-                                                        Card(
-                                                          color: Colors.white.withOpacity(0.9),
-                                                          margin: EdgeInsets.zero,
-                                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                          child: SwitchListTile(
-                                                            title: const Text('Livraison Xpress', style: TextStyle(fontWeight: FontWeight.bold)),
-                                                            subtitle: Text(_selectedImages.length > 10
-                                                                ? 'Le surplus sera discuté avec le propriétaire'
-                                                                : 'Livraison rapide (+ 1500 FCFA)'),
-                                                            value: _isExpress,
-                                                            onChanged: (value) {
-                                                              setState(() {
-                                                                _isExpress = value;
-                                                                _calculateTotal();
-                                                              });
-                                                            },
-                                                          ),
-                                                        ),
-                                                        const SizedBox(height: 15), // Reduced height
-                                                        const Text('Montant Total', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)), // Darker text
-                                                        const SizedBox(height: 8),
-                                                        Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                                          decoration: BoxDecoration(
-                                                            color: AppColors.accent.withOpacity(0.9), // Distinct background color
-                                                            borderRadius: BorderRadius.circular(30), // Rounded badge
-                                                          ),
-                                                          child: Text(
-                                                            '${_totalPrice.toStringAsFixed(0)} FCFA',
-                                                            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white), // White text for badge
-                                                          ),
-                                                        ).animate(key: ValueKey(_totalPrice)).fadeIn(duration: 300.ms).scale(begin: const Offset(0.8, 0.8)),
-                                                        const SizedBox(height: 20), // Reduced height
-                                                        ElevatedButton(
-                                                          onPressed: () {
-                                                            Navigator.of(context).pop(); // Close the dialog
-                                                            Navigator.push(context, MaterialPageRoute(builder: (context) => OrderSummaryScreen(orderDetails: _photoDetails)));
-                                                          },
-                                                          style: ElevatedButton.styleFrom(
-                                                            backgroundColor: AppColors.primary,
-                                                            foregroundColor: Colors.white,
-                                                            minimumSize: const Size(double.infinity, 50),
-                                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                          ),
-                                                          child: const Text('Voir le récapitulatif complet', style: TextStyle(fontSize: 16), textAlign: TextAlign.center,), // Centered button text
-                                                        ),
-                                                        const SizedBox(height: 8), // Reduced height
-                                                        TextButton(
-                                                          onPressed: () => Navigator.of(context).pop(),
-                                                          child: const Text('Modifier la commande', style: TextStyle(color: AppColors.textPrimary, fontSize: 16), textAlign: TextAlign.center,), // Darker text and centered
-                                                        ),
-                                                      ],
+                            const Text(
+                              'Résumé de la commande',
+                              textAlign: TextAlign.center, // Centered title
+                              style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary), // Darker text
+                            ),
+                            const SizedBox(height: 15), // Reduced height
+                            // Delivery Options
+                            Card(
+                              color: Colors.white.withOpacity(0.9),
+                              margin: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              child: SwitchListTile(
+                                title: const Text('Livraison Xpress',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text(_selectedImages.length > 10
+                                    ? 'Le surplus sera discuté avec le propriétaire'
+                                    : 'Livraison rapide (+ 1500 FCFA)'),
+                                value: _isExpress,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isExpress = value;
+                                    _calculateTotal();
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 15), // Reduced height
+                            const Text('Montant Total',
+                                style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 16)), // Darker text
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withOpacity(
+                                    0.9), // Distinct background color
+                                borderRadius:
+                                    BorderRadius.circular(30), // Rounded badge
+                              ),
+                              child: Text(
+                                '${_totalPrice.toStringAsFixed(0)} FCFA',
+                                style: const TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        Colors.white), // White text for badge
+                              ),
+                            )
+                                .animate(key: ValueKey(_totalPrice))
+                                .fadeIn(duration: 300.ms)
+                                .scale(begin: const Offset(0.8, 0.8)),
+                            const SizedBox(height: 20), // Reduced height
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(context).pop(); // Close the dialog
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            OrderSummaryScreen(
+                                                orderDetails: _photoDetails)));
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 50),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text(
+                                'Voir le récapitulatif complet',
+                                style: TextStyle(fontSize: 16),
+                                textAlign: TextAlign.center,
+                              ), // Centered button text
+                            ),
+                            const SizedBox(height: 8), // Reduced height
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text(
+                                'Modifier la commande',
+                                style: TextStyle(
+                                    color: AppColors.textPrimary, fontSize: 16),
+                                textAlign: TextAlign.center,
+                              ), // Darker text and centered
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -795,7 +849,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: Colors.white,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.close, color: AppColors.textPrimary),
+                          child: const Icon(Icons.close,
+                              color: AppColors.textPrimary),
                         ),
                       ),
                     ),
@@ -824,7 +879,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 radius: 60,
                 backgroundImage: _avatar != null
                     ? FileImage(_avatar!) as ImageProvider
-                    : const AssetImage('assets/images/pro.png'),
+                    : const AssetImage('assets/images/pro1.png'),
                 child: _avatar == null
                     ? const Icon(Icons.camera_alt,
                         size: 30, color: AppColors.textOnPrimary)
@@ -852,37 +907,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopCard() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8.0, 0, 8.0, 4.0),
+      padding: const EdgeInsets.fromLTRB(6.0, 0, 6.0, 30.0), // Ajout de padding en bas pour le bouton
       child: Card(
-        clipBehavior: Clip.antiAlias,
+        clipBehavior: Clip.none, // Permet au bouton de déborder
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 4,
         child: SizedBox(
-          height: 220, // Enlarged card height
+          height: 150,
           child: Stack(
-            alignment: Alignment.center, // Center the button
+            clipBehavior: Clip.none, // Permet au bouton de déborder
+            alignment: Alignment.center,
             children: [
               Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(5),
                   border: Border.all(color: AppColors.primary, width: 2),
                 ),
                 child: Image.asset(
-                  'assets/images/pro.png',
-                  height: 280,
+                  'assets/carousel/mxx.jpeg', //image dans le card d'accueil au homescreen
+                  height: double.infinity,
                   width: double.infinity,
-                  fit: BoxFit.contain, // Ensure image is fully visible
+                  fit: BoxFit.cover,
                 ),
               ),
               Positioned(
-                bottom: 12,
+                bottom: -25.0, // Descendu pour chevaucher la bordure
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.print, size: 24), // Print icon
-                  label: const Text("Imprimer une photo",
-                      style: TextStyle(fontSize: 16)), // Larger text
-                  onPressed: () => _onTabTapped(1), // Switch to Photos tab
+                  icon: const Icon(Icons.help_outline, size: 24),
+                  label: const Text("Comment ça marche ?",
+                      style: TextStyle(fontSize: 16)),
+                  onPressed: () => _showHowItWorksDialog(),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent, // Dominant color
+                    backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
                     shape: const StadiumBorder(),
                     padding: const EdgeInsets.symmetric(
@@ -895,7 +951,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     .shimmer(
                       delay: 2000.milliseconds,
                       duration: 1000.milliseconds,
-                      color: Colors.white.withOpacity(0.5), // Glimmer effect
+                      color: Colors.white.withOpacity(0.5),
                     ),
               )
             ],
@@ -1194,6 +1250,156 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showHowItWorksDialog() {
+    final steps = [
+      {
+        'icon': Icons.photo_library_outlined,
+        'title': 'Étape 1: Sélectionnez vos photos',
+        'subtitle':
+            'Parcourez votre galerie et choisissez les souvenirs que vous souhaitez immortaliser.',
+      },
+      {
+        'icon': Icons.straighten_outlined,
+        'title': 'Étape 2: Choisissez format et quantité',
+        'subtitle':
+            'Pour chaque photo, sélectionnez la taille d\'impression et le nombre de copies désirées.',
+      },
+      {
+        'icon': Icons.payment_outlined,
+        'title': 'Étape 3: Validez et payez',
+        'subtitle':
+            'Vérifiez votre commande, choisissez votre mode de paiement et réglez en toute sécurité.',
+      },
+      {
+        'icon': Icons.local_shipping_outlined,
+        'title': 'Étape 4: Recevez votre commande',
+        'subtitle':
+            'Nous préparons vos photos avec soin et vous notifions dès qu\'elles sont prêtes !',
+      },
+    ];
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) => Container(),
+      transitionBuilder: (context, anim1, anim2, child) {
+        return ScaleTransition(
+          scale: anim1,
+          child: AlertDialog(
+            backgroundColor: Colors.transparent,
+            contentPadding: EdgeInsets.zero,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+            content: Stack(
+              children: [
+                const ClipRRect(
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                  child: GeometricBackground(),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Comment ça marche ?",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 20),
+                      ...steps.asMap().entries.map((entry) {
+                        int idx = entry.key;
+                        Map<String, Object> step = entry.value;
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8.0),
+                          color: AppColors.primary.withOpacity(0.05),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            side: BorderSide(
+                                color: AppColors.primary.withOpacity(0.2)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              children: [
+                                Icon(step['icon'] as IconData,
+                                    color: AppColors.primary, size: 40),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        step['title'] as String,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        step['subtitle'] as String,
+                                        style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                            .animate()
+                            .fadeIn(
+                                delay: (200 * (idx + 1)).ms,
+                                duration: 500.ms)
+                            .slideX(begin: -0.2, curve: Curves.easeOut);
+                      }).toList(),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: Colors.white,
+                          shape: const StadiumBorder(),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 12),
+                        ),
+                        child: const Text("J'ai compris !",
+                            style: TextStyle(fontSize: 16)),
+                      )
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child:
+                          const Icon(Icons.close, color: AppColors.textPrimary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -436,7 +436,7 @@ class _NewPasswordDialogState extends State<_NewPasswordDialog> {
     );
   }
 
-  InputDecoration _glassyInputDecoration(String label, {IconData? icon}) {
+  InputDecoration _glassyInputDecoration(String label) {
      return InputDecoration(
       labelText: label,
       filled: true,
