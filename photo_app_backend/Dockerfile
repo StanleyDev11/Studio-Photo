@@ -1,6 +1,10 @@
 # Étape 1: Build de l'application avec Maven
-# Utilise une image qui contient Maven et Java 21
-FROM maven:3-openjdk-21 AS build
+# Utilise une image OpenJDK 21 standard
+FROM openjdk:21-jdk AS build
+
+# Installe Maven
+# openjdk:21-jdk est basée sur Debian, donc utilise apt
+RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
 
 # Définit le répertoire de travail à l'intérieur du conteneur
 WORKDIR /app
