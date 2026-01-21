@@ -1,10 +1,37 @@
+import 'dart:async';
+import 'dart:ui';
+import 'package:carousel_slider/carousel_slider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
+import 'package:photo_app/no_connection_screen.dart';
+import 'package:photo_app/notifications_screen.dart';
+import 'package:photo_app/utils/colors.dart';
+import 'package:photo_app/utils/connectivity_service.dart';
+import 'package:photo_app/api_service.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:photo_app/portfolio_screen.dart';
+import 'package:photo_app/pricing_screen.dart';
+import 'package:photo_app/contact_screen.dart';
+import 'package:photo_app/booking_screen.dart';
+import 'package:photo_app/history_screen.dart';
+import 'package:photo_app/utils/geometric_background.dart';
 import 'login_screen.dart';
 import 'order_summary_screen.dart';
+import 'package:photo_app/utils/lines_background.dart';
+
+// --- Model Class for Mock Data ---
+class RecentRequest {
+  final String title;
+  final DateTime date;
+  final IconData icon;
+
+  RecentRequest({required this.title, required this.date, required this.icon});
+}
+// --- End of Model Class ---
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -20,48 +47,96 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+enum CartMode { detail, batch }
+
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  final Set<String> _selectedImages = {}; // Images sélectionnées pour commande
-  Future<List<String>>? _albumImagesFuture; // Liste des images chargées
-  File? _avatar; // Avatar personnalisé
-  final Map<String, Map<String, dynamic>> _photoDetails =
-      {}; // Détails des photos
+  final Set<String> _selectedImages = {};
+  Future<List<String>>? _albumImagesFuture;
+  File? _avatar;
+  final Map<String, Map<String, dynamic>> _photoDetails = {};
+
+  final ConnectivityService _connectivityService = ConnectivityService();
+  late StreamSubscription<ConnectivityResult> _connectivitySubscription;
+  bool _isOffline = false;
+
+  // --- New state variables for cart ---
+  CartMode _selectedMode = CartMode.detail;
+  bool _isExpress = false;
+  double _totalPrice = 0.0;
+  final Map<String, double> _prices = const {
+    '10x15 cm': 150,
+    '15x20 cm': 300,
+    '20x30 cm': 500,
+  };
+  // --- End of new state variables ---
+
+  // --- Mock Data for History ---
+  final List<RecentRequest> _mockHistory = [
+    RecentRequest(
+        title: "Commande de 15 photos",
+        date: DateTime.now().subtract(const Duration(days: 1)),
+        icon: Icons.photo_camera),
+    RecentRequest(
+        title: "Réservation - Mariage",
+        date: DateTime.now().subtract(const Duration(days: 3)),
+        icon: Icons.calendar_today),
+    RecentRequest(
+        title: "Tirage 20x30",
+        date: DateTime.now().subtract(const Duration(days: 6)),
+        icon: Icons.print),
+    RecentRequest(
+        title: "Commande Album",
+        date: DateTime.now().subtract(const Duration(days: 10)),
+        icon: Icons.book),
+    RecentRequest(
+        title: "Photos d'identité",
+        date: DateTime.now().subtract(const Duration(days: 4)),
+        icon: Icons.person),
+  ];
+  // --- End of Mock Data ---
 
   @override
   void initState() {
     super.initState();
-    _albumImagesFuture = fetchAlbumImages(widget.userId); // Charger les images
-  }
-
-  // Méthode pour récupérer les images depuis l'API
-  Future<List<String>> fetchAlbumImages(int userId) async {
-    final url = Uri.parse(
-        'http://10.0.2.2/studio/get_album_images.php?user_id=$userId');
-
-    try {
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success']) {
-          return List<String>.from(data['images']);
-        } else {
-          throw Exception(data['message'] ?? 'Erreur inconnue');
+    _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
+    _connectivitySubscription =
+        _connectivityService.connectivityStream.listen((result) {
+      if (result == ConnectivityResult.none) {
+        if (!_isOffline && mounted) {
+          setState(() {
+            _isOffline = true;
+          });
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (context) => const NoConnectionScreen()));
         }
       } else {
-        throw Exception('Erreur du serveur : ${response.statusCode}');
+        if (_isOffline && mounted) {
+          setState(() {
+            _isOffline = false;
+          });
+        }
       }
-    } catch (e) {
-      throw Exception('Erreur réseau : $e');
-    }
+    });
+    _calculateTotal();
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
   }
 
   void _changeAvatar() async {
     final picker = ImagePicker();
     final pickedFile =
         await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
-
     if (pickedFile != null) {
       setState(() {
         _avatar = File(pickedFile.path);
@@ -76,290 +151,929 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _submitOrder(Map<String, Map<String, dynamic>> photoDetails) {
-    // Exemple : Afficher un message pour confirmer la commande
-    print('Commandes soumises : $photoDetails');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Commande soumise avec succès !')),
+  void _quickPhotoOrder() async {
+    final picker = ImagePicker();
+    final pickedFiles = await picker.pickMultiImage(imageQuality: 50);
+    if (pickedFiles.isNotEmpty) {
+      setState(() {
+        for (var file in pickedFiles) {
+          // In a real app, you would upload the file and get a URL.
+          // For this mock, we are using local paths, which might not render with Image.network.
+          // Let's assume the selection is for demonstration and the cart handles paths.
+          _selectedImages.add(file.path);
+        }
+        _calculateTotal();
+      });
+      _onTabTapped(2); // Switch to the Commands tab
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBody: true,
+      body: Stack(
+        children: [
+          const AnimatedBackground(),
+          _buildFixedTopBar(context),
+          Padding(
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 60), // Adjusted top padding
+            child: _buildBody(),
+          ),
+        ],
+      ),
+      bottomNavigationBar: _buildFloatingBottomNavBar(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _quickPhotoOrder,
+        backgroundColor: AppColors.accent,
+        child: const Icon(Icons.add_a_photo, color: Colors.white),
+      ).animate(
+        onComplete: (controller) => controller.repeat(reverse: true),
+      ).scale(
+        delay: 1000.ms,
+        duration: 500.ms,
+        begin: const Offset(1, 1),
+        end: const Offset(1.1, 1.1),
+        curve: Curves.easeInOut,
+      ),
     );
-    setState(() {
-      _selectedImages.clear();
-    });
+  }
+
+  Widget _buildFixedTopBar(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(6)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Container(
+            color: AppColors.primary,
+            padding: EdgeInsets.fromLTRB(24.0, MediaQuery.of(context).padding.top + 2, 10.0, 2.0), // Adjusted vertical padding
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Ravi de vous revoir, ${widget.userName}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14, // Smaller font size
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.notifications_none, color: Colors.white, size: 20), // Smaller icon
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    final List<Widget> tabs = [
+      _buildHomeTab(),
+      _buildPhotosTab(),
+      _buildCommandsTab(),
+      _buildProfileTab(),
+    ];
+    return IndexedStack(
+      index: _currentIndex,
+      children: tabs,
+    );
+  }
+
+  Widget _buildHomeTab() {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
+            children: [
+              const SizedBox(height: 2), // Reduced space above the card
+              _buildTopCard(),
+            ],
+          ),
+        ),
+        SliverToBoxAdapter(child: _buildQuickActions()),
+        _buildHistorySection(),
+        SliverToBoxAdapter(child: _buildAdCarousel()),
+        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+      ],
+    );
   }
 
   Widget _buildPhotosTab() {
-    return FutureBuilder<List<String>>(
-      future: _albumImagesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(
-            child: Text('Erreur : ${snapshot.error}'),
-          );
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(
-            child: Text('Aucune image trouvée.'),
-          );
-        } else {
-          final images = snapshot.data!;
-          return GridView.builder(
-            padding: const EdgeInsets.all(12.0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 16.0,
-              crossAxisSpacing: 16.0,
-            ),
-            itemCount: images.length,
-            itemBuilder: (context, index) {
-              final imageUrl = images[index];
-              final isSelected = _selectedImages.contains(imageUrl);
-
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.only(top: 100),
+      child: FutureBuilder<List<String>>(
+        future: _albumImagesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Erreur: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('Aucune image trouvée.'));
+          } else {
+            final images = snapshot.data!;
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16.0,
+                crossAxisSpacing: 16.0,
+              ),
+              itemCount: images.length,
+              itemBuilder: (context, index) {
+                final imageUrl = images[index];
+                final isSelected = _selectedImages.contains(imageUrl);
+                return GestureDetector(
+                  onTap: () => setState(() {
                     if (isSelected) {
                       _selectedImages.remove(imageUrl);
                     } else {
                       _selectedImages.add(imageUrl);
                     }
-                  });
-                },
-                child: Stack(
-                  children: [
-                    Card(
-                      clipBehavior: Clip.antiAlias,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                      child: Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        },
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.broken_image, size: 50),
-                      ),
-                    ),
-                    if (isSelected)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Icon(
-                          Icons.check_circle,
-                          color: Colors.green[400],
-                          size: 30,
+                    _calculateTotal();
+                  }),
+                  child: Stack(
+                    children: [
+                      Card(
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()),
+                          errorBuilder: (context, error, stack) => const Icon(Icons.broken_image, size: 50),
                         ),
                       ),
-                  ],
-                ),
-              );
-            },
-          );
-        }
-      },
+                      if (isSelected)
+                        const Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Icon(Icons.check_circle, color: AppColors.accent, size: 30),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            );
+          }
+        },
+      ),
     );
   }
 
   Widget _buildCommandsTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'Vos Commandes',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.only(bottom: 120, top: 5), // Adjusted bottom padding
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SegmentedButton<CartMode>(
+              segments: const [
+                ButtonSegment(value: CartMode.detail, label: Text('Par détail')),
+                ButtonSegment(value: CartMode.batch, label: Text('Par lot')),
+              ],
+              selected: {_selectedMode},
+              onSelectionChanged: (Set<CartMode> newSelection) {
+                setState(() {
+                  _selectedMode = newSelection.first;
+                  _calculateTotal();
+                });
+              },
+            ),
           ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: _selectedImages.length,
-            itemBuilder: (context, index) {
-              final imageUrl = _selectedImages.elementAt(index);
+          Expanded(
+            child: _selectedImages.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.shopping_cart_outlined, size: 80, color: AppColors.textSecondary),
+                        SizedBox(height: 16),
+                        Text(
+                          'Votre panier est vide.\nSélectionnez des photos pour commencer une commande !',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 18, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  )
+                : _selectedMode == CartMode.detail
+                    ? _buildDetailCart()
+                    : _buildBatchCart(),
+          ),
+          if (_selectedImages.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(4.0),
+              child: ElevatedButton.icon(
+                onPressed: _showValidationPopup,
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Valider'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-              if (!_photoDetails.containsKey(imageUrl)) {
-                _photoDetails[imageUrl] = {
-                  'size': '10x15 cm',
-                  'quantity': 1,
-                };
-              }
+  void _calculateTotal() {
+    double total = 0;
+    for (final imageUrl in _selectedImages) {
+      final details = _photoDetails[imageUrl];
+      if (details != null) {
+        final price = _prices[details['size']] ?? 0;
+        total += price * (details['quantity'] as int);
+      }
+    }
 
-              final photoDetails = _photoDetails[imageUrl]!;
+    if (_isExpress && _selectedImages.length <= 10) {
+      total += 1500;
+    }
 
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+    setState(() {
+      _totalPrice = total;
+    });
+  }
+
+  Widget _buildDetailCart() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      itemCount: _selectedImages.length,
+      itemBuilder: (context, index) {
+        final imageUrl = _selectedImages.elementAt(index);
+        if (!_photoDetails.containsKey(imageUrl)) {
+          _photoDetails[imageUrl] = {'size': '10x15 cm', 'quantity': 1};
+        }
+        final photoDetails = _photoDetails[imageUrl]!;
+        final price = _prices[photoDetails['size']] ?? 0;
+        final subtotal = price * (photoDetails['quantity'] as int);
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ExpansionTile(
+            key: ValueKey(imageUrl),
+            title: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: (imageUrl.startsWith('http'))
+                      ? Image.network(imageUrl, width: 60, height: 60, fit: BoxFit.cover)
+                      : Image.file(File(imageUrl), width: 60, height: 60, fit: BoxFit.cover),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Image.network(
-                        imageUrl,
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Taille :'),
-                          DropdownButton<String>(
-                            value: photoDetails['size'],
-                            items: ['10x15 cm', '15x20 cm', '20x30 cm']
-                                .map((size) => DropdownMenuItem(
-                                      value: size,
-                                      child: Text(size),
-                                    ))
-                                .toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  _photoDetails[imageUrl]!['size'] = value;
-                                });
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Quantité :'),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove),
-                                onPressed: () {
-                                  if (photoDetails['quantity'] > 1) {
-                                    setState(() {
-                                      _photoDetails[imageUrl]!['quantity'] -= 1;
-                                    });
-                                  }
-                                },
-                              ),
-                              Text('${photoDetails['quantity']}'),
-                              IconButton(
-                                icon: const Icon(Icons.add),
-                                onPressed: () {
-                                  setState(() {
-                                    _photoDetails[imageUrl]!['quantity'] += 1;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
+                      Text('Photo ${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${subtotal.toStringAsFixed(0)} FCFA',
+                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
+                IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color.fromARGB(255, 236, 7, 7), // Blue background
+                      shape: BoxShape.circle, // Circular shape
+                    ),
+                    child: const Icon(Icons.delete, size: 18, color: Colors.white), // White icon
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _selectedImages.remove(imageUrl);
+                      _photoDetails.remove(imageUrl);
+                      _calculateTotal();
+                    });
+                  },
+                ),
+              ],
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Taille :'),
+                        DropdownButton<String>(
+                          value: photoDetails['size'],
+                          items: _prices.keys.map((size) => DropdownMenuItem(value: size, child: Text(size))).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _photoDetails[imageUrl]!['size'] = value;
+                                _calculateTotal();
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Quantité :'),
+                        Row(
+                          children: [
+                            IconButton(icon: const Icon(Icons.remove), onPressed: () {
+                              if (photoDetails['quantity'] > 1) {
+                                setState(() {
+                                  _photoDetails[imageUrl]!['quantity'] -= 1;
+                                  _calculateTotal();
+                                });
+                              }
+                            }),
+                            Text('${photoDetails['quantity']}'),
+                            IconButton(icon: const Icon(Icons.add), onPressed: () {
+                              setState(() {
+                                _photoDetails[imageUrl]!['quantity'] += 1;
+                                _calculateTotal();
+                              });
+                            }),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBatchCart() {
+    // For batch mode, we need a way to set dimensions for all photos
+    String? commonSize;
+    if (_photoDetails.isNotEmpty) {
+      final sizes = _photoDetails.values.map((d) => d['size'] as String).toSet();
+      if (sizes.length == 1) {
+        commonSize = sizes.first;
+      }
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(5.0),
+          child: Align(
+            alignment: Alignment.centerRight, // Align to the right
+            child: SizedBox(
+              width: 180, // Reduced width
+              child: DropdownButtonFormField<String>(
+                value: commonSize,
+                decoration: InputDecoration(
+                  labelText: 'Dimension', // Shorter label for smaller input
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12), // Rounded borders
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  prefixIcon: const Icon(Icons.straighten, size: 20), // Added icon
+                ),
+                items: _prices.keys.map((size) => DropdownMenuItem(value: size, child: Text(size))).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      for (final key in _photoDetails.keys) {
+                        _photoDetails[key]!['size'] = value;
+                      }
+                      _calculateTotal();
+                    });
+                  }
+                },
+              ),
+            ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton.icon(
-            onPressed: () {
-              if (_selectedImages.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Aucune image sélectionnée.')),
-                );
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => OrderSummaryScreen(
-                      orderDetails: _photoDetails,
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: _selectedImages.length,
+            itemBuilder: (context, index) {
+              final imageUrl = _selectedImages.elementAt(index);
+              return Stack(
+                children: [
+                  (imageUrl.startsWith('http'))
+                      ? Image.network(imageUrl, fit: BoxFit.cover)
+                      : Image.file(File(imageUrl), fit: BoxFit.cover),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedImages.remove(imageUrl);
+                          _photoDetails.remove(imageUrl);
+                          _calculateTotal();
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(255, 238, 33, 6), // Blue background
+                          borderRadius: BorderRadius.circular(10), // Keep rounded corners
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        child: const Icon(Icons.close, size: 12, color: Colors.white), // White icon
+                      ),
                     ),
                   ),
-                );
-              }
+                ],
+              );
             },
-            icon: const Icon(Icons.shopping_cart),
-            label: const Text('Voir le récapitulatif'),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildProfileTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: _changeAvatar,
-            child: CircleAvatar(
-              radius: 60,
-              backgroundImage: _avatar != null
-                  ? FileImage(_avatar!)
-                  : const AssetImage('assets/images/default_avatar.png')
-                      as ImageProvider,
-              child: _avatar == null
-                  ? const Icon(Icons.camera_alt, size: 30, color: Colors.white)
-                  : null,
+  void _showValidationPopup() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      pageBuilder: (context, animation, secondaryAnimation) => Container(),
+      transitionBuilder: (context, anim1, anim2, child) {
+        return Align(
+          alignment: Alignment.topCenter,
+          child: SlideTransition(
+            position: Tween(begin: const Offset(0, -1), end: const Offset(0, 0)).animate(anim1),
+            child: Material(
+              color: Colors.transparent,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75), // Increased height
+                child: AlertDialog(
+                  contentPadding: EdgeInsets.zero,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+                  ),
+                  content: Stack(
+                    children: [
+                      const Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+                          child: GeometricBackground(),
+                        ),
+                      ),
+                      SingleChildScrollView( // Make content scrollable
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Résumé de la commande',
+                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            const SizedBox(height: 20),
+                            // Delivery Options
+                            Card(
+                              color: Colors.white.withOpacity(0.9),
+                              margin: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: Column(
+                                children: [
+                                  RadioListTile<bool>(
+                                    title: const Text('Livraison Standard', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    subtitle: const Text('Livraison classique, sans coût additionnel.'),
+                                    value: false,
+                                    groupValue: _isExpress,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        _isExpress = value!;
+                                        _calculateTotal();
+                                      });
+                                    },
+                                  ),
+                                  RadioListTile<bool>(
+                                    title: const Text('Livraison Xpress', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    subtitle: Text(_selectedImages.length > 10
+                                        ? 'Le surplus sera discuté avec le propriétaire'
+                                        : 'Livraison rapide (+ 1500 FCFA)'),
+                                    value: true,
+                                    groupValue: _isExpress,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        _isExpress = value!;
+                                        _calculateTotal();
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text('Montant Total', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                            Text(
+                              '${_totalPrice.toStringAsFixed(0)} FCFA',
+                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(context).pop(); // Close the dialog
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => OrderSummaryScreen(orderDetails: _photoDetails)));
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: AppColors.primary,
+                                minimumSize: const Size(double.infinity, 50),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Voir le récapitulatif complet', style: TextStyle(fontSize: 16)),
+                            ),
+                            const SizedBox(height: 10),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Modifier la commande', style: TextStyle(color: Colors.white, fontSize: 16)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 20),
-          Text(
-            widget.userName,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileTab() {
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.only(top: 100),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            GestureDetector(
+              onTap: _changeAvatar,
+              child: CircleAvatar(
+                radius: 60,
+                backgroundImage: _avatar != null ? FileImage(_avatar!) as ImageProvider : const AssetImage('assets/images/pro.png'),
+                child: _avatar == null ? const Icon(Icons.camera_alt, size: 30, color: AppColors.textOnPrimary) : null,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(widget.userName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            const SizedBox(height: 30),
+            ElevatedButton.icon(
+              onPressed: _logout,
+              icon: const Icon(Icons.logout),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              label: const Text('Déconnexion'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopCard() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8.0, 0, 8.0, 4.0),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 4,
+        child: SizedBox(
+          height: 220, // Enlarged card height
+          child: Stack(
+            alignment: Alignment.center, // Center the button
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary, width: 2),
+                ),
+                child: Image.asset(
+                  'assets/images/pro.png',
+                  height: 280,
+                  width: double.infinity,
+                  fit: BoxFit.contain, // Ensure image is fully visible
+                ),
+              ),
+              Positioned(
+                bottom: 12,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.print, size: 24), // Print icon
+                  label: const Text("Imprimer une photo", style: TextStyle(fontSize: 16)), // Larger text
+                  onPressed: () => _onTabTapped(1), // Switch to Photos tab
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent, // Dominant color
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ).animate(
+                  onComplete: (controller) => controller.repeat(),
+                ).shimmer(
+                  delay: 2000.milliseconds,
+                  duration: 1000.milliseconds,
+                  color: Colors.white.withOpacity(0.5), // Glimmer effect
+                ),
+              )
+            ],
           ),
-          const SizedBox(height: 30),
-          ElevatedButton.icon(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            label: const Text('Déconnexion'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 16.0),
+      child: Wrap(
+        spacing: 16.0,
+        runSpacing: 16.0,
+        alignment: WrapAlignment.spaceAround,
+        children: [
+          _buildQuickActionButton(
+            icon: Icons.photo_album,
+            label: 'Portfolio',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PortfolioScreen())),
+          ),
+          _buildQuickActionButton(
+            icon: Icons.archive_outlined,
+            label: 'Mes commandes',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryScreen())),
+          ),
+          _buildQuickActionButton(
+            icon: Icons.straighten,
+            label: 'Prix & dimensions',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PricingScreen())),
+          ),
+          _buildQuickActionButton(
+            icon: Icons.flash_on,
+            label: 'Commande rapide',
+            onTap: () => _onTabTapped(1), // Switch to Photos tab
+          ),
+          _buildQuickActionButton(
+            icon: Icons.help_outline,
+            label: 'Aide',
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text("Comment ça marche ?"),
+                  content: const Text(
+                      "1️⃣ Choisissez vos photos\n"
+                      "2️⃣ Sélectionnez la dimension et la quantité\n"
+                      "3️⃣ Payez en toute sécurité\n"
+                      "4️⃣ Recevez vos souvenirs !"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text("Fermer"),
+                    )
+                  ],
+                ),
+              );
+            },
+          ),
+          _buildQuickActionButton(
+            icon: Icons.chat_bubble_outline,
+            label: 'Nous contacter',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ContactScreen())),
           ),
         ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final tabs = [
-      _buildPhotosTab(),
-      _buildCommandsTab(),
-      _buildProfileTab(),
+  Widget _buildQuickActionButton({required IconData icon, required String label, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 80, // Constrain width to encourage wrapping
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              child: Icon(icon, color: AppColors.primary, size: 28),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center, // Center the text
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHistorySection() {
+    final recentHistory = _mockHistory.where((req) => req.date.isAfter(DateTime.now().subtract(const Duration(days: 7)))).take(3).toList();
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 16.0),
+      sliver: SliverToBoxAdapter(
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Historique récent',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                OutlinedButton(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryScreen())),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text("Voir tout"),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...recentHistory.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    child: Icon(item.icon, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.title, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        Text(DateFormat('dd MMM yyyy').format(item.date), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdCarousel() {
+    final List<String> localImages = [
+      'assets/carousel/Ajouter un sous-titre.png',
+      'assets/carousel/car.jpg',
+      'assets/carousel/car1.jpg',
+      'assets/carousel/pflex.jpeg',
+      'assets/carousel/Pink Modern Pink October Instagram Post  (1).png',
+      'assets/carousel/Pink Modern Pink October Instagram Post  (2).png',
+      'assets/carousel/Pink Modern Pink October Instagram Post .png',
+      'assets/images/pro.png',
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Studio Photo'),
-      ),
-      body: tabs[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.photo_album),
-            label: 'Photos',
+    Widget buildItem(String path, bool isAsset) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 5.0),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: isAsset
+              ? Image.asset(path, fit: BoxFit.contain)
+              : Image.network(path, fit: BoxFit.contain),
+        ),
+      ).animate(
+        onComplete: (controller) => controller.repeat(),
+      ).shimmer(
+        delay: 2000.milliseconds,
+        duration: 1000.milliseconds,
+        color: AppColors.background.withOpacity(0.5),
+      );
+    }
+
+    Widget buildLocalCarousel(String message) {
+      return Column(
+        children: [
+          CarouselSlider.builder(
+            itemCount: localImages.length,
+            itemBuilder: (context, index, realIndex) => buildItem(localImages[index], true),
+            options: CarouselOptions(
+                height: 140.0,
+                viewportFraction: 0.8,
+                enlargeCenterPage: false,
+                autoPlay: true,
+                autoPlayInterval: const Duration(seconds: 4)),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Commandes',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profil',
-          ),
+          if (message.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(message,
+                  style: const TextStyle(color: AppColors.textSecondary)),
+            )
         ],
+      );
+    }
+
+    return _isOffline
+        ? buildLocalCarousel("Impossible de charger les promotions. Mode hors-ligne.")
+        : FutureBuilder<List<String>>(
+            future: Future.delayed(const Duration(seconds: 2), () => []),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                    height: 140,
+                    child: Center(child: CircularProgressIndicator()));
+              }
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                return buildLocalCarousel("Impossible de charger les promotions en ligne.");
+              }
+              final onlineImages = snapshot.data!;
+              return CarouselSlider.builder(
+                itemCount: onlineImages.length,
+                itemBuilder: (context, index, realIndex) => buildItem(onlineImages[index], false),
+                options: CarouselOptions(
+                    height: 140.0,
+                    autoPlay: true,
+                    autoPlayInterval: const Duration(seconds: 5),
+                    enlargeCenterPage: false,
+                    viewportFraction: 0.8),
+              );
+            },
+          );
+  }
+
+  Widget _buildFloatingBottomNavBar() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary, width: 2),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: _onTabTapped,
+            backgroundColor: Colors.white.withOpacity(0.3),
+            selectedItemColor: AppColors.primary,
+            unselectedItemColor: AppColors.textPrimary.withOpacity(0.6),
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.photo_album), label: 'Photos'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.shopping_cart), label: 'Commandes'),
+              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+            ],
+          ),
+        ),
       ),
     );
   }
