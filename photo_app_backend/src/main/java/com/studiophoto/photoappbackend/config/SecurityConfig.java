@@ -1,6 +1,7 @@
 package com.studiophoto.photoappbackend.config;
 
 import com.studiophoto.photoappbackend.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -10,8 +11,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -25,17 +24,28 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf()
-                .disable()
-                .authorizeHttpRequests()
-                .requestMatchers("/api/auth/**") // Public endpoints for authentication
-                .permitAll()
-                .anyRequest()
-                .authenticated()
-                .and()
-                .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        // Public access for authentication and admin login page
+                        .requestMatchers("/api/auth/**", "/admin/login")
+                        .permitAll()
+                        // Admin paths should be authenticated and role-based
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .anyRequest()
+                        .authenticated()
+                )
+                .formLogin(form -> form
+                        .loginPage("/admin/login")
+                        .defaultSuccessUrl("/admin/dashboard", true) // Redirect to admin dashboard on success
+                        .failureUrl("/admin/login?error")
+                        .permitAll() // Allow everyone to access the login form
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/admin/logout")
+                        .logoutSuccessUrl("/admin/login?logout")
+                        .permitAll()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // Change to IF_REQUIRED for session-based login
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

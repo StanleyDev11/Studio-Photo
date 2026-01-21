@@ -4,7 +4,6 @@ import com.studiophoto.photoappbackend.model.Role;
 import com.studiophoto.photoappbackend.model.User;
 import com.studiophoto.photoappbackend.repository.UserRepository;
 import com.studiophoto.photoappbackend.security.JwtService;
-import com.studiophoto.photoappbackend.service.EmailService; // Import EmailService
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,7 +18,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final EmailService emailService; // Inject EmailService
+    // private final EmailService emailService; // EmailService will be added later
 
     public AuthenticationResponse register(RegisterRequest request) {
         var user = User.builder()
@@ -32,12 +31,12 @@ public class AuthenticationService {
         repository.save(user);
         var jwtToken = jwtService.generateToken(user);
 
-        // Send welcome email
-        emailService.sendSimpleEmail(
-                user.getEmail(),
-                "Welcome to Photo Studio App!",
-                "Hello " + user.getFirstname() + ",\n\nWelcome to our Photo Studio Application. We are glad to have you!"
-        );
+        // Send welcome email - uncomment when EmailService is implemented
+        // emailService.sendSimpleEmail(
+        //         user.getEmail(),
+        //         "Welcome to Photo Studio App!",
+        //         "Hello " + user.getFirstname() + "\n\nWelcome to our Photo Studio Application. We are glad to have you!"
+        // );
 
         return AuthenticationResponse.builder()
                 .token(jwtToken)
@@ -52,7 +51,7 @@ public class AuthenticationService {
                 )
         );
         var user = repository.findByEmail(request.getEmail())
-                .orElseThrow();
+                .orElseThrow(); // user should exist if authentication is successful
         var jwtToken = jwtService.generateToken(user);
         return AuthenticationResponse.builder()
                 .token(jwtToken)

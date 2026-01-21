@@ -1,5 +1,5 @@
 # Étape 1: Build de l'application avec Maven
-# Utilise une image qui contient Maven et le JDK 17
+# Utilise une image qui contient Maven et Java 21
 FROM maven:3.9.6-openjdk-21 AS build
 
 # Définit le répertoire de travail à l'intérieur du conteneur
@@ -18,17 +18,14 @@ COPY src src
 # -DskipTests pour ne pas lancer les tests unitaires pendant le build de l'image
 RUN mvn clean package -DskipTests
 
-
 # Étape 2: Création de l'image finale
-# Utilise une image légère avec seulement l'environnement d'exécution Java 17
-FROM eclipse-temurin:17-jre-jammy
+# Utilise une image légère avec seulement l'environnement d'exécution Java 21
+FROM openjdk:21-jre-slim
 
 # Définit le répertoire de travail
 WORKDIR /app
 
 # Copie le fichier .jar qui a été généré à l'étape précédente
-# Le chemin exact du .jar dépend de la configuration dans votre pom.xml (artifactId et version)
-# Je vais utiliser un wildcard (*) pour le rendre plus flexible.
 COPY --from=build /app/target/*.jar app.jar
 
 # Expose le port sur lequel l'application Spring Boot tourne (par défaut 8080)
