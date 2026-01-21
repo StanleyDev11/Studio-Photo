@@ -1,6 +1,6 @@
 # Étape 1: Build de l'application avec Maven
 # Utilise une image qui contient Maven et Java 21
-FROM maven:3.9-openjdk-21 AS build
+FROM maven:3-openjdk-21 AS build
 
 # Définit le répertoire de travail à l'intérieur du conteneur
 WORKDIR /app
