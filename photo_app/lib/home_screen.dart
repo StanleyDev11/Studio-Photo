@@ -10,6 +10,8 @@ import 'package:photo_app/notifications_screen.dart';
 import 'package:photo_app/utils/colors.dart';
 import 'package:photo_app/utils/connectivity_service.dart';
 import 'package:photo_app/api_service.dart';
+import 'package:photo_app/models/promotion.dart';
+import 'package:photo_app/models/featured_content.dart'; // Nouvelle importation
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -53,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final Set<String> _selectedImages = {};
   Future<List<String>>? _albumImagesFuture;
+  Future<List<Promotion>>? _promotionsFuture;
+  Future<FeaturedContent>? _featuredContentFuture; // Nouvelle variable d'état
   File? _avatar;
   final Map<String, Map<String, dynamic>> _photoDetails = {};
 
@@ -100,6 +104,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
+    _promotionsFuture = ApiService.fetchPromotions(); // Initialisation des promotions
+    _featuredContentFuture = ApiService.fetchFeaturedContent(); // Initialisation du contenu mis en avant
     _connectivitySubscription =
         _connectivityService.connectivityStream.listen((result) {
       if (result == ConnectivityResult.none) {
@@ -770,53 +776,89 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTopCard() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8.0, 0, 8.0, 4.0),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 4,
-        child: SizedBox(
-          height: 220, // Enlarged card height
-          child: Stack(
-            alignment: Alignment.center, // Center the button
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary, width: 2),
-                ),
-                child: Image.asset(
-                  'assets/images/pro.png',
-                  height: 280,
-                  width: double.infinity,
-                  fit: BoxFit.contain, // Ensure image is fully visible
-                ),
-              ),
-              Positioned(
-                bottom: 12,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.print, size: 24), // Print icon
-                  label: const Text("Imprimer une photo", style: TextStyle(fontSize: 16)), // Larger text
-                  onPressed: () => _onTabTapped(1), // Switch to Photos tab
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent, // Dominant color
-                    foregroundColor: Colors.white,
-                    shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+    return FutureBuilder<FeaturedContent>(
+      future: _featuredContentFuture,
+      builder: (context, snapshot) {
+        FeaturedContent? featuredContent;
+        if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+          featuredContent = snapshot.data;
+        }
+
+        final String imageUrl = featuredContent?.imageUrl ?? 'assets/images/pro.png';
+        final String buttonLabel = featuredContent?.buttonText ?? "Imprimer une photo";
+        final String? buttonAction = featuredContent?.buttonAction;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(8.0, 0, 8.0, 4.0),
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 4,
+            child: SizedBox(
+              height: 220, // Enlarged card height
+              child: Stack(
+                alignment: Alignment.center, // Center the button
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary, width: 2),
+                    ),
+                    child: featuredContent?.imageUrl != null && featuredContent!.imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            height: 280,
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.{\$type} != null
+                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) => Image.asset('assets/images/pro.png', fit: BoxFit.contain), // Fallback local image
+                          )
+                        : Image.asset('assets/images/pro.png', fit: BoxFit.contain), // Default local image
                   ),
-                ).animate(
-                  onComplete: (controller) => controller.repeat(),
-                ).shimmer(
-                  delay: 2000.milliseconds,
-                  duration: 1000.milliseconds,
-                  color: Colors.white.withOpacity(0.5), // Glimmer effect
-                ),
-              )
-            ],
+                  Positioned(
+                    bottom: 12,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.print, size: 24), // Print icon
+                      label: Text(buttonLabel, style: const TextStyle(fontSize: 16)), // Larger text
+                      onPressed: () {
+                        if (buttonAction != null && buttonAction.isNotEmpty) {
+                          // TODO: Implement navigation based on buttonAction (e.g., to a specific route or URL)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Action du bouton : $buttonAction')),
+                          );
+                        } else {
+                          _onTabTapped(1); // Default action: Switch to Photos tab
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent, // Dominant color
+                        foregroundColor: Colors.white,
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                    ).animate(
+                      onComplete: (controller) => controller.repeat(),
+                    ).shimmer(
+                      delay: 2000.milliseconds,
+                      duration: 1000.milliseconds,
+                      color: Colors.white.withOpacity(0.5), // Glimmer effect
+                    ),
+                  )
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -960,6 +1002,92 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAdCarousel() {
+    Widget buildItem(String imageUrl, String? targetUrl) {
+      return GestureDetector(
+        onTap: () {
+          if (targetUrl != null && targetUrl.isNotEmpty) {
+            // Implémenter la navigation vers targetUrl si nécessaire
+            // Par exemple, en utilisant url_launcher
+            // launchUrl(Uri.parse(targetUrl));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Cliqué sur la promotion vers : $targetUrl')),
+            );
+          }
+        },
+        child: Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 5.0),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.{\$type} != null
+                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) => const Center(
+                child: Icon(Icons.broken_image, color: AppColors.error, size: 50),
+              ),
+            ),
+          ),
+        ),
+      ).animate(
+        onComplete: (controller) => controller.repeat(),
+      ).shimmer(
+        delay: 2000.milliseconds,
+        duration: 1000.milliseconds,
+        color: AppColors.background.withOpacity(0.5),
+      );
+    }
+
+    return _isOffline
+        ? _buildLocalCarousel("Impossible de charger les promotions. Mode hors-ligne.")
+        : FutureBuilder<List<Promotion>>(
+            future: _promotionsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                    height: 140,
+                    child: Center(child: CircularProgressIndicator()));
+              }
+              if (snapshot.hasError) {
+                return _buildLocalCarousel("Erreur de chargement des promotions : ${snapshot.error}");
+              }
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return _buildLocalCarousel("Aucune promotion disponible en ligne.");
+              }
+
+              final onlinePromotions = snapshot.data!;
+              return CarouselSlider.builder(
+                itemCount: onlinePromotions.length,
+                itemBuilder: (context, index, realIndex) => buildItem(
+                  onlinePromotions[index].imageUrl,
+                  onlinePromotions[index].targetUrl,
+                ),
+                options: CarouselOptions(
+                    height: 140.0,
+                    autoPlay: true,
+                    autoPlayInterval: const Duration(seconds: 5),
+                    enlargeCenterPage: false,
+                    viewportFraction: 0.8),
+              );
+            },
+          );
+  }
+
+  // Extrait la logique du carousel local pour la réutiliser
+  Widget _buildLocalCarousel(String message) {
     final List<String> localImages = [
       'assets/carousel/Ajouter un sous-titre.png',
       'assets/carousel/car.jpg',
@@ -971,7 +1099,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'assets/images/pro.png',
     ];
 
-    Widget buildItem(String path, bool isAsset) {
+    Widget buildLocalItem(String path) {
       return Container(
         width: double.infinity,
         margin: const EdgeInsets.symmetric(horizontal: 5.0),
@@ -981,9 +1109,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: isAsset
-              ? Image.asset(path, fit: BoxFit.contain)
-              : Image.network(path, fit: BoxFit.contain),
+          child: Image.asset(path, fit: BoxFit.contain),
         ),
       ).animate(
         onComplete: (controller) => controller.repeat(),
@@ -994,56 +1120,28 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    Widget buildLocalCarousel(String message) {
-      return Column(
-        children: [
-          CarouselSlider.builder(
-            itemCount: localImages.length,
-            itemBuilder: (context, index, realIndex) => buildItem(localImages[index], true),
-            options: CarouselOptions(
-                height: 140.0,
-                viewportFraction: 0.8,
-                enlargeCenterPage: false,
-                autoPlay: true,
-                autoPlayInterval: const Duration(seconds: 4)),
-          ),
-          if (message.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(message,
-                  style: const TextStyle(color: AppColors.textSecondary)),
-            )
-        ],
-      );
-    }
-
-    return _isOffline
-        ? buildLocalCarousel("Impossible de charger les promotions. Mode hors-ligne.")
-        : FutureBuilder<List<String>>(
-            future: Future.delayed(const Duration(seconds: 2), () => []),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                    height: 140,
-                    child: Center(child: CircularProgressIndicator()));
-              }
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                return buildLocalCarousel("Impossible de charger les promotions en ligne.");
-              }
-              final onlineImages = snapshot.data!;
-              return CarouselSlider.builder(
-                itemCount: onlineImages.length,
-                itemBuilder: (context, index, realIndex) => buildItem(onlineImages[index], false),
-                options: CarouselOptions(
-                    height: 140.0,
-                    autoPlay: true,
-                    autoPlayInterval: const Duration(seconds: 5),
-                    enlargeCenterPage: false,
-                    viewportFraction: 0.8),
-              );
-            },
-          );
+    return Column(
+      children: [
+        CarouselSlider.builder(
+          itemCount: localImages.length,
+          itemBuilder: (context, index, realIndex) => buildLocalItem(localImages[index]),
+          options: CarouselOptions(
+              height: 140.0,
+              viewportFraction: 0.8,
+              enlargeCenterPage: false,
+              autoPlay: true,
+              autoPlayInterval: const Duration(seconds: 4)),
+        ),
+        if (message.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(message,
+                style: const TextStyle(color: AppColors.textSecondary)),
+          )
+      ],
+    );
   }
+}
 
   Widget _buildFloatingBottomNavBar() {
     return Container(

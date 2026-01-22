@@ -1,7 +1,10 @@
 package com.studiophoto.photoappbackend.config;
 
 import com.studiophoto.photoappbackend.repository.UserRepository;
+import com.studiophoto.photoappbackend.storage.StorageProperties;
+import com.studiophoto.photoappbackend.storage.StorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -12,6 +15,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @RequiredArgsConstructor
@@ -41,5 +46,25 @@ public class ApplicationConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    // NEW: Initialize StorageService on startup
+    @Bean
+    CommandLineRunner init(StorageService storageService) {
+        return (args) -> {
+            storageService.init();
+        };
+    }
+
+    // NEW: Configure resource handler for uploaded files
+    @Bean
+    public WebMvcConfigurer webMvcConfigurer(StorageProperties storageProperties) {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addResourceHandlers(ResourceHandlerRegistry registry) {
+                registry.addResourceHandler("/uploads/**")
+                        .addResourceLocations("file:" + storageProperties.getLocation() + "/");
+            }
+        };
     }
 }

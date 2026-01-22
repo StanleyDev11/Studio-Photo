@@ -21,7 +21,6 @@ public class UserResponse {
     private Role role;
     private Status status; // New field
     private String phone; // New field
-    private String notes; // New field
     private LocalDateTime createdAt; // New field
     private LocalDateTime lastLogin; // New field
 }

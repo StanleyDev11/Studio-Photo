@@ -31,7 +31,13 @@ public class AdminUserService {
                 .map(this::mapToUserResponse);
     }
 
+
     public UserResponse createUser(UserRequest request) {
+        // Check if user with the same email already exists
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalStateException("Un utilisateur avec l'email " + request.getEmail() + " existe déjà.");
+        }
+
         var user = User.builder()
                 .firstname(request.getFirstname())
                 .lastname(request.getLastname())
@@ -40,7 +46,6 @@ public class AdminUserService {
                 .role(request.getRole())
                 .status(request.getStatus() != null ? request.getStatus() : Status.PENDING) // Use request status or default
                 .phone(request.getPhone())
-                .notes(request.getNotes())
                 .build();
         return mapToUserResponse(userRepository.save(user));
     }
@@ -54,7 +59,6 @@ public class AdminUserService {
                     user.setRole(request.getRole());
                     user.setStatus(request.getStatus()); // Update status
                     user.setPhone(request.getPhone()); // Update phone
-                    user.setNotes(request.getNotes()); // Update notes
 
                     // Only update password if a new one is provided
                     if (request.getPassword() != null && !request.getPassword().isEmpty()) {
@@ -99,7 +103,6 @@ public class AdminUserService {
                 .role(user.getRole())
                 .status(user.getStatus()) // Include status
                 .phone(user.getPhone()) // Include phone
-                .notes(user.getNotes()) // Include notes
                 .createdAt(user.getCreatedAt()) // Include createdAt
                 .lastLogin(user.getLastLogin()) // Include lastLogin
                 .build();

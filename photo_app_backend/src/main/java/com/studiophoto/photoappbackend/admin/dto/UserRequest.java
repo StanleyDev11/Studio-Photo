@@ -2,9 +2,7 @@ package com.studiophoto.photoappbackend.admin.dto;
 
 import com.studiophoto.photoappbackend.model.Role;
 import com.studiophoto.photoappbackend.model.Status; // Import new Status enum
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,5 +28,4 @@ public class UserRequest {
     @NotNull // Status is now a required field for UserRequest
     private Status status; // New field
     private String phone; // New field
-    private String notes; // New field
 }

@@ -728,6 +728,8 @@
     <ul class="nav-links">
         <li><a href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
         <li><a href="/admin/users" class="active"><i class="fas fa-user-friends"></i><span>Utilisateurs</span></a></li>
+        <li><a href="/admin/promotions"><i class="fas fa-bullhorn"></i><span>Promotions</span></a></li>
+        <li><a href="/admin/featured-content"><i class="fas fa-star"></i><span>Contenu Mis en Avant</span></a></li>
         <li><a href="#"><i class="fas fa-photo-video"></i><span>Photos</span></a></li>
         <li><a href="#"><i class="fas fa-shopping-basket"></i><span>Commandes</span></a></li>
         <li><a href="#"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a></li>
@@ -936,16 +938,14 @@
                             </div>
                         </div>
 
-                        <!-- Checkbox to show/hide password fields during edit -->
-                        <div class="form-group" id="changePasswordToggleGroup" style="display: none;">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="changePasswordCheckbox">
-                                <label class="form-check-label" for="changePasswordCheckbox">Changer le mot de passe</label>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
+                                <div class="form-group" id="changePasswordToggleGroup" style="display: none;">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="changePasswordCheckbox">
+                                        <label class="form-check-label" for="changePasswordCheckbox">Changer le mot de passe</label>
+                                    </div>
+                                </div>
+                        
+                                <div class="row">                            <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="role">Rôle *</label>
                                     <select class="form-control select2" id="role" name="role" style="width: 100%" required>
@@ -966,11 +966,6 @@
                             <label for="phone">Téléphone</label>
                             <i class="fas fa-phone icon-in-input"></i>
                             <input type="tel" class="form-control pl-5" id="phone" name="phone" value="+228">
-                        </div>
-                        <div class="form-group position-relative">
-                            <label for="notes">Notes</label>
-                            <i class="fas fa-sticky-note icon-in-input align-self-start mt-2"></i>
-                            <textarea class="form-control pl-5" id="notes" name="notes" rows="3"></textarea>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
@@ -1009,6 +1004,20 @@
             width: '100%',
             theme: 'bootstrap'
         });
+
+        // Event listener for the "Change password" checkbox
+        $('#changePasswordCheckbox').change(function() {
+            if ($(this).is(':checked')) {
+                $('#passwordFieldsGroup').show();
+                $('#password').attr('required', true);
+                $('#confirmPassword').attr('required', true);
+            } else {
+                $('#passwordFieldsGroup').hide();
+                $('#password').removeAttr('required').val('');
+                $('#confirmPassword').removeAttr('required').val('');
+            }
+        });
+
 
         // Initialize DataTable
         var table = $('#usersTable').DataTable({
@@ -1208,9 +1217,15 @@
         $('#addUserBtn').click(function() {
             $('#userForm')[0].reset();
             $('#userId').val('');
-            $('#password').attr('required', true);
-            $('#passwordHelp').hide();
             $('#userModalLabel').text('Nouvel Utilisateur');
+
+            // Reset and show password fields for new user
+            $('#passwordFieldsGroup').show();
+            $('#password').attr('required', true);
+            $('#confirmPassword').attr('required', true); // Ensure confirmation is also required
+            $('#changePasswordToggleGroup').hide(); // Hide the 'change password' checkbox
+            $('#changePasswordCheckbox').prop('checked', false); // Ensure it's unchecked
+
             $('.select2').trigger('change');
         });
 
@@ -1228,9 +1243,13 @@
                     $('#role').val(user.role).trigger('change');
                     $('#status').val(user.status).trigger('change');
                     $('#phone').val(user.phone || '');
-                    $('#notes').val(user.notes || '');
-                    $('#password').removeAttr('required');
-                    $('#passwordHelp').show();
+
+                    // Hide password fields for existing user, show toggle
+                    $('#passwordFieldsGroup').hide();
+                    $('#password').removeAttr('required').val(''); // Remove required and clear value
+                    $('#confirmPassword').removeAttr('required').val(''); // Remove required and clear value
+                    $('#changePasswordToggleGroup').show(); // Show the 'change password' checkbox
+                    $('#changePasswordCheckbox').prop('checked', false); // Ensure it's unchecked
                     $('#userModalLabel').text('Modifier Utilisateur');
                     $('#userModal').modal('show');
                     hideLoading();
@@ -1377,6 +1396,19 @@
         $('#userForm').submit(function(e) {
             e.preventDefault();
 
+            // Initialize jQuery objects for form elements
+            const passwordFieldsGroup = $('#passwordFieldsGroup');
+            const passwordInput = $('#password');
+            const confirmPasswordInput = $('#confirmPassword');
+            const userIdInput = $('#userId');
+            const firstnameInput = $('#firstname');
+            const lastnameInput = $('#lastname');
+            const emailInput = $('#email');
+            const roleInput = $('#role');
+            const statusInput = $('#status');
+            const phoneInput = $('#phone');
+            const notesInput = $('#notes');
+
             // Validate password confirmation ONLY if password fields are visible/required
             if (passwordFieldsGroup.is(':visible')) {
                 const password = passwordInput.val();
@@ -1401,8 +1433,7 @@
                 email: emailInput.val(),
                 role: roleInput.val(),
                 status: statusInput.val(),
-                phone: phoneInput.val(),
-                notes: notesInput.val()
+                phone: phoneInput.val()
             };
 
             // Only include password in payload if it's being set/changed

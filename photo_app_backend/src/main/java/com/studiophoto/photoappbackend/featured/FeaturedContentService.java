@@ -1,0 +1,49 @@
+package com.studiophoto.photoappbackend.featured;
+
+import com.studiophoto.photoappbackend.storage.StorageService; // NEW
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+//@RequiredArgsConstructor // Removed because we will manually create constructor
+public class FeaturedContentService {
+
+    private final FeaturedContentRepository featuredContentRepository;
+    private final StorageService storageService; // NEW
+
+    public FeaturedContentService(FeaturedContentRepository featuredContentRepository, StorageService storageService) {
+        this.featuredContentRepository = featuredContentRepository;
+        this.storageService = storageService;
+    }
+
+    public Optional<FeaturedContent> getActiveFeaturedContent() {
+        return featuredContentRepository.findFirstByActiveTrueOrderByPriorityAsc();
+    }
+
+    public List<FeaturedContent> getAllFeaturedContent() {
+        return featuredContentRepository.findAll();
+    }
+
+    public Optional<FeaturedContent> getFeaturedContentById(Long id) {
+        return featuredContentRepository.findById(id);
+    }
+
+    public FeaturedContent saveFeaturedContent(FeaturedContent featuredContent) {
+        return featuredContentRepository.save(featuredContent);
+    }
+
+    public void deleteFeaturedContent(Long id) {
+        // Optionnel: Supprimer le fichier image associé
+        featuredContentRepository.findById(id).ifPresent(content -> {
+            if (content.getImageUrl() != null && !content.getImageUrl().isEmpty()) {
+                // Extraire le nom du fichier de l'URL
+                String filename = content.getImageUrl().substring(content.getImageUrl().lastIndexOf('/') + 1);
+                storageService.delete(filename);
+            }
+        });
+        featuredContentRepository.deleteById(id);
+    }
+}
