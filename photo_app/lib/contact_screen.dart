@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:photo_app/utils/colors.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ContactScreen extends StatelessWidget {
   const ContactScreen({super.key});
@@ -49,10 +51,10 @@ class ContactScreen extends StatelessWidget {
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _SocialButton(icon: Icons.facebook, url: 'https://facebook.com'),
-                // Placeholder for other social icons. You can use a package like `font_awesome_flutter`.
-                _SocialButton(icon: Icons.camera_alt, url: 'https://instagram.com'),
-                _SocialButton(icon: Icons.chat, url: 'https://whatsapp.com'),
+                _SocialButton(icon: FontAwesomeIcons.facebook, url: 'https://facebook.com/your-page'),
+                _SocialButton(icon: FontAwesomeIcons.twitter, url: 'https://twitter.com/your-handle'),
+                _SocialButton(icon: FontAwesomeIcons.instagram, url: 'https://instagram.com/your-profile'),
+                _SocialButton(icon: FontAwesomeIcons.linkedin, url: 'https://linkedin.com/in/your-profile'),
               ],
             ),
           ],
@@ -107,16 +109,20 @@ class _SocialButton extends StatelessWidget {
 
   const _SocialButton({required this.icon, required this.url});
 
+  Future<void> _launchUrl(BuildContext context) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible d\'ouvrir $url')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: Icon(icon, color: AppColors.primary, size: 36),
-      onPressed: () {
-        // You would typically use a package like `url_launcher` to open the URL
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ouverture de $url')),
-        );
-      },
+      icon: FaIcon(icon, color: AppColors.primary, size: 36),
+      onPressed: () => _launchUrl(context),
       iconSize: 40,
     );
   }
