@@ -6,6 +6,7 @@ import 'package:photo_app/utils/geometric_background.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:photo_app/recovery_screen.dart';
 import 'package:photo_app/widgets/music_wave_loader.dart';
+import 'package:photo_app/api_service.dart'; // Import ApiService
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,11 +18,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController(text: 'test@example.com');
-  final _phoneController = TextEditingController();
+  final _phoneController = TextEditingController(); // This is not used in the current API, but kept for future phone login
   final _passwordController = TextEditingController(text: 'password123');
   bool _obscureText = true;
   bool _isLoading = false;
-  bool _isLoginWithPhone = true;
+  // bool _isLoginWithPhone = true; // Temporarily disable phone login toggle as API only supports email/password
 
   Future<void> _login() async {
     if (_formKey.currentState?.validate() ?? false) {
@@ -29,20 +30,45 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = true;
       });
 
-      await Future.delayed(const Duration(seconds: 3));
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              userName: 'Test User',
-              userId: 1,
-            ),
-          ),
+      try {
+        // Assuming login is always with email/password for now
+        final response = await ApiService.login(
+          _emailController.text,
+          _passwordController.text,
         );
+
+        final token = response['token'];
+        final userId = response['userId']; // Assuming userId is returned in the response
+        final userName = response['userName'] ?? _emailController.text.split('@').first; // Assuming userName or derive from email
+
+        if (token != null && userId != null) {
+          await ApiService.saveAuthTokenAndUserId(token, userId);
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => HomeScreen(
+                  userName: userName,
+                  userId: userId,
+                ),
+              ),
+            );
+          }
+        } else {
+          // Handle case where token or userId might be missing from response
+          throw Exception('Token ou ID utilisateur manquant dans la réponse.');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur de connexion: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -130,36 +156,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 24),
-                  _buildLoginMethodToggle(),
+                  // _buildLoginMethodToggle(), // Temporarily disabled
                   const SizedBox(height: 24),
                   
-                  if (_isLoginWithPhone)
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: _glassyInputDecoration(
-                        'Numéro de téléphone',
-                        prefix: CountryCodePicker(
-                          onChanged: (countryCode) {},
-                          initialSelection: 'TG',
-                          favorite: const ['+228', '+225', '+223'],
-                          countryFilter: const ['DZ', 'AO', 'BJ', 'BW', 'BF', 'BI', 'CM', 'CV', 'CF', 'TD', 'KM', 'CG', 'CD', 'CI', 'DJ', 'EG', 'GQ', 'ER', 'ET', 'GA', 'GM', 'GH', 'GN', 'GW', 'KE', 'LS', 'LR', 'LY', 'MG', 'MW', 'ML', 'MR', 'MU', 'YT', 'MA', 'MZ', 'NA', 'NE', 'NG', 'RE', 'RW', 'SH', 'ST', 'SN', 'SC', 'SL', 'SO', 'ZA', 'SS', 'SD', 'SZ', 'TZ', 'TG', 'TN', 'UG', 'EH', 'ZM', 'ZW'],
-                          textStyle: TextStyle(color: AppColors.textPrimary.withOpacity(0.9)),
-                        ),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      validator: (value) => (value?.isEmpty ?? true) ? 'Champ requis' : null,
-                    )
-                  else
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: _glassyInputDecoration('Email', icon: Icons.email_outlined),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Champ requis';
-                        if (!RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)) return 'Email invalide';
-                        return null;
-                      }
-                    ),
+                  // Always use email login for now
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: _glassyInputDecoration('Email', icon: Icons.email_outlined),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Champ requis';
+                      if (!RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)) return 'Email invalide';
+                      return null;
+                    }
+                  ),
 
                   const SizedBox(height: 16),
                   TextFormField(
@@ -222,60 +232,61 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLoginMethodToggle() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _isLoginWithPhone = true),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: _isLoginWithPhone ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Text(
-                  'Téléphone',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _isLoginWithPhone ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _isLoginWithPhone = false),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: !_isLoginWithPhone ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Text(
-                  'Email',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: !_isLoginWithPhone ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // _buildLoginMethodToggle is temporarily removed as API only supports email/password
+  // Widget _buildLoginMethodToggle() {
+  //   return Container(
+  //     decoration: BoxDecoration(
+  //       color: Colors.black.withOpacity(0.1),
+  //       borderRadius: BorderRadius.circular(24),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         Expanded(
+  //           child: GestureDetector(
+  //             onTap: () => setState(() => _isLoginWithPhone = true),
+  //             child: AnimatedContainer(
+  //               duration: const Duration(milliseconds: 300),
+  //               padding: const EdgeInsets.symmetric(vertical: 12),
+  //               decoration: BoxDecoration(
+  //                 color: _isLoginWithPhone ? AppColors.primary : Colors.transparent,
+  //                 borderRadius: BorderRadius.circular(24),
+  //               ),
+  //               child: Text(
+  //                 'Téléphone',
+  //                 textAlign: TextAlign.center,
+  //                 style: TextStyle(
+  //                   color: _isLoginWithPhone ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
+  //                   fontWeight: FontWeight.bold,
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //         Expanded(
+  //           child: GestureDetector(
+  //             onTap: () => setState(() => _isLoginWithPhone = false),
+  //             child: AnimatedContainer(
+  //               duration: const Duration(milliseconds: 300),
+  //               padding: const EdgeInsets.symmetric(vertical: 12),
+  //               decoration: BoxDecoration(
+  //                 color: !_isLoginWithPhone ? AppColors.primary : Colors.transparent,
+  //                 borderRadius: BorderRadius.circular(24),
+  //               ),
+  //               child: Text(
+  //                 'Email',
+  //                 textAlign: TextAlign.center,
+  //                 style: TextStyle(
+  //                   color: !_isLoginWithPhone ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
+  //                   fontWeight: FontWeight.bold,
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   InputDecoration _glassyInputDecoration(String label, {IconData? icon, Widget? prefix}) {
     return InputDecoration(

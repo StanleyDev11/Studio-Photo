@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:photo_app/utils/colors.dart';
+import 'package:photo_app/api_service.dart';
+import 'package:photo_app/models/booking.dart';
+
 
 class BookingScreen extends StatefulWidget {
   const BookingScreen({super.key});
@@ -49,13 +52,42 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  void _submitBooking() {
+  void _submitBooking() async {
     if (_formKey.currentState!.validate()) {
-      // Handle booking submission logic here
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Réservation envoyée! Nous vous contacterons bientôt.'), backgroundColor: Colors.green),
+      if (ApiService.userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erreur: Utilisateur non authentifié.'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      final DateTime scheduledTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
       );
-      Navigator.of(context).pop();
+
+      final Booking newBooking = Booking.fromId(
+        title: _selectedService!,
+        description: _commentsController.text,
+        userId: ApiService.userId!, // Use authenticated userId
+        startTime: scheduledTime,
+        endTime: scheduledTime.add(const Duration(hours: 1)),
+      );
+
+      try {
+        final createdBooking = await ApiService.createBooking(newBooking);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Réservation confirmée avec l\'ID: ${createdBooking.id}'), backgroundColor: Colors.green),
+        );
+        Navigator.of(context).pop();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la réservation: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 

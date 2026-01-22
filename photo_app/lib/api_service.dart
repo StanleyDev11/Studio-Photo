@@ -1,22 +1,55 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:photo_app/models/promotion.dart';
-import 'package:photo_app/models/featured_content.dart'; // Nouvelle importation
- // Nouvelle importation
+import 'package:photo_app/models/featured_content.dart';
+import 'package:photo_app/models/booking.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class ApiService {
-  // Base URL de votre API Spring Boot
-  // Assurez-vous que cette URL pointe vers votre instance de backend Spring Boot.
-  // 10.0.2.2 est l'alias pour localhost sur un émulateur Android.
-  // Le port 8080 est le port par défaut de Spring Boot.
   static const String baseUrl = 'http://109.176.197.158:8080/api';
+  static SharedPreferences? _preferences;
+  static String? _authToken;
+  static int? _userId;
+
+  static Future<void> init() async {
+    _preferences = await SharedPreferences.getInstance();
+    _authToken = _preferences?.getString('authToken');
+    _userId = _preferences?.getInt('userId');
+  }
+
+  static String? get authToken => _authToken;
+  static int? get userId => _userId;
+
+  static Future<void> saveAuthTokenAndUserId(String token, int userId) async {
+    _authToken = token;
+    _userId = userId;
+    await _preferences?.setString('authToken', token);
+    await _preferences?.setInt('userId', userId);
+  }
+
+  static Future<void> removeAuthTokenAndUserId() async {
+    _authToken = null;
+    _userId = null;
+    await _preferences?.remove('authToken');
+    await _preferences?.remove('userId');
+  }
+
+  static Map<String, String> get _headers {
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json; charset=UTF-8',
+    };
+    if (_authToken != null) {
+      headers['Authorization'] = 'Bearer $_authToken';
+    }
+    return headers;
+  }
 
   /// Méthode privée pour effectuer une requête GET sécurisée
   static Future<http.Response> _safeGet(String url) async {
     try {
-      return await http.get(Uri.parse(url)).timeout(
-            const Duration(seconds: 15), // Délai d'attente de 15 secondes
+      return await http.get(Uri.parse(url), headers: _headers).timeout(
+            const Duration(seconds: 15),
             onTimeout: () => throw Exception(
                 'Délai dépassé. Impossible de joindre le serveur.'),
           );
@@ -26,70 +59,60 @@ class ApiService {
   }
 
   /// Méthode privée pour effectuer une requête POST sécurisée avec un corps JSON.
-  /// Elle gère également les timeouts et les erreurs réseau.
   static Future<http.Response> _safePost(String url, Map<String, dynamic> body) async {
     try {
       return await http.post(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json; charset=UTF-8'}, // Spécifie le type de contenu JSON
-        body: jsonEncode(body), // Convertit le Map en chaîne JSON
+        headers: _headers,
+        body: jsonEncode(body),
       ).timeout(
-        const Duration(seconds: 15), // Délai d'attente de 15 secondes
+        const Duration(seconds: 15),
         onTimeout: () => throw Exception('Délai dépassé. Impossible de joindre le serveur.'),
       );
     } catch (error) {
-      // Gestion améliorée des erreurs réseau pour fournir un feedback plus clair.
       throw Exception('Erreur réseau : Impossible de se connecter au serveur. Vérifiez votre connexion et l\'adresse du serveur.');
     }
   }
 
-  /// Méthode pour gérer et interpréter les réponses de l'API.
-  /// Elle vérifie le code de statut HTTP et tente de décoder les messages d'erreur JSON.
-  static Map<String, dynamic> _handleResponse(http.Response response) {
-    // Si le statut HTTP n'est pas 200 (OK), cela indique une erreur.
-    if (response.statusCode != 200) {
+  /// Méthode générique pour gérer les réponses de l'API (erreurs HTTP et décodage JSON).
+  static dynamic _handleApiResponse(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isNotEmpty) {
+        return jsonDecode(response.body);
+      }
+      return null; // No content
+    } else {
       try {
         final errorBody = jsonDecode(response.body);
-        // Tente d'extraire un message d'erreur du corps de la réponse JSON.
         final errorMessage = errorBody['message'] ?? 'Erreur inconnue du serveur.';
         throw Exception('Erreur ${response.statusCode}: $errorMessage');
       } catch (e) {
-        // Si le corps n'est pas un JSON valide ou est vide, utilise le message de raison HTTP.
         throw Exception('Erreur serveur. Code: ${response.statusCode}, Message: ${response.reasonPhrase}');
       }
     }
+  }
 
-    // Si la réponse est OK (200), nous supposons un succès et décodons la réponse.
-    final Map<String, dynamic> responseData = jsonDecode(response.body);
-
-    // Votre backend Spring Boot renvoie un token en cas de succès d'authentification/inscription.
-    // Cette logique vérifie la présence de ce token. Ajustez si la structure de succès de votre API est différente.
-    if (responseData.containsKey('token')) {
+  /// Méthode spécifique pour gérer les réponses d'authentification.
+  static Map<String, dynamic> _handleAuthResponse(http.Response response) {
+    final responseData = _handleApiResponse(response);
+    if (responseData != null && responseData.containsKey('token')) {
       return responseData;
     } else {
-       // Cas où le statut est 200 mais le corps ne contient pas le token attendu ou a une structure inattendue.
-       final errorMessage = responseData['message'] ?? 'La réponse du serveur est invalide.';
-       throw Exception(errorMessage);
+      throw Exception(responseData['message'] ?? 'La réponse du serveur est invalide ou ne contient pas de jeton.');
     }
   }
 
-  /// Méthode pour la connexion d'un utilisateur.
-  /// Elle envoie les informations d'identification au endpoint d'authentification du backend.
   static Future<Map<String, dynamic>> login(String email, String password) async {
-    const url = '$baseUrl/auth/authenticate'; // Endpoint de connexion du backend
+    const url = '$baseUrl/auth/authenticate';
     final body = {'email': email, 'password': password};
 
     final response = await _safePost(url, body);
-    return _handleResponse(response);
+    return _handleAuthResponse(response);
   }
 
-  /// Méthode pour l'inscription d'un nouvel utilisateur.
-  /// Elle adapte les champs d'entrée de Flutter (`name`) aux attentes du backend (`firstname`, `lastname`).
   static Future<Map<String, dynamic>> signup(String name, String email, String password) async {
-    const url = '$baseUrl/auth/register'; // Endpoint d'inscription du backend
+    const url = '$baseUrl/auth/register';
     
-    // Logique pour diviser le champ 'name' en 'firstname' et 'lastname'.
-    // Si le nom contient un espace, il est divisé. Sinon, le 'name' entier est utilisé comme 'firstname'.
     String firstname = name;
     String lastname = '';
     if (name.contains(' ')) {
@@ -106,38 +129,39 @@ class ApiService {
     };
 
     final response = await _safePost(url, body);
-    return _handleResponse(response);
+    return _handleAuthResponse(response);
   }
 
-  /// Méthode pour récupérer les images de l'album
-  static Future<List<String>> getAlbumImages(int userId) async {
-    final url = '$baseUrl/album/images?user_id=$userId';
+  static Future<List<String>> getAlbumImages() async {
+    final url = '$baseUrl/album/images'; // Backend should infer user from token
     final response = await _safeGet(url);
-    final data = _handleResponse(response);
+    final data = _handleApiResponse(response);
     return List<String>.from(data['images']);
   }
 
-  /// Méthode pour récupérer toutes les promotions actives
   static Future<List<Promotion>> fetchPromotions() async {
     const url = '$baseUrl/promotions';
-    try {
-      final response = await _safeGet(url);
-      final List<dynamic> responseData = jsonDecode(response.body);
-      return responseData.map((json) => Promotion.fromJson(json)).toList();
-    } catch (error) {
-      throw Exception('Erreur lors de la récupération des promotions : $error');
-    }
+    final response = await _safeGet(url);
+    final List<dynamic> responseData = _handleApiResponse(response);
+    return responseData.map((json) => Promotion.fromJson(json)).toList();
   }
 
-  /// Méthode pour récupérer le contenu mis en avant actif
   static Future<FeaturedContent> fetchFeaturedContent() async {
     const url = '$baseUrl/featured-content/active';
-    try {
-      final response = await _safeGet(url);
-      final Map<String, dynamic> responseData = jsonDecode(response.body);
-      return FeaturedContent.fromJson(responseData);
-    } catch (error) {
-      throw Exception('Erreur lors de la récupération du contenu mis en avant : $error');
-    }
+    final response = await _safeGet(url);
+    final Map<String, dynamic> responseData = _handleApiResponse(response);
+    return FeaturedContent.fromJson(responseData);
+  }
+
+  static Future<Booking> createBooking(Booking booking) async {
+    const url = '$baseUrl/bookings';
+    final Map<String, dynamic> responseData = await _safePost(url, booking.toJson());
+    return Booking.fromJson(responseData);
+  }
+
+  static Future<List<Booking>> fetchUserBookings() async {
+    final url = '$baseUrl/bookings';
+    final List<dynamic> responseData = await _safeGet(url);
+    return responseData.map((json) => Booking.fromJson(json)).toList();
   }
 }

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:photo_app/login_screen.dart'; // Assurez-vous que le chemin est correct
+import 'package:photo_app/api_service.dart'; // Import ApiService
+import 'package:photo_app/home_screen.dart'; // Import HomeScreen
+import 'package:photo_app/login_screen.dart'; // Import LoginScreen
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -25,51 +27,54 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _playVideo({required int index}) {
-    // Si on a joué toutes les vidéos, on navigue
     if (index >= _videoAssets.length) {
-      _navigateToHome();
+      _navigateToNextScreen();
       return;
     }
 
-    // Met à jour l'index actuel
     _currentVideoIndex = index;
 
-    // Nettoie l'ancien contrôleur s'il existe
     _controller?.dispose();
 
-    // Initialise le nouveau contrôleur
     _controller = VideoPlayerController.asset(_videoAssets[_currentVideoIndex])
       ..initialize().then((_) {
-        // Met à jour l'interface et démarre la vidéo
         if (mounted) {
           setState(() {});
           _controller?.play();
         }
+      })
+      ..addListener(() {
+        if (_controller!.value.position == _controller!.value.duration) {
+          if (mounted) {
+            _playVideo(index: _currentVideoIndex + 1);
+          }
+        }
       });
-      
-    // Planifie la prochaine action dans 2.5 secondes
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        // Passe à la vidéo suivante
-        _playVideo(index: _currentVideoIndex + 1);
-      }
-    });
   }
 
-  void _navigateToHome() {
-    // Assurez-vous que la navigation se fait après la construction de l'arbre de widgets
+  void _navigateToNextScreen() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
+        if (ApiService.authToken != null && ApiService.userId != null) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                userName: 'Utilisateur', // Default name from token, will be replaced with actual user data if API provides it
+                userId: ApiService.userId!,
+              ),
+            ),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        }
       }
     });
   }
 
   @override
   void dispose() {
-    // Nettoie le contrôleur pour éviter les fuites de mémoire
     _controller?.dispose();
     super.dispose();
   }
@@ -84,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 aspectRatio: _controller!.value.aspectRatio,
                 child: VideoPlayer(_controller!),
               )
-            : const CircularProgressIndicator( // Indicateur de chargement en attendant
+            : const CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
               ),
       ),
