@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // --- LKTrans Palette ---
-  static const Color primary = Color(0xFF4567B7);
+  static const Color primary = Color.fromARGB(255, 3, 42, 133);
   static const Color accent = Color(0xFF3498DB);
   static const Color background = Color(0xFFF5F6F8);
   static const Color card = Colors.white;
