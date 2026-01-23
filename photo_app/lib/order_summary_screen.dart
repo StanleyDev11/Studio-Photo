@@ -186,7 +186,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
             },
             child: const Text(
               'Confirmer et choisir le paiement',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ),
         ],
