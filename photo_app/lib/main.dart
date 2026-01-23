@@ -4,8 +4,11 @@ import 'package:photo_app/login_screen.dart';
 import 'package:photo_app/signup_screen.dart';
 import 'package:photo_app/splash_screen.dart';
 import 'package:photo_app/utils/colors.dart';
+import 'package:photo_app/api_service.dart'; // Import ApiService
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Required for SharedPreferences
+  await ApiService.init(); // Initialize ApiService
   runApp(const MyApp());
 }
 

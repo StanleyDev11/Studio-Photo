@@ -37,7 +37,7 @@ class _PricingScreenState extends State<PricingScreen> {
   @override
   void initState() {
     super.initState();
-    _pricesFuture = ApiService.getPrices();
+    _pricesFuture = Future.value(PricingScreen.fallbackPrintPrices);
   }
 
   @override

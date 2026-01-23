@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import 'package:photo_app/utils/colors.dart';
 import 'package:photo_app/utils/geometric_background.dart';
 import 'package:pinput/pinput.dart';

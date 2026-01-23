@@ -1,97 +1,211 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'payment_selection_screen.dart'; 
+import 'package:photo_app/pricing_screen.dart';
+import 'payment_selection_screen.dart';
 import 'utils/colors.dart';
 
-class OrderSummaryScreen extends StatelessWidget {
+class OrderSummaryScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
+  final bool isExpress;
 
-  const OrderSummaryScreen({Key? key, required this.orderDetails})
-      : super(key: key);
+  const OrderSummaryScreen({
+    super.key,
+    required this.orderDetails,
+    required this.isExpress,
+  });
+
+  @override
+  State<OrderSummaryScreen> createState() => _OrderSummaryScreenState();
+}
+
+class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
+  late Map<String, Map<String, dynamic>> _editableOrderDetails;
+  double _subtotal = 0;
+  double _deliveryFee = 0;
+  double _totalPrice = 0;
+
+  // Use the same centralized price list
+  final Map<String, double> _prices = {
+    for (var priceInfo in PricingScreen.fallbackPrintPrices)
+      priceInfo['dimension']: (priceInfo['price'] as num).toDouble()
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    // Create a deep copy to make it mutable
+    _editableOrderDetails = Map<String, Map<String, dynamic>>.from(
+      widget.orderDetails.map(
+        (key, value) => MapEntry(key, Map<String, dynamic>.from(value)),
+      ),
+    );
+    _calculatePrices();
+  }
+
+  void _calculatePrices() {
+    double newSubtotal = 0;
+    int photoCount = _editableOrderDetails.keys.length;
+
+    _editableOrderDetails.forEach((key, details) {
+      final price = _prices[details['size']] ?? 0;
+      newSubtotal += price * (details['quantity'] as int);
+    });
+
+    double newDeliveryFee = 0;
+    if (widget.isExpress) {
+        if (photoCount <= 10) {
+            newDeliveryFee = 1500;
+        }
+        // The logic for > 10 photos where price is discussed is not implemented here
+        // as it requires user interaction. The fee is simply not added automatically.
+    }
+
+    setState(() {
+      _subtotal = newSubtotal;
+      _deliveryFee = newDeliveryFee;
+      _totalPrice = _subtotal + _deliveryFee;
+    });
+  }
+
+  void _updateQuantity(String imageUrl, int change) {
+    setState(() {
+      final currentQuantity = _editableOrderDetails[imageUrl]!['quantity'] as int;
+      if (currentQuantity + change > 0) {
+        _editableOrderDetails[imageUrl]!['quantity'] = currentQuantity + change;
+        _calculatePrices();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Récapitulatif de la commande',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
+        title: const Text('Récapitulatif de la commande'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
-        elevation: 5, 
       ),
-      body: Container(
-        color: AppColors.background,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ListView(
-            children: orderDetails.entries.map((entry) {
-              final imageUrl = entry.key;
-              final details = entry.value;
-              return Card(
-                elevation: 5,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                margin: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          imageUrl,
-                          height: 150,
-                          fit: BoxFit.cover,
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: _editableOrderDetails.entries.map((entry) {
+                final imageUrl = entry.key;
+                final details = entry.value;
+                final isLocalFile = !imageUrl.startsWith('http');
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: isLocalFile
+                              ? Image.file(File(imageUrl), width: 80, height: 80, fit: BoxFit.cover)
+                              : Image.network(imageUrl, width: 80, height: 80, fit: BoxFit.cover),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Taille : ${details['size']}',
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-                      ),
-                      Text(
-                        'Quantité : ${details['quantity']}',
-                        style:
-                            const TextStyle(fontSize: 16, color: AppColors.textSecondary),
-                      ),
-                    ],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Taille: ${details['size']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text('Prix unitaire: ${_prices[details['size']]} FCFA'),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed: () => _updateQuantity(imageUrl, -1),
+                            ),
+                            Text('${details['quantity']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            IconButton(
+                              icon: const Icon(Icons.add_circle, color: AppColors.primary),
+                              onPressed: () => _updateQuantity(imageUrl, 1),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
+                );
+              }).toList(),
+            ),
+          ),
+          _buildPriceSummary(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceSummary() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildSummaryRow('Sous-total', '${_subtotal.toStringAsFixed(0)} FCFA'),
+          _buildSummaryRow('Livraison', widget.isExpress ? 'Xpress' : 'Standard'),
+          if (widget.isExpress)
+            _buildSummaryRow('Frais de livraison', '+ ${_deliveryFee.toStringAsFixed(0)} FCFA'),
+          const Divider(height: 20),
+          _buildSummaryRow(
+            'TOTAL',
+            '${_totalPrice.toStringAsFixed(0)} FCFA',
+            isTotal: true,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              foregroundColor: AppColors.textOnPrimary,
+              backgroundColor: AppColors.primary,
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PaymentSelectionScreen(orderDetails: _editableOrderDetails),
                 ),
               );
-            }).toList(),
-          ),
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            foregroundColor: AppColors.textOnPrimary,
-            backgroundColor: AppColors.primary,
-            elevation: 8, 
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            },
+            child: const Text(
+              'Confirmer et choisir le paiement',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 14),
           ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    PaymentSelectionScreen(orderDetails: orderDetails),
-              ),
-            );
-          },
-          child: const Text(
-            'Confirmer et choisir le paiement',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String title, String value, {bool isTotal = false}) {
+    final style = isTotal
+        ? const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary)
+        : const TextStyle(fontSize: 16, color: AppColors.textSecondary);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: style.copyWith(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
+          Text(value, style: style),
+        ],
       ),
     );
   }

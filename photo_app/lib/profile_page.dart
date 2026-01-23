@@ -3,7 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_app/contact_screen.dart';
-import 'package:photo_app/edit_profile_page.dart';
+import 'package:photo_app/edit_profile_screen.dart';
+
 import 'package:photo_app/history_screen.dart';
 import 'package:photo_app/login_screen.dart';
 import 'package:photo_app/utils/colors.dart';
@@ -106,7 +107,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         ),
-        title: const Text('Mon Profil', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+        title: const Text('Mon Profil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        foregroundColor: AppColors.textPrimary,
+        
       ),
       body: Stack(
         children: [
