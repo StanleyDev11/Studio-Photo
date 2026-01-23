@@ -57,8 +57,8 @@
 
         .logo-icon {
             background: rgba(255, 255, 255, 0.2);
-            width: 40px;
-            height: 40px;
+            width: 80px; /* Agrandir la taille */
+            height: 80px; /* Agrandir la taille */
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -523,9 +523,9 @@
     <div class="sidebar-header">
         <a href="/admin/dashboard" class="logo">
             <div class="logo-icon">
-                <i class="fas fa-camera"></i>
+                <img th:src="@{/images/logo.jpeg}" alt="Picon Studio Photo Logo" style="width: 100%; height: auto; border-radius: 10px;">
             </div>
-            <div class="logo-text">Studio Photo</div>
+            <div class="logo-text">Picon Studio</div>
         </a>
     </div>
     <ul class="nav-links">
@@ -552,7 +552,7 @@
         </div>
         <div class="user-info">
             <div class="user-details">
-                <div class="user-name" sec:authentication="name"></div>
+                <div class="user-name" th:text="${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}"></div>
                 <div class="user-role" sec:authentication="principal.authorities"></div>
             </div>
             <div class="user-avatar" id="userInitials"></div>
@@ -570,7 +570,7 @@
         <div class="welcome-banner">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <h1 class="welcome-title">Bonjour, <span sec:authentication="name"></span> 👋</h1>
+                    <h1 class="welcome-title">Bonjour, <span th:text="${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}"></span> 👋</h1>
                     <p class="welcome-subtitle">Bienvenue sur votre tableau de bord de gestion Studio Photo</p>
                     <div class="date-time">
                         <i class="far fa-calendar-alt mr-2"></i>
@@ -779,7 +779,7 @@
     /*<![CDATA[*/
     document.addEventListener('DOMContentLoaded', function() {
         // Initiales de l'utilisateur
-        const userName = /*[[${#authentication.name}]]*/ 'Admin';
+        const userName = /*[[${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}]]*/ 'Admin';
         const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
         document.getElementById('userInitials').textContent = initials;
 

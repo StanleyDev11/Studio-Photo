@@ -26,6 +26,8 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // Public access for static resources
+                        .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**").permitAll()
                         // Public access for authentication and admin login page
                         .requestMatchers("/api/auth/**", "/admin/login")
                         .permitAll()
