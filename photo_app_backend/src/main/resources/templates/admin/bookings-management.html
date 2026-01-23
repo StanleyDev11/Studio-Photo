@@ -61,8 +61,8 @@
 
         .logo-icon {
             background: rgba(255, 255, 255, 0.2);
-            width: 40px;
-            height: 40px;
+            width: 80px;
+            height: 80px;
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -660,9 +660,9 @@
     <div class="sidebar-header">
         <a href="/admin/dashboard" class="logo">
             <div class="logo-icon">
-                <i class="fas fa-camera"></i>
+                <img th:src="@{/images/logo.jpeg}" alt="Picon Studio Photo Logo" style="width: 100%; height: auto; border-radius: 10px;">
             </div>
-            <div class="logo-text">Studio Photo</div>
+            <div class="logo-text">Picon Studio</div>
         </a>
     </div>
     <ul class="nav-links">
@@ -689,7 +689,7 @@
         </div>
         <div class="user-info">
             <div class="user-details">
-                <div class="user-name" sec:authentication="name"></div>
+                <div class="user-name" th:text="${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}"></div>
                 <div class="user-role" sec:authentication="principal.authorities"></div>
             </div>
             <div class="user-avatar" id="userInitials"></div>
@@ -1172,7 +1172,7 @@
         }
 
         // User initials
-        const userName = /*[[${#authentication.name}]]*/ 'Admin';
+        const userName = /*[[${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}]]*/ 'Admin';
         const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
         $('#userInitials').text(initials);
 
