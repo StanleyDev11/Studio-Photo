@@ -1,12 +1,12 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:photo_app/utils/geometric_background.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:photo_app/widgets/music_wave_loader.dart';
-import 'confirmation_screen.dart';
-import 'utils/colors.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:photo_app/receipt_screen.dart';
+import 'package:photo_app/utils/colors.dart';
+import 'package:photo_app/utils/geometric_background.dart';
+import 'package:photo_app/widgets/music_wave_loader.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
 
 class PaymentSelectionScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
@@ -49,7 +49,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     );
   }
 
-  String _formatWhatsAppMessage() {
+  String _formatWhatsAppMessage(String orderId) {
     // TODO: Fetch real user info (name, phone number) instead of placeholders
     const userName = "John Doe"; 
     const userPhone = "+22890000000";
@@ -57,6 +57,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     final buffer = StringBuffer();
     buffer.writeln("🎉 *Nouvelle Commande Reçue* 🎉");
     buffer.writeln("---------------------------------");
+    buffer.writeln("*Commande ID:* $orderId");
     buffer.writeln("*Client:* $userName");
     buffer.writeln("*Contact:* $userPhone");
     buffer.writeln("*Mode de paiement:* $_selectedMethodName");
@@ -78,25 +79,22 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
   Future<void> _launchWhatsApp() async {
     // TODO: Replace with the provider's real phone number
     const prestatairePhoneNumber = "+22892595661"; 
-    final message = _formatWhatsAppMessage();
-    final whatsappUrl = Uri.parse("whatsapp://send?phone=$prestatairePhoneNumber&text=${Uri.encodeComponent(message)}");
+    final message = _formatWhatsAppMessage(const Uuid().v4()); // Use a generated order ID for WhatsApp
+    
+    // Use the universal wa.me link which is more reliable
+    final universalUrl = Uri.parse("https://wa.me/$prestatairePhoneNumber?text=${Uri.encodeComponent(message)}");
 
     try {
-      if (await canLaunchUrl(whatsappUrl)) {
-        await launchUrl(whatsappUrl);
-      } else {
-        // Provide a fallback for web or devices where WhatsApp is not installed
-        final webWhatsappUrl = Uri.parse("https://wa.me/$prestatairePhoneNumber?text=${Uri.encodeComponent(message)}");
-        if(await canLaunchUrl(webWhatsappUrl)) {
-          await launchUrl(webWhatsappUrl, mode: LaunchMode.externalApplication);
-        } else {
-          throw 'Impossible de lancer WhatsApp.';
-        }
+      // Attempt to launch the URL. 
+      // The `mode` LaunchMode.externalApplication is important to prefer opening the app
+      // instead of an in-app browser.
+      if (!await launchUrl(universalUrl, mode: LaunchMode.externalApplication)) {
+        throw 'Impossible de lancer WhatsApp.';
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur WhatsApp: $e')),
+          SnackBar(content: Text('Erreur lors du lancement de WhatsApp: $e')),
         );
       }
     }
@@ -107,6 +105,9 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
 
     _showLoadingDialog();
     
+    // Generate a unique Order ID
+    final String orderId = const Uuid().v4(); // Generate a UUID for the order ID
+
     // 1. Simulate payment processing
     await Future.delayed(const Duration(seconds: 3));
 
@@ -116,14 +117,18 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     // 3. Launch WhatsApp with order details
     await _launchWhatsApp();
 
-    // 4. Navigate to final confirmation screen
+    // 4. Navigate to final receipt screen
     if(mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ConfirmationScreen(
+          builder: (context) => ReceiptScreen(
             orderDetails: widget.orderDetails,
             paymentMethod: _selectedMethodName!,
+            orderId: orderId,
+            // Pass real user name and phone if available
+            userName: "John Doe", 
+            userPhone: "+22890000000",
           ),
         ),
       );

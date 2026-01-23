@@ -137,7 +137,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onTabTapped(int index) {
-    if (index == 3) { // Index 3 is for Profile
+    if (index == 3) {
+      // Index 3 is for Profile
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -320,11 +321,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                     icon: CircleAvatar(
                       radius: 18,
-                      backgroundImage: _avatar != null ? FileImage(_avatar!) as ImageProvider : null,
-                      backgroundColor: _avatar == null ? AppColors.accent : Colors.transparent,
+                      backgroundImage: _avatar != null
+                          ? FileImage(_avatar!) as ImageProvider
+                          : null,
+                      backgroundColor: _avatar == null
+                          ? AppColors.accent
+                          : Colors.transparent,
                       child: _avatar == null
                           ? Text(
-                              _currentUserName.trim().split(' ').where((s) => s.isNotEmpty).map((s) => s[0]).take(2).join().toUpperCase(),
+                              _currentUserName
+                                  .trim()
+                                  .split(' ')
+                                  .where((s) => s.isNotEmpty)
+                                  .map((s) => s[0])
+                                  .take(2)
+                                  .join()
+                                  .toUpperCase(),
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -445,6 +457,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _clearCart() {
+    setState(() {
+      _selectedImages.clear();
+      _photoDetails.clear();
+      _calculateTotal(); // Recalculate total to 0
+    });
+  }
+
   Widget _buildCommandsTab() {
     return Container(
       color: AppColors.background,
@@ -502,17 +522,27 @@ class _HomeScreenState extends State<HomeScreen> {
               if (_selectedImages.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.all(4.0),
-                  child: ElevatedButton.icon(
-                    onPressed: _showValidationPopup,
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Valider'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
+                  child: Column(
+                    children: [
+                      TextButton.icon(
+                        onPressed: _clearCart,
+                        icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                        label: const Text('Vider le panier', style: TextStyle(color: AppColors.error)),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        onPressed: _showValidationPopup,
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('Valider'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
             ],
@@ -782,7 +812,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
               title: const Text(
                 'Mode de Livraison',
                 textAlign: TextAlign.center,
@@ -792,12 +823,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SwitchListTile(
-                    title: const Text('Livraison Xpress', style: TextStyle(fontWeight: FontWeight.bold)),
+                    title: const Text('Livraison Xpress',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: RichText(
                       text: const TextSpan(
                         children: [
                           TextSpan(
-                            text: 'Votre commande sera traitée en priorité. Et il vous en coûtera ',
+                            text:
+                                'Votre commande sera traitée en priorité. Et il vous en coûtera ',
                             style: TextStyle(color: Colors.black87),
                           ),
                           TextSpan(
@@ -833,7 +866,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white),
                   child: const Text('Suivant'),
                   onPressed: () {
                     // Update the main screen's state before navigating
@@ -845,7 +880,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => OrderSummaryScreen(
-                          orderDetails: _photoDetails, isExpress: _isExpress,
+                          orderDetails: _photoDetails,
+                          isExpress: _isExpress,
                         ),
                       ),
                     );
@@ -865,57 +901,61 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopCard() {
     return Padding(
-                  padding: const EdgeInsets.fromLTRB(6.0, 0, 6.0, 30.0), // Ajout de padding en bas pour le bouton
-                  child: Card(
-                    clipBehavior: Clip.none, // Permet au bouton de déborder
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    elevation: 4,
-                    child: Stack(
-                      clipBehavior: Clip.none, // Permet au bouton de déborder
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primary, width: 2),
-                          ),
-                          child: ClipRRect( // Added ClipRRect
-                            borderRadius: BorderRadius.circular(16), // Match container's border radius
-                            child: Image.asset(
-                              'assets/carousel/mxx.jpeg', //image dans le card d'accueil au homescreen
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: -25.0, // Descendu pour chevaucher la bordure
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.help_outline, size: 24),
-                            label: const Text("Comment ça marche ?",
-                                style: TextStyle(fontSize: 16)),
-                            onPressed: () => _showHowItWorksDialog(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.accent,
-                              foregroundColor: Colors.white,
-                              shape: const StadiumBorder(),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 12),
-                            ),
-                          )
-                              .animate(
-                                onComplete: (controller) => controller.repeat(),
-                              )
-                              .shimmer(
-                                delay: 2000.milliseconds,
-                                duration: 1000.milliseconds,
-                                color: Colors.white.withOpacity(0.5),
-                              ),
-                        )
-                      ],
-                    ),
+      padding: const EdgeInsets.fromLTRB(
+          6.0, 0, 6.0, 30.0), // Ajout de padding en bas pour le bouton
+      child: Card(
+        clipBehavior: Clip.none, // Permet au bouton de déborder
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 4,
+        child: Stack(
+          clipBehavior: Clip.none, // Permet au bouton de déborder
+          alignment: Alignment.center,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary, width: 2),
+              ),
+              child: ClipRRect(
+                // Added ClipRRect
+                borderRadius: BorderRadius.circular(
+                    16), // Match container's border radius
+                child: Image.asset(
+                  'assets/carousel/mxx.jpeg', //image dans le card d'accueil au homescreen
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -25.0, // Descendu pour chevaucher la bordure
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.help_outline, size: 24),
+                label: const Text("Comment ça marche ?",
+                    style: TextStyle(fontSize: 16)),
+                onPressed: () => _showHowItWorksDialog(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.primary,
+                  shape: const StadiumBorder(),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  side: const BorderSide(color: AppColors.primary, width: 2),
+                ),
+              )
+                  .animate(
+                    onComplete: (controller) => controller.repeat(),
+                  )
+                  .shimmer(
+                    delay: 2000.milliseconds,
+                    duration: 1000.milliseconds,
+                    color: Colors.white.withOpacity(0.5),
                   ),
-                );
-              }
+            )
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildQuickActions() {
     return Padding(
@@ -1293,8 +1333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         )
                             .animate()
                             .fadeIn(
-                                delay: (200 * (idx + 1)).ms,
-                                duration: 500.ms)
+                                delay: (200 * (idx + 1)).ms, duration: 500.ms)
                             .slideX(begin: -0.2, curve: Curves.easeOut);
                       }).toList(),
                       const SizedBox(height: 20),
