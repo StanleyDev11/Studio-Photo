@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import 'package:photo_app/utils/colors.dart';
 import 'package:photo_app/utils/geometric_background.dart';
 import 'package:pinput/pinput.dart';
@@ -108,17 +109,16 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
 
   Widget _buildHeader() {
     return SizedBox(
-      height: 180, // Adjusted height
+      height: 220,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 62,
-            backgroundColor: AppColors.primary,
-            child: CircleAvatar(
-              radius: 60,
-              backgroundImage: AssetImage('assets/images/pro.png'),
-            ),
+          const SizedBox(height: 30),
+          Image.asset(
+            'assets/images/pro.png',
+            height: 180, // Adjust height as needed
+            width: 180, // Adjust width as needed
+            fit: BoxFit.contain,
           ),
         ],
       ),

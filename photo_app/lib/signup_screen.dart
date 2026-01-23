@@ -7,6 +7,9 @@ import 'package:photo_app/widgets/music_wave_loader.dart';
 import 'package:pinput/pinput.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 
+import 'package:photo_app/api_service.dart';
+import 'package:photo_app/login_screen.dart';
+
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -23,39 +26,46 @@ class _SignupScreenState extends State<SignupScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
 
   Future<void> _signup() async {
     if (_formKey.currentState?.validate() ?? false) {
-      _showPinCreationSheet(context);
-    }
-  }
+      setState(() {
+        _isLoading = true;
+      });
 
-  void _showPinCreationSheet(BuildContext context) {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: Colors.black.withOpacity(0.5),
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (BuildContext buildContext, Animation<double> animation, Animation<double> secondaryAnimation) {
-        return Align(
-          alignment: Alignment.topCenter,
-          child: Material(
-            color: Colors.transparent,
-            child: _PinCreationSheet(),
-          ),
+      try {
+        await ApiService.signup(
+          _nameController.text,
+          _emailController.text,
+          _passwordController.text,
         );
-      },
-      transitionBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, -1),
-            end: const Offset(0, 0),
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
-          child: child,
-        );
-      },
-    );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Inscription réussie ! Vous pouvez maintenant vous connecter.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur d\'inscription: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    }
   }
 
   @override
@@ -91,19 +101,17 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _buildHeader() {
-    return const SizedBox(
+    return SizedBox(
       height: 220,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(height: 40),
-          CircleAvatar(
-            radius: 62,
-            backgroundColor: AppColors.primary,
-            child: CircleAvatar(
-              radius: 60,
-              backgroundImage: AssetImage('assets/images/pro.png'),
-            ),
+          const SizedBox(height: 30),
+          Image.asset(
+            'assets/images/pro.png',
+            height: 180, // Adjust height as needed
+            width: 180, // Adjust width as needed
+            fit: BoxFit.contain,
           ),
         ],
       ),

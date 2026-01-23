@@ -132,7 +132,14 @@ class ApiService {
     return _handleAuthResponse(response);
   }
 
-  static Future<List<String>> getAlbumImages() async {
+  static Future<void> forgotPassword(String email) async {
+    const url = '$baseUrl/auth/forgot-password';
+    final body = {'email': email};
+    final response = await _safePost(url, body);
+    _handleApiResponse(response);
+  }
+
+  static Future<List<String>> getAlbumImages(int userId) async {
     final url = '$baseUrl/album/images'; // Backend should infer user from token
     final response = await _safeGet(url);
     final data = _handleApiResponse(response);
@@ -155,13 +162,15 @@ class ApiService {
 
   static Future<Booking> createBooking(Booking booking) async {
     const url = '$baseUrl/bookings';
-    final Map<String, dynamic> responseData = await _safePost(url, booking.toJson());
+    final response = await _safePost(url, booking.toJson());
+    final Map<String, dynamic> responseData = _handleApiResponse(response);
     return Booking.fromJson(responseData);
   }
 
   static Future<List<Booking>> fetchUserBookings() async {
     final url = '$baseUrl/bookings';
-    final List<dynamic> responseData = await _safeGet(url);
+    final response = await _safeGet(url);
+    final List<dynamic> responseData = _handleApiResponse(response);
     return responseData.map((json) => Booking.fromJson(json)).toList();
   }
 }
