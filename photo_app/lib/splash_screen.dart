@@ -16,7 +16,7 @@ class _SplashScreenState extends State<SplashScreen> {
   VideoPlayerController? _controller;
   int _currentVideoIndex = 0;
   final List<String> _videoAssets = [
-    'assets/splash.mp4',
+    // 'assets/splash.mp4',
     'assets/splash1.mp4',
   ];
 
