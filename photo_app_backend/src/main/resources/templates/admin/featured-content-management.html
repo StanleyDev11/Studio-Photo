@@ -368,9 +368,9 @@
                             <a th:href="@{/admin/featured-content/form(id=${content.id})}" class="btn btn-sm btn-outline-info" title="Modifier">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <a th:href="@{/admin/featured-content/delete/{id}(id=${content.id})}" class="btn btn-sm btn-outline-danger" title="Supprimer" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce contenu ?');">
+                            <button class="btn btn-sm btn-outline-danger delete-btn" th:data-id="${content.id}" title="Supprimer">
                                 <i class="fas fa-trash"></i>
-                            </a>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -405,6 +405,54 @@
         const userName = /*[[${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}]]*/ 'Admin';
         const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
         $('#userInitials').text(initials);
+
+        // Delete Featured Content
+        $('#featuredContentTable tbody').on('click', '.delete-btn', function(e) {
+            e.preventDefault(); // Empêcher l'action par défaut du bouton
+            const contentId = $(this).data('id');
+            Swal.fire({
+                title: 'Confirmation',
+                text: 'Êtes-vous sûr de vouloir supprimer ce contenu mis en avant ? Cette action est irréversible.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Oui, supprimer !',
+                cancelButtonText: 'Annuler'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/admin/featured-content/delete/${contentId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            location.reload();
+                            Swal.fire('Supprimé !', 'Le contenu mis en avant a été supprimé.', 'success');
+                        } else {
+                            Swal.fire('Erreur', 'Erreur lors de la suppression du contenu mis en avant.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting featured content:', error);
+                        Swal.fire('Erreur', 'Erreur lors de la suppression du contenu mis en avant.', 'error');
+                    });
+                }
+            });
+        });
+
+        // Afficher les messages flash de Spring (succès/erreur)
+        var successMessage = [[${successMessage}]];
+        var errorMessage = [[${errorMessage}]];
+
+        if (successMessage) {
+            Swal.fire('Succès', successMessage, 'success');
+        }
+        if (errorMessage) {
+            Swal.fire('Erreur', errorMessage, 'error');
+        }
     });
     /*]]>*/
 </script>

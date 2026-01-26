@@ -30,87 +30,18 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Future<void> _signup() async {
     if (_formKey.currentState?.validate() ?? false) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Show PIN creation sheet
-
-      final String? pin = await showGeneralDialog(
+      // Don't set loading state here, it will be handled in the PIN sheet
+      showDialog(
         context: context,
-
-        barrierDismissible: false, // Force user to enter PIN or dismiss
-
-        barrierLabel: 'Créer votre code secret',
-
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return const _PinCreationSheet();
-        },
-
-        transitionBuilder: (context, anim1, anim2, child) {
-          return SlideTransition(
-            position: Tween(begin: const Offset(0, 1), end: const Offset(0, 0))
-                .animate(anim1),
-            child: child,
+        builder: (BuildContext context) {
+          return _PinCreationSheet(
+            name: _nameController.text,
+            email: _emailController.text,
+            phone: _phoneController.text, // Make sure you have a phone controller
+            password: _passwordController.text,
           );
         },
       );
-
-      if (pin != null && pin.length == 6) {
-        try {
-          await ApiService.signup(
-            _nameController.text,
-
-            _emailController.text,
-
-            _passwordController.text,
-
-            pin, // Pass the created PIN
-          );
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                    'Inscription réussie ! Vous pouvez maintenant vous connecter.'),
-                backgroundColor: Colors.green,
-              ),
-            );
-
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text('Erreur d\'inscription: $e'),
-                  backgroundColor: Colors.red),
-            );
-          }
-        } finally {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        }
-      } else {
-        // PIN creation cancelled or invalid
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Création du code secret annulée ou invalide.'),
-                backgroundColor: Colors.orange),
-          );
-
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      }
     }
   }
 
@@ -421,7 +352,17 @@ class _SignupScreenState extends State<SignupScreen> {
 }
 
 class _PinCreationSheet extends StatefulWidget {
-  const _PinCreationSheet();
+  final String name;
+  final String email;
+  final String phone;
+  final String password;
+
+  const _PinCreationSheet({
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.password,
+  });
 
   @override
   State<_PinCreationSheet> createState() => _PinCreationSheetState();
@@ -430,39 +371,53 @@ class _PinCreationSheet extends StatefulWidget {
 class _PinCreationSheetState extends State<_PinCreationSheet> {
   final _pinController = TextEditingController();
   final _pinFocusNode = FocusNode();
-
-  void _showLoader(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          child: Center(
-            child: MusicWaveLoader(),
-          ),
-        );
-      },
-    );
-  }
+  bool _isLoading = false; // Add a loading state
 
   Future<void> _validatePin() async {
-    if (_pinController.text.length == 6) {
-      // Simulate loading for API call, then return PIN
-      _showLoader(context);
-      await Future.delayed(
-          const Duration(milliseconds: 500)); // Short delay for UX
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop(); // Dismiss loader
-        Navigator.of(context).pop(_pinController.text); // Pop sheet with PIN
-      }
-    } else {
+    if (_pinController.text.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Veuillez entrer un code secret à 6 chiffres.'),
-            backgroundColor: Colors.red),
+        const SnackBar(content: Text('Veuillez entrer un code PIN à 6 chiffres.'), backgroundColor: Colors.orange),
       );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await ApiService.signup(
+        widget.name,
+        widget.email,
+        widget.phone,
+        widget.password,
+        _pinController.text,
+      );
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Dismiss sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Compte créé avec succès ! Vous pouvez maintenant vous connecter.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        // Pop the dialog to show the error on the main screen's scaffold
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur d'."'".'inscription: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -478,65 +433,67 @@ class _PinCreationSheetState extends State<_PinCreationSheet> {
     return Dialog(
       backgroundColor: Colors.white, // Solid white background
       insetPadding: const EdgeInsets.all(16),
-      child: Container(
-        // Removed ClipRRect and BackdropFilter
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white, // Solid white background
-          borderRadius: BorderRadius.circular(24),
-          // Removed border and shadow for a cleaner look
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Créez votre code secret',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary), // Using theme text style
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Ce code sécurisera vos transactions et connexions futures.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary), // Using theme text style
-              ),
-              const SizedBox(height: 24),
-              Pinput(
-                length: 6,
-                controller: _pinController,
-                focusNode: _pinFocusNode,
-                defaultPinTheme: PinTheme(
-                  width: 56,
-                  height: 56,
-                  textStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600), // Using theme text style
-                  decoration: BoxDecoration(
-                    border:
-                        Border.all(color: AppColors.primary.withOpacity(0.5)),
-                    borderRadius: BorderRadius.circular(12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Créez votre code secret',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Ce code sécurisera vos transactions et connexions futures.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 24),
+                  Pinput(
+                    length: 6,
+                    controller: _pinController,
+                    focusNode: _pinFocusNode,
+                    defaultPinTheme: PinTheme(
+                      width: 56,
+                      height: 56,
+                      textStyle: const TextStyle(fontSize: 20, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.primary.withOpacity(0.5)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _validatePin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Valider', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _validatePin,
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 80),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24))),
-                child: Text('Valider',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Colors.white)), // Using theme text style
-              ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),

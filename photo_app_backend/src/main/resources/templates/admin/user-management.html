@@ -867,6 +867,8 @@
                 <tr>
                     <th>Utilisateur</th>
                     <th>Email</th>
+                    <th>Téléphone</th>
+                    <th>PIN</th>
                     <th>Rôle</th>
                     <th>Statut</th>
                     <th>Date d'inscription</th>
@@ -968,6 +970,11 @@
                             <i class="fas fa-phone icon-in-input"></i>
                             <input type="tel" class="form-control pl-5" id="phone" name="phone" value="+228">
                         </div>
+                        <div class="form-group position-relative">
+                            <label for="pin">PIN</label>
+                            <i class="fas fa-key icon-in-input"></i>
+                            <input type="text" class="form-control pl-5" id="pin" name="pin">
+                        </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
                             <button type="submit" class="btn btn-primary" id="saveUserBtn">
@@ -1054,6 +1061,8 @@
                     }
                 },
                 { data: 'email' },
+                { data: 'phone' },
+                { data: 'pin' },
                 {
                     data: 'role',
                     render: function(data) {
@@ -1244,6 +1253,7 @@
                     $('#role').val(user.role).trigger('change');
                     $('#status').val(user.status).trigger('change');
                     $('#phone').val(user.phone || '');
+                    $('#pin').val(user.pin || '');
 
                     // Hide password fields for existing user, show toggle
                     $('#passwordFieldsGroup').hide();
@@ -1434,7 +1444,8 @@
                 email: emailInput.val(),
                 role: roleInput.val(),
                 status: statusInput.val(),
-                phone: phoneInput.val()
+                phone: phoneInput.val(),
+                pin: $('#pin').val()
             };
 
             // Only include password in payload if it's being set/changed

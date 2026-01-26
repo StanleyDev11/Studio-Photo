@@ -1246,53 +1246,77 @@
         // Confirm Booking
         $('#bookingsTable tbody').on('click', '.confirm-btn', function() {
             const bookingId = $(this).data('id');
-            if (confirm('Confirmer cette réservation ?')) {
-                showLoading();
-                fetch(`/admin/bookings/api/${bookingId}/confirm`, {
-                    method: 'POST'
-                })
-                .then(response => {
-                    if (response.ok) {
-                        table.ajax.reload();
-                        loadStats();
-                        $('#calendar').fullCalendar('refetchEvents');
-                    } else {
-                        alert('Erreur lors de la confirmation');
-                    }
-                    hideLoading();
-                })
-                .catch(error => {
-                    console.error('Error confirming booking:', error);
-                    alert('Erreur lors de la confirmation');
-                    hideLoading();
-                });
-            }
+            Swal.fire({
+                title: 'Confirmation',
+                text: 'Êtes-vous sûr de vouloir confirmer cette réservation ?',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Oui, confirmer !',
+                cancelButtonText: 'Annuler'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    showLoading();
+                    fetch(`/admin/bookings/api/${bookingId}/confirm`, {
+                        method: 'POST'
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            table.ajax.reload();
+                            loadStats();
+                            $('#calendar').fullCalendar('refetchEvents');
+                            Swal.fire('Confirmé !', 'La réservation a été confirmée.', 'success');
+                        } else {
+                            Swal.fire('Erreur', 'Erreur lors de la confirmation de la réservation.', 'error');
+                        }
+                        hideLoading();
+                    })
+                    .catch(error => {
+                        console.error('Error confirming booking:', error);
+                        Swal.fire('Erreur', 'Erreur lors de la confirmation de la réservation.', 'error');
+                        hideLoading();
+                    });
+                }
+            });
         });
 
         // Cancel Booking
         $('#bookingsTable tbody').on('click', '.cancel-btn', function() {
             const bookingId = $(this).data('id');
-            if (confirm('Annuler cette réservation ?')) {
-                showLoading();
-                fetch(`/admin/bookings/api/${bookingId}/cancel`, {
-                    method: 'POST'
-                })
-                .then(response => {
-                    if (response.ok) {
-                        table.ajax.reload();
-                        loadStats();
-                        $('#calendar').fullCalendar('refetchEvents');
-                    } else {
-                        alert('Erreur lors de l\'annulation');
-                    }
-                    hideLoading();
-                })
-                .catch(error => {
-                    console.error('Error cancelling booking:', error);
-                    alert('Erreur lors de l\'annulation');
-                    hideLoading();
-                });
-            }
+            Swal.fire({
+                title: 'Confirmation',
+                text: 'Êtes-vous sûr de vouloir annuler cette réservation ?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Oui, annuler !',
+                cancelButtonText: 'Retour'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    showLoading();
+                    fetch(`/admin/bookings/api/${bookingId}/cancel`, {
+                        method: 'POST'
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            table.ajax.reload();
+                            loadStats();
+                            $('#calendar').fullCalendar('refetchEvents');
+                            Swal.fire('Annulé !', 'La réservation a été annulée.', 'success');
+                        } else {
+                            Swal.fire('Erreur', 'Erreur lors de l\'annulation de la réservation.', 'error');
+                        }
+                        hideLoading();
+                    })
+                    .catch(error => {
+                        console.error('Error cancelling booking:', error);
+                        Swal.fire('Erreur', 'Erreur lors de l\'annulation de la réservation.', 'error');
+                        hideLoading();
+                    });
+                }
+            });
         });
 
         // Delete Booking

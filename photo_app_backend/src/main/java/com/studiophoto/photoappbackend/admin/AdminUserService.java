@@ -46,6 +46,7 @@ public class AdminUserService {
                 .role(request.getRole())
                 .status(request.getStatus() != null ? request.getStatus() : Status.PENDING) // Use request status or default
                 .phone(request.getPhone())
+                .pin(request.getPin())
                 .build();
         return mapToUserResponse(userRepository.save(user));
     }
@@ -59,6 +60,7 @@ public class AdminUserService {
                     user.setRole(request.getRole());
                     user.setStatus(request.getStatus()); // Update status
                     user.setPhone(request.getPhone()); // Update phone
+                    user.setPin(request.getPin()); // Update pin
 
                     // Only update password if a new one is provided
                     if (request.getPassword() != null && !request.getPassword().isEmpty()) {
@@ -103,6 +105,7 @@ public class AdminUserService {
                 .role(user.getRole())
                 .status(user.getStatus()) // Include status
                 .phone(user.getPhone()) // Include phone
+                .pin(user.getPin()) // Include pin
                 .createdAt(user.getCreatedAt()) // Include createdAt
                 .lastLogin(user.getLastLogin()) // Include lastLogin
                 .build();

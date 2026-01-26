@@ -364,9 +364,9 @@
                             <a th:href="@{/admin/promotions/form(id=${promotion.id})}" class="btn btn-sm btn-outline-info" title="Modifier">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <a th:href="@{/admin/promotions/delete/{id}(id=${promotion.id})}" class="btn btn-sm btn-outline-danger" title="Supprimer" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette promotion ?');">
+                            <button class="btn btn-sm btn-outline-danger delete-btn" th:data-id="${promotion.id}" title="Supprimer">
                                 <i class="fas fa-trash"></i>
-                            </a>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -401,6 +401,56 @@
         const userName = /*[[${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}]]*/ 'Admin';
         const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
         $('#userInitials').text(initials);
+
+        // Delete Promotion
+        $('#promotionsTable tbody').on('click', '.delete-btn', function(e) {
+            e.preventDefault(); // Empêcher l'action par défaut du bouton
+            const promotionId = $(this).data('id');
+            Swal.fire({
+                title: 'Confirmation',
+                text: 'Êtes-vous sûr de vouloir supprimer cette promotion ? Cette action est irréversible.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Oui, supprimer !',
+                cancelButtonText: 'Annuler'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Envoyer la requête DELETE via AJAX
+                    fetch(`/admin/promotions/delete/${promotionId}`, {
+                        method: 'POST', // Utiliser POST pour la suppression selon le th:href original
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            // Recharger la page ou la DataTable après suppression réussie
+                            location.reload(); // Recharger la page pour rafraîchir la liste
+                            // Le message de succès sera affiché via flashAttribute après la redirection
+                        } else {
+                            Swal.fire('Erreur', 'Erreur lors de la suppression de la promotion.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting promotion:', error);
+                        Swal.fire('Erreur', 'Erreur lors de la suppression de la promotion.', 'error');
+                    });
+                }
+            });
+        });
+
+        // Afficher les messages flash de Spring (succès/erreur)
+        var successMessage = [[${successMessage}]];
+        var errorMessage = [[${errorMessage}]];
+
+        if (successMessage) {
+            Swal.fire('Succès', successMessage, 'success');
+        }
+        if (errorMessage) {
+            Swal.fire('Erreur', errorMessage, 'error');
+        }
     });
     /*]]>*/
 </script>

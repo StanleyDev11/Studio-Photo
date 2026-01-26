@@ -29,20 +29,56 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = true;
       });
 
-      await Future.delayed(const Duration(seconds: 3));
+      try {
+        Map<String, dynamic> responseData;
+        if (_isLoginWithPhone) {
+          responseData = await ApiService.login(
+            phone: _phoneController.text,
+            password: _passwordController.text,
+          );
+        } else {
+          responseData = await ApiService.login(
+            email: _emailController.text,
+            password: _passwordController.text,
+          );
+        }
 
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              userName: 'Test User',
-              userId: 1,
+        if (mounted) {
+          // Assuming API returns token and user ID
+          final String token = responseData['token'];
+          // You might need to add userId to the response from your backend for full functionality
+          // For now, hardcoding as 1, but this should come from the API response
+          final int userId = 1; //response['userId']; 
+
+          await ApiService.saveAuthTokenAndUserId(token, userId);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Connexion réussie !'),
+              backgroundColor: Colors.green,
             ),
-          ),
-        );
+          );
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                userName: _isLoginWithPhone ? _phoneController.text : _emailController.text, // Use actual user name from API if available
+                userId: userId,
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur de connexion: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
