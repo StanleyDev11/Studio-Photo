@@ -5,6 +5,7 @@ import 'package:photo_app/signup_screen.dart';
 import 'package:photo_app/splash_screen.dart';
 import 'package:photo_app/utils/colors.dart';
 import 'package:photo_app/api_service.dart'; // Import ApiService
+import 'package:photo_app/utils/police.dart'; // New import for Poppins font
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Required for SharedPreferences
@@ -34,6 +35,9 @@ class MyApp extends StatelessWidget {
         }),
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
         scaffoldBackgroundColor: AppColors.background,
+        // New: Apply Poppins text theme
+        textTheme: buildPoppinsTextTheme(ThemeData.light().textTheme),
+        fontFamily: primaryFont.fontFamily, // Set Poppins as default font family
       ),
       debugShowCheckedModeBanner: false,
       initialRoute: '/splash',
@@ -56,7 +60,7 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(
               builder: (context) => HomeScreen(
                 userName: args?['userName'] ?? 'Utilisateur',
-                userId: args?['userId'] ?? '',
+                userId: args?['userId'] as int? ?? 0, // Corrected type casting and default value
               ),
             );
           default:
