@@ -5,9 +5,41 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:photo_app/utils/colors.dart';
 import 'package:photo_app/utils/geometric_background.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:photo_app/api_service.dart'; // Import ApiService
+import 'package:photo_app/models/contact_info.dart'; // Import ContactInfo model
 
-class ContactScreen extends StatelessWidget {
+class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
+
+  @override
+  State<ContactScreen> createState() => _ContactScreenState();
+}
+
+class _ContactScreenState extends State<ContactScreen> {
+  ContactInfo? _contactInfo;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchContactInfo();
+  }
+
+  Future<void> _fetchContactInfo() async {
+    try {
+      final fetchedInfo = await ApiService.fetchContactInfo();
+      setState(() {
+        _contactInfo = fetchedInfo;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load contact information: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,33 +69,43 @@ class ContactScreen extends StatelessWidget {
         children: [
           const GeometricBackground(),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  _buildInfoCard(context),
-                  const SizedBox(height: 30),
-                  Text(
-                    'Suivez-nous',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildSocialRow(),
-                ],
-              ),
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : _errorMessage != null
+                    ? Center(
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.red, fontSize: 16),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            _buildInfoCard(context, _contactInfo!),
+                            const SizedBox(height: 30),
+                            Text(
+                              'Suivez-nous',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: 20),
+                            _buildSocialRow(_contactInfo!),
+                          ],
+                        ),
+                      ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoCard(BuildContext context) {
+  Widget _buildInfoCard(BuildContext context, ContactInfo info) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -79,28 +121,28 @@ class ContactScreen extends StatelessWidget {
               _ContactInfoTile(
                 icon: Icons.location_on_outlined,
                 title: 'Notre Studio',
-                subtitle: 'Rue de la Photo, Lomé, Togo',
-                onTap: () { /* TODO: Open Maps */ },
+                subtitle: info.address,
+                onTap: info.address.isNotEmpty ? () => _launchUrl('https://maps.google.com/?q=${info.address}', context) : null,
               ),
               const Divider(height: 1, indent: 20, endIndent: 20, color: Colors.white30),
               _ContactInfoTile(
                 icon: Icons.phone_outlined,
                 title: 'Téléphone',
-                subtitle: '+228 90 00 00 00',
-                onTap: () => _launchUrl('tel:+22890000000', context),
+                subtitle: info.phoneNumber,
+                onTap: info.phoneNumber.isNotEmpty ? () => _launchUrl('tel:${info.phoneNumber}', context) : null,
               ),
               const Divider(height: 1, indent: 20, endIndent: 20, color: Colors.white30),
               _ContactInfoTile(
                 icon: Icons.email_outlined,
                 title: 'Email',
-                subtitle: 'contact@studiophoto.com',
-                onTap: () => _launchUrl('mailto:contact@studiophoto.com', context),
+                subtitle: info.email,
+                onTap: info.email.isNotEmpty ? () => _launchUrl('mailto:${info.email}', context) : null,
               ),
                const Divider(height: 1, indent: 20, endIndent: 20, color: Colors.white30),
-              const _ContactInfoTile(
+              _ContactInfoTile(
                 icon: Icons.access_time,
                 title: 'Horaires d\'ouverture',
-                subtitle: 'Lundi - Samedi : 09:00 - 18:00',
+                subtitle: info.openingHours,
               ),
             ],
           ),
@@ -109,14 +151,18 @@ class ContactScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSocialRow() {
-    return const Row(
+  Widget _buildSocialRow(ContactInfo info) {
+    return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _SocialButton(icon: FontAwesomeIcons.facebook, url: 'https://facebook.com/your-page'),
-        _SocialButton(icon: FontAwesomeIcons.twitter, url: 'https://twitter.com/your-handle'),
-        _SocialButton(icon: FontAwesomeIcons.instagram, url: 'https://instagram.com/your-profile'),
-        _SocialButton(icon: FontAwesomeIcons.linkedin, url: 'https://linkedin.com/in/your-profile'),
+        if (info.facebookUrl != null && info.facebookUrl!.isNotEmpty)
+          _SocialButton(icon: FontAwesomeIcons.facebook, url: info.facebookUrl!),
+        if (info.twitterUrl != null && info.twitterUrl!.isNotEmpty)
+          _SocialButton(icon: FontAwesomeIcons.twitter, url: info.twitterUrl!),
+        if (info.instagramUrl != null && info.instagramUrl!.isNotEmpty)
+          _SocialButton(icon: FontAwesomeIcons.instagram, url: info.instagramUrl!),
+        if (info.linkedinUrl != null && info.linkedinUrl!.isNotEmpty)
+          _SocialButton(icon: FontAwesomeIcons.linkedin, url: info.linkedinUrl!),
       ],
     );
   }

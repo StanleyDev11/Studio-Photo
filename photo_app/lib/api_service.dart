@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:photo_app/models/promotion.dart';
 import 'package:photo_app/models/featured_content.dart';
 import 'package:photo_app/models/booking.dart';
+import 'package:photo_app/models/contact_info.dart'; // Import new ContactInfo model
 import 'package:shared_preferences/shared_preferences.dart';
 
 
@@ -182,5 +183,12 @@ class ApiService {
     final response = await _safeGet(url);
     final List<dynamic> responseData = _handleApiResponse(response);
     return responseData.map((json) => Booking.fromJson(json)).toList();
+  }
+
+  static Future<ContactInfo> fetchContactInfo() async {
+    const url = '$baseUrl/admin/contact-info/api'; // Endpoint to fetch contact info
+    final response = await _safeGet(url);
+    final Map<String, dynamic> responseData = _handleApiResponse(response);
+    return ContactInfo.fromJson(responseData);
   }
 }
