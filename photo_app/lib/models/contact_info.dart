@@ -1,14 +1,11 @@
-
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter/foundation.dart';
-
 part 'contact_info.freezed.dart';
 part 'contact_info.g.dart';
 
 @freezed
 class ContactInfo with _$ContactInfo {
   const factory ContactInfo({
-    int? id,
     required String address,
     required String phoneNumber,
     required String email,

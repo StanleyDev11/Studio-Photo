@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:photo_app/models/contact_info.dart';
 import 'package:photo_app/models/promotion.dart';
 import 'package:photo_app/models/featured_content.dart';
 import 'package:photo_app/models/booking.dart';
-import 'package:photo_app/models/contact_info.dart'; // Import new ContactInfo model
 import 'package:shared_preferences/shared_preferences.dart';
 
 
