@@ -191,4 +191,30 @@ class ApiService {
     final Map<String, dynamic> responseData = _handleApiResponse(response);
     return ContactInfo.fromJson(responseData);
   }
+
+  static Future<Map<String, dynamic>> verifyPinForPasswordReset({String? email, String? phone, required String pin}) async {
+    const url = '$baseUrl/auth/verify-pin';
+    final Map<String, dynamic> body = {'pin': pin};
+
+    if (email != null && email.isNotEmpty) {
+      body['identifier'] = email;
+    } else if (phone != null && phone.isNotEmpty) {
+      body['identifier'] = phone;
+    } else {
+      throw Exception('Email ou numéro de téléphone requis pour la vérification du code PIN.');
+    }
+
+    final response = await _safePost(url, body);
+    return _handleApiResponse(response); // Expects { "resetToken": "..." }
+  }
+
+  static Future<void> resetPasswordWithToken({required String token, required String newPassword}) async {
+    const url = '$baseUrl/auth/reset-password';
+    final body = {
+      'token': token,
+      'newPassword': newPassword,
+    };
+    final response = await _safePost(url, body);
+    _handleApiResponse(response); // Expects no content on success
+  }
 }

@@ -873,7 +873,6 @@
                     <th>Rôle</th>
                     <th>Statut</th>
                     <th>Date d'inscription</th>
-                    <th>Dernière connexion</th>
                     <th>Actions</th>
                 </tr>
                 </thead>
@@ -1086,12 +1085,6 @@
                     }
                 },
                 {
-                    data: 'lastLogin',
-                    render: function(data) {
-                        return data ? moment(data).fromNow() : 'Jamais';
-                    }
-                },
-                {
                     data: null,
                     orderable: false,
                     render: function(data, type, row) {
@@ -1119,7 +1112,7 @@
                     }
                 }
             ],
-            order: [4, 'desc'],
+            order: [6, 'desc'],
             pageLength: 25,
             responsive: true
         });

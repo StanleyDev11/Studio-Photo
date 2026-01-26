@@ -6,6 +6,8 @@ import 'package:photo_app/utils/geometric_background.dart';
 import 'package:pinput/pinput.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:photo_app/widgets/music_wave_loader.dart';
+import 'package:photo_app/api_service.dart'; // Import ApiService
+import 'package:photo_app/login_screen.dart'; // Import LoginScreen
 
 class RecoveryScreen extends StatefulWidget {
   const RecoveryScreen({super.key});
@@ -16,22 +18,57 @@ class RecoveryScreen extends StatefulWidget {
 
 class _RecoveryScreenState extends State<RecoveryScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _emailController = TextEditingController(); // Changed from _nameController
   final _phoneController = TextEditingController();
   final _pinController = TextEditingController();
-  bool _isRecoveryWithName = true;
+  bool _isRecoveryWithEmail = true; // Changed from _isRecoveryWithName
+  bool _isLoading = false;
 
   Future<void> _recoverPassword() async {
     if (_formKey.currentState?.validate() ?? false) {
-      _showNewPasswordDialog();
+      setState(() {
+        _isLoading = true;
+      });
+
+      String identifier;
+      if (_isRecoveryWithEmail) {
+        identifier = _emailController.text;
+      } else {
+        identifier = _phoneController.text;
+      }
+
+      try {
+        final response = await ApiService.verifyPinForPasswordReset(
+          email: _isRecoveryWithEmail ? identifier : null,
+          phone: !_isRecoveryWithEmail ? identifier : null,
+          pin: _pinController.text,
+        );
+
+        if (mounted) {
+          final resetToken = response['resetToken'];
+          _showNewPasswordDialog(resetToken);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
-  void _showNewPasswordDialog() {
+  void _showNewPasswordDialog(String resetToken) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const _NewPasswordDialog(),
+      builder: (context) => _NewPasswordDialog(resetToken: resetToken),
     );
   }
 
@@ -64,7 +101,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _emailController.dispose(); // Changed from _nameController
     _phoneController.dispose();
     _pinController.dispose();
     super.dispose();
@@ -170,11 +207,16 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                   _buildRecoveryMethodToggle(),
                   const SizedBox(height: 24),
 
-                  if (_isRecoveryWithName)
+                  if (_isRecoveryWithEmail)
                     TextFormField(
-                      controller: _nameController,
-                      decoration: _glassyInputDecoration('Nom complet', icon: Icons.person_outline),
-                      validator: (value) => (value?.isEmpty ?? true) ? 'Champ requis' : null,
+                      controller: _emailController,
+                      decoration: _glassyInputDecoration('Email', icon: Icons.email_outlined),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Champ requis';
+                        if (!RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)) return 'Email invalide';
+                        return null;
+                      },
                     )
                   else
                     TextFormField(
@@ -213,12 +255,18 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: _recoverPassword,
+                    onPressed: _isLoading ? null : _recoverPassword, // Disable when loading
                     style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
-                    child: const Text('Valider', style: TextStyle(color: Colors.white, fontSize: 16)),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Valider', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ),
                 ],
               ),
@@ -239,19 +287,19 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _isRecoveryWithName = true),
+              onTap: () => setState(() => _isRecoveryWithEmail = true),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: _isRecoveryWithName ? AppColors.primary : Colors.transparent,
+                  color: _isRecoveryWithEmail ? AppColors.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Text(
-                  'Nom',
+                  'Email', // Changed from 'Nom'
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _isRecoveryWithName ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
+                    color: _isRecoveryWithEmail ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -260,19 +308,19 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
           ),
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _isRecoveryWithName = false),
+              onTap: () => setState(() => _isRecoveryWithEmail = false),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: !_isRecoveryWithName ? AppColors.primary : Colors.transparent,
+                  color: !_isRecoveryWithEmail ? AppColors.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Text(
                   'Téléphone',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: !_isRecoveryWithName ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
+                    color: !_isRecoveryWithEmail ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -312,7 +360,9 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
 }
 
 class _NewPasswordDialog extends StatefulWidget {
-  const _NewPasswordDialog();
+  final String resetToken;
+
+  const _NewPasswordDialog({required this.resetToken});
 
   @override
   State<_NewPasswordDialog> createState() => _NewPasswordDialogState();
@@ -332,14 +382,31 @@ class _NewPasswordDialogState extends State<_NewPasswordDialog> {
         _isLoading = true;
       });
 
-      await Future.delayed(const Duration(seconds: 3));
-
-      if (mounted) {
-        Navigator.of(context).pop(); // Dismiss dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mot de passe réinitialisé avec succès!'), backgroundColor: Colors.green),
+      try {
+        await ApiService.resetPasswordWithToken(
+          token: widget.resetToken,
+          newPassword: _passwordController.text,
         );
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+
+        if (mounted) {
+          Navigator.of(context).pop(); // Dismiss dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Mot de passe réinitialisé avec succès !'), backgroundColor: Colors.green),
+          );
+          Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur de réinitialisation: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
