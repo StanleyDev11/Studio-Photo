@@ -25,6 +25,8 @@ public class AuthenticationService {
                 .firstname(request.getFirstname())
                 .lastname(request.getLastname())
                 .email(request.getEmail())
+                .phone(request.getPhone())
+                .pin(request.getPin())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER) // Default role for new users
                 .build();
@@ -43,15 +45,30 @@ public class AuthenticationService {
                 .build();
     }
 
-    public AuthenticationResponse authenticate(AuthenticationRequest request) {
+    public AuthenticationResponse authenticate(LoginRequest request) {
+        String username; // This will be email or phone
+        User user;
+
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+            username = request.getEmail();
+            user = repository.findByEmail(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'email: " + username));
+        } else if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+            username = request.getPhone();
+            user = repository.findByPhone(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec le téléphone: " + username));
+        } else {
+            throw new IllegalArgumentException("L'email ou le numéro de téléphone doit être fourni.");
+        }
+
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
+                        username,
                         request.getPassword()
                 )
         );
-        var user = repository.findByEmail(request.getEmail())
-                .orElseThrow(); // user should exist if authentication is successful
+        // user should exist if authentication is successful
+
         var jwtToken = jwtService.generateToken(user);
         return AuthenticationResponse.builder()
                 .token(jwtToken)

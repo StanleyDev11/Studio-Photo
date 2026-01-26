@@ -28,4 +28,5 @@ public class UserRequest {
     @NotNull // Status is now a required field for UserRequest
     private Status status; // New field
     private String phone; // New field
+    private String pin; // New field
 }

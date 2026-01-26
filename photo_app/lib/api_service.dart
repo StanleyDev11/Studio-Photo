@@ -102,15 +102,23 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> login(String email, String password) async {
+  static Future<Map<String, dynamic>> login({String? email, String? phone, required String password}) async {
     const url = '$baseUrl/auth/authenticate';
-    final body = {'email': email, 'password': password};
+    final Map<String, dynamic> body = {'password': password};
+
+    if (email != null && email.isNotEmpty) {
+      body['email'] = email;
+    } else if (phone != null && phone.isNotEmpty) {
+      body['phone'] = phone;
+    } else {
+      throw Exception('Email ou numéro de téléphone requis pour la connexion.');
+    }
 
     final response = await _safePost(url, body);
     return _handleAuthResponse(response);
   }
 
-  static Future<Map<String, dynamic>> signup(String name, String email, String password) async {
+  static Future<Map<String, dynamic>> signup(String name, String email, String phone, String password, String pin) async {
     const url = '$baseUrl/auth/register';
     
     String firstname = name;
@@ -125,7 +133,9 @@ class ApiService {
       'firstname': firstname,
       'lastname': lastname,
       'email': email,
-      'password': password
+      'phone': phone,
+      'password': password,
+      'pin': pin
     };
 
     final response = await _safePost(url, body);
