@@ -409,7 +409,7 @@ class _PinCreationSheetState extends State<_PinCreationSheet> {
         // Pop the dialog to show the error on the main screen's scaffold
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur d'."'".'inscription: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Erreur d\'inscription: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
