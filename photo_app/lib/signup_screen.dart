@@ -30,41 +30,18 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Future<void> _signup() async {
     if (_formKey.currentState?.validate() ?? false) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      try {
-        await ApiService.signup(
-          _nameController.text,
-          _emailController.text,
-          _passwordController.text,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Inscription réussie ! Vous pouvez maintenant vous connecter.'),
-              backgroundColor: Colors.green,
-            ),
+      // Don't set loading state here, it will be handled in the PIN sheet
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return _PinCreationSheet(
+            name: _nameController.text,
+            email: _emailController.text,
+            phone: _phoneController.text, // Make sure you have a phone controller
+            password: _passwordController.text,
           );
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur d\'inscription: $e'), backgroundColor: Colors.red),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      }
+        },
+      );
     }
   }
 
@@ -276,7 +253,17 @@ class _SignupScreenState extends State<SignupScreen> {
 }
 
 class _PinCreationSheet extends StatefulWidget {
-  const _PinCreationSheet();
+  final String name;
+  final String email;
+  final String phone;
+  final String password;
+
+  const _PinCreationSheet({
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.password,
+  });
 
   @override
   State<_PinCreationSheet> createState() => _PinCreationSheetState();
@@ -285,33 +272,53 @@ class _PinCreationSheet extends StatefulWidget {
 class _PinCreationSheetState extends State<_PinCreationSheet> {
   final _pinController = TextEditingController();
   final _pinFocusNode = FocusNode();
-
-  void _showLoader(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          child: Center(
-            child: MusicWaveLoader(),
-          ),
-        );
-      },
-    );
-  }
+  bool _isLoading = false; // Add a loading state
 
   Future<void> _validatePin() async {
-    _showLoader(context);
-    await Future.delayed(const Duration(seconds: 3));
-    if (mounted) {
-      Navigator.of(context, rootNavigator: true).pop(); // Dismiss loader
-      Navigator.of(context).pop(); // Dismiss sheet
+    if (_pinController.text.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Compte créé avec succès!'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('Veuillez entrer un code PIN à 6 chiffres.'), backgroundColor: Colors.orange),
       );
-      Navigator.of(context).pushReplacementNamed('/login'); // Go to login
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await ApiService.signup(
+        widget.name,
+        widget.email,
+        widget.phone,
+        widget.password,
+        _pinController.text,
+      );
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Dismiss sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Compte créé avec succès ! Vous pouvez maintenant vous connecter.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        // Pop the dialog to show the error on the main screen's scaffold
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur d'."'".'inscription: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -370,13 +377,19 @@ class _PinCreationSheetState extends State<_PinCreationSheet> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: _validatePin,
+                    onPressed: _isLoading ? null : _validatePin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 80),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))
                     ),
-                    child: const Text('Valider', style: TextStyle(color: Colors.white, fontSize: 16)),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Valider', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ),
                   const SizedBox(height: 24),
                 ],

@@ -71,7 +71,7 @@ public class AdminFeaturedContentController {
     }
 
     // Endpoint pour supprimer un contenu
-    @GetMapping("/delete/{id}") // Ou @DeleteMapping, mais le GET est plus simple pour un lien direct
+    @PostMapping("/delete/{id}") // Ou @DeleteMapping, mais le GET est plus simple pour un lien direct
     public String deleteFeaturedContent(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         featuredContentService.deleteFeaturedContent(id); // La méthode deleteFeaturedContent dans le service gérera la suppression du fichier
         redirectAttributes.addFlashAttribute("successMessage", "Contenu mis en avant supprimé avec succès !");
