@@ -6,7 +6,7 @@ import 'package:photo_app/utils/colors.dart';
 import 'package:photo_app/utils/geometric_background.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:photo_app/api_service.dart'; // Import ApiService
-import 'package:photo_app/models/contact_info.dart'; // Import ContactInfo model
+import 'package:photo_app/models/contact_info.dart';
 
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
@@ -70,35 +70,46 @@ class _ContactScreenState extends State<ContactScreen> {
           const GeometricBackground(),
           SafeArea(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary))
                 : _errorMessage != null
                     ? Center(
                         child: Text(
                           _errorMessage!,
-                          style: const TextStyle(color: Colors.red, fontSize: 16),
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 16),
                           textAlign: TextAlign.center,
                         ),
                       )
-                    : SingleChildScrollView(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 20),
-                            _buildInfoCard(context, _contactInfo!),
-                            const SizedBox(height: 30),
-                            Text(
-                              'Suivez-nous',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    : _contactInfo != null
+                        ? SingleChildScrollView(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 20),
+                                _buildInfoCard(context, _contactInfo!),
+                                const SizedBox(height: 30),
+                                Text(
+                                  'Suivez-nous',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
+                                      ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textPrimary),
+                                ),
+                                const SizedBox(height: 20),
+                                _buildSocialRow(_contactInfo!),
+                              ],
                             ),
-                            const SizedBox(height: 20),
-                            _buildSocialRow(_contactInfo!),
-                          ],
-                        ),
-                      ),
+                          )
+                        : const Center(
+                            child: Text(
+                              'Aucune information de contact disponible.',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ),
           ),
         ],
       ),
@@ -122,23 +133,33 @@ class _ContactScreenState extends State<ContactScreen> {
                 icon: Icons.location_on_outlined,
                 title: 'Notre Studio',
                 subtitle: info.address,
-                onTap: info.address.isNotEmpty ? () => _launchUrl('https://maps.google.com/?q=${info.address}', context) : null,
+                onTap: info.address.isNotEmpty
+                    ? () => _launchUrl(
+                        'https://maps.google.com/?q=${info.address}', context)
+                    : null,
               ),
-              const Divider(height: 1, indent: 20, endIndent: 20, color: Colors.white30),
+              const Divider(
+                  height: 1, indent: 20, endIndent: 20, color: Colors.white30),
               _ContactInfoTile(
                 icon: Icons.phone_outlined,
                 title: 'Téléphone',
                 subtitle: info.phoneNumber,
-                onTap: info.phoneNumber.isNotEmpty ? () => _launchUrl('tel:${info.phoneNumber}', context) : null,
+                onTap: info.phoneNumber.isNotEmpty
+                    ? () => _launchUrl('tel:${info.phoneNumber}', context)
+                    : null,
               ),
-              const Divider(height: 1, indent: 20, endIndent: 20, color: Colors.white30),
+              const Divider(
+                  height: 1, indent: 20, endIndent: 20, color: Colors.white30),
               _ContactInfoTile(
                 icon: Icons.email_outlined,
                 title: 'Email',
                 subtitle: info.email,
-                onTap: info.email.isNotEmpty ? () => _launchUrl('mailto:${info.email}', context) : null,
+                onTap: info.email.isNotEmpty
+                    ? () => _launchUrl('mailto:${info.email}', context)
+                    : null,
               ),
-               const Divider(height: 1, indent: 20, endIndent: 20, color: Colors.white30),
+              const Divider(
+                  height: 1, indent: 20, endIndent: 20, color: Colors.white30),
               _ContactInfoTile(
                 icon: Icons.access_time,
                 title: 'Horaires d\'ouverture',
@@ -156,20 +177,24 @@ class _ContactScreenState extends State<ContactScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         if (info.facebookUrl != null && info.facebookUrl!.isNotEmpty)
-          _SocialButton(icon: FontAwesomeIcons.facebook, url: info.facebookUrl!),
+          _SocialButton(
+              icon: FontAwesomeIcons.facebook, url: info.facebookUrl!),
         if (info.twitterUrl != null && info.twitterUrl!.isNotEmpty)
           _SocialButton(icon: FontAwesomeIcons.twitter, url: info.twitterUrl!),
         if (info.instagramUrl != null && info.instagramUrl!.isNotEmpty)
-          _SocialButton(icon: FontAwesomeIcons.instagram, url: info.instagramUrl!),
+          _SocialButton(
+              icon: FontAwesomeIcons.instagram, url: info.instagramUrl!),
         if (info.linkedinUrl != null && info.linkedinUrl!.isNotEmpty)
-          _SocialButton(icon: FontAwesomeIcons.linkedin, url: info.linkedinUrl!),
+          _SocialButton(
+              icon: FontAwesomeIcons.linkedin, url: info.linkedinUrl!),
       ],
     );
   }
-  
+
   Future<void> _launchUrl(String url, BuildContext context) async {
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Impossible d\'ouvrir $url')),
       );
@@ -197,13 +222,19 @@ class _ContactInfoTile extends StatelessWidget {
       leading: Icon(icon, color: AppColors.primary, size: 30),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
+        style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: AppColors.textPrimary),
       ),
       subtitle: Text(
         subtitle,
         style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
       ),
-      trailing: onTap != null ? const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary) : null,
+      trailing: onTap != null
+          ? const Icon(Icons.arrow_forward_ios,
+              size: 16, color: AppColors.textSecondary)
+          : null,
     );
   }
 }
@@ -217,6 +248,7 @@ class _SocialButton extends StatelessWidget {
   Future<void> _launchUrl(BuildContext context) async {
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Impossible d\'ouvrir $url')),
       );
