@@ -251,16 +251,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFixedTopBar(BuildContext context) {
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)), // Rounded bottom corners
+      borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(20)), // Rounded bottom corners
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Increased blur
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.4), // Slightly transparent primary color
-            border: Border.all(color: Colors.white.withOpacity(0.2)), // Subtle border
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+            color: AppColors.primary
+                .withOpacity(0.4), // Slightly transparent primary color
+            border: Border.all(
+                color: Colors.white.withOpacity(0.2)), // Subtle border
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(20)),
           ),
-          padding: EdgeInsets.fromLTRB(16.0, MediaQuery.of(context).padding.top + 8, 16.0, 8.0), // Reduced vertical padding
+          padding: EdgeInsets.fromLTRB(
+              16.0,
+              MediaQuery.of(context).padding.top + 8,
+              16.0,
+              8.0), // Reduced vertical padding
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -325,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 2), // Reduced space
                   Text(
-                    'Hey, $_currentUserName $_currentUserLastName!', //$_currentUserName je peux ajouter ceci pour avoir nom et prenom
+                    'Hey, $_currentUserLastName!', //$_currentUserName je peux ajouter ceci pour avoir nom et prenom
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
@@ -524,8 +532,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       TextButton.icon(
                         onPressed: _clearCart,
-                        icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                        label: const Text('Vider le panier', style: TextStyle(color: AppColors.error)),
+                        icon: const Icon(Icons.delete_outline,
+                            color: AppColors.error),
+                        label: const Text('Vider le panier',
+                            style: TextStyle(color: AppColors.error)),
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
@@ -899,7 +909,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopCard() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Consistent padding
+      padding: const EdgeInsets.symmetric(
+          horizontal: 16.0, vertical: 8.0), // Consistent padding
       child: Card(
         clipBehavior: Clip.antiAlias, // Ensures content respects card borders
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -932,21 +943,29 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(fontSize: 16)),
                     onPressed: () => _showHowItWorksDialog(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary, // Primary color for the button
+                      backgroundColor:
+                          AppColors.primary, // Primary color for the button
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)), // Rounded corners
+                          borderRadius:
+                              BorderRadius.circular(12)), // Rounded corners
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 12),
                       elevation: 4,
                     ),
-                  ).animate().fade(duration: 800.ms, delay: 200.ms).slideY(begin: 0.2, curve: Curves.easeOut),
+                  )
+                      .animate()
+                      .fade(duration: 800.ms, delay: 200.ms)
+                      .slideY(begin: 0.2, curve: Curves.easeOut),
                 ],
               ),
             ),
           ],
         ),
-      ).animate().fade(duration: 500.ms).slideY(begin: 0.1, curve: Curves.easeOut),
+      )
+          .animate()
+          .fade(duration: 500.ms)
+          .slideY(begin: 0.1, curve: Curves.easeOut),
     );
   }
 
@@ -955,7 +974,8 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
       child: GridView.builder(
         shrinkWrap: true, // Important for nested scroll views
-        physics: const NeverScrollableScrollPhysics(), // Disable GridView's own scrolling
+        physics:
+            const NeverScrollableScrollPhysics(), // Disable GridView's own scrolling
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3, // 3 items per row
           crossAxisSpacing: 16.0,
@@ -999,7 +1019,8 @@ class _HomeScreenState extends State<HomeScreen> {
               return _buildAnimatedQuickActionButton(
                 icon: Icons.flash_on,
                 label: 'Commande rapide',
-                onTap: () => _quickPhotoOrder(), // Directly call quick photo order
+                onTap: () =>
+                    _quickPhotoOrder(), // Directly call quick photo order
                 delay: 300.ms,
               );
             case 4:
@@ -1066,9 +1087,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     label,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1077,7 +1098,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-      ).animate().fade(delay: delay, duration: 400.ms).slideY(begin: 0.1, curve: Curves.easeOut),
+      )
+          .animate()
+          .fade(delay: delay, duration: 400.ms)
+          .slideY(begin: 0.1, curve: Curves.easeOut),
     );
   }
 
@@ -1192,7 +1216,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-    ).animate().fade(delay: (100 * index).ms, duration: 400.ms).slideX(begin: 0.05, curve: Curves.easeOut);
+    )
+        .animate()
+        .fade(delay: (100 * index).ms, duration: 400.ms)
+        .slideX(begin: 0.05, curve: Curves.easeOut);
   }
 
   Widget _buildAdCarousel() {
@@ -1210,11 +1237,13 @@ class _HomeScreenState extends State<HomeScreen> {
     Widget buildItem(String path, bool isAsset) {
       return Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 8.0), // Increased horizontal margin
+        margin: const EdgeInsets.symmetric(
+            horizontal: 8.0), // Increased horizontal margin
         decoration: BoxDecoration(
           color: AppColors.card.withOpacity(0.4), // Glassmorphic background
           borderRadius: BorderRadius.circular(20), // Increased border radius
-          border: Border.all(color: Colors.white.withOpacity(0.2)), // Subtle border
+          border:
+              Border.all(color: Colors.white.withOpacity(0.2)), // Subtle border
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1), // Add shadow for depth
@@ -1224,15 +1253,20 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20), // Match container's border radius
+          borderRadius:
+              BorderRadius.circular(20), // Match container's border radius
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Inner blur effect
             child: isAsset
-                ? Image.asset(path, fit: BoxFit.cover) // Use BoxFit.cover for better image display
+                ? Image.asset(path,
+                    fit: BoxFit
+                        .cover) // Use BoxFit.cover for better image display
                 : Image.network(path, fit: BoxFit.cover),
           ),
         ),
-      ).animate().fade(duration: 500.ms).slideX(begin: 0.1, curve: Curves.easeOut); // Apply simple fade and slide animation
+      ).animate().fade(duration: 500.ms).slideX(
+          begin: 0.1,
+          curve: Curves.easeOut); // Apply simple fade and slide animation
     }
 
     Widget buildLocalCarousel(String message) {
