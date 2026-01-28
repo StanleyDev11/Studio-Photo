@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_app/contact_screen.dart';
 import 'package:photo_app/edit_profile_screen.dart';
@@ -95,35 +96,24 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.primary.withOpacity(0.4), // Use glassmorphic style consistent with home screen
         elevation: 0,
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: CircleAvatar(
-            backgroundColor: Colors.white,
+            backgroundColor: Colors.white.withOpacity(0.2), // Subtle glassmorphic effect
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+              icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary), // Icon color for contrast
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
         ),
-        title: const Text('Mon Profil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        foregroundColor: AppColors.textPrimary,
-        
+        title: Text('Mon Profil', style: TextStyle(color: AppColors.textOnPrimary, fontWeight: FontWeight.bold)), // Use textOnPrimary
+        foregroundColor: AppColors.textOnPrimary, // Ensure foreground elements (like icons) are white
       ),
       body: Stack(
         children: [
           const GeometricBackground(),
-          Container(
-            height: MediaQuery.of(context).padding.top + kToolbarHeight,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.black.withOpacity(0.4), Colors.transparent],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
           SingleChildScrollView(
             padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight, bottom: 20),
             child: Center(
@@ -137,8 +127,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 20),
                     Text(
                       _currentName,
-                      style: const TextStyle(
-                        fontSize: 26,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith( // Use headlineMedium for a more prominent name
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
@@ -146,8 +135,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 8),
                     Text(
                       _currentEmail,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith( // Use bodyLarge for email
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -199,8 +187,15 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
+    ).animate(onPlay: (controller) => controller.repeat(reverse: true)).scale(
+      delay: 2000.ms,
+      duration: 1000.ms,
+      begin: const Offset(1, 1),
+      end: const Offset(1.05, 1.05),
+      curve: Curves.easeInOut,
     );
   }
+
 
   Widget _buildMenuItems() {
     return ClipRRect(
@@ -219,26 +214,26 @@ class _ProfilePageState extends State<ProfilePage> {
                 icon: Icons.edit_outlined,
                 title: 'Modifier le profil',
                 onTap: _navigateToEditPage,
-              ),
+              ).animate().fade(delay: 50.ms, duration: 300.ms).slideX(begin: 0.1, curve: Curves.easeOut),
               const Divider(height: 1, indent: 16, endIndent: 16),
               _buildProfileMenuTile(
                 icon: Icons.history_outlined,
                 title: 'Historique des commandes',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryScreen())),
-              ),
+              ).animate().fade(delay: 100.ms, duration: 300.ms).slideX(begin: 0.1, curve: Curves.easeOut),
               const Divider(height: 1, indent: 16, endIndent: 16),
               _buildProfileMenuTile(
                 icon: Icons.contact_support_outlined,
                 title: 'Aide & Support',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ContactScreen())),
-              ),
+              ).animate().fade(delay: 150.ms, duration: 300.ms).slideX(begin: 0.1, curve: Curves.easeOut),
               const Divider(height: 1, indent: 16, endIndent: 16),
                _buildProfileMenuTile(
                 icon: Icons.logout,
                 title: 'Déconnexion',
                 color: AppColors.error,
                 onTap: _logout,
-              ),
+              ).animate().fade(delay: 200.ms, duration: 300.ms).slideX(begin: 0.1, curve: Curves.easeOut),
             ],
           ),
         ),

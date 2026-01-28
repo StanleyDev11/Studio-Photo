@@ -16,29 +16,12 @@ class ContactScreen extends StatefulWidget {
 }
 
 class _ContactScreenState extends State<ContactScreen> {
-  ContactInfo? _contactInfo;
-  bool _isLoading = true;
-  String? _errorMessage;
+  late Future<ContactInfo> _contactInfoFuture;
 
   @override
   void initState() {
     super.initState();
-    _fetchContactInfo();
-  }
-
-  Future<void> _fetchContactInfo() async {
-    try {
-      final fetchedInfo = await ApiService.fetchContactInfo();
-      setState(() {
-        _contactInfo = fetchedInfo;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load contact information: $e';
-        _isLoading = false;
-      });
-    }
+    _contactInfoFuture = ApiService.fetchContactInfo();
   }
 
   @override
@@ -69,47 +52,53 @@ class _ContactScreenState extends State<ContactScreen> {
         children: [
           const GeometricBackground(),
           SafeArea(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary))
-                : _errorMessage != null
-                    ? Center(
-                        child: Text(
-                          _errorMessage!,
-                          style:
-                              const TextStyle(color: Colors.red, fontSize: 16),
-                          textAlign: TextAlign.center,
+            child: FutureBuilder<ContactInfo>(
+              future: _contactInfoFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary));
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Impossible de charger les informations : ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+                if (snapshot.hasData) {
+                  final contactInfo = snapshot.data!;
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+                        _buildInfoCard(context, contactInfo),
+                        const SizedBox(height: 30),
+                        Text(
+                          'Suivez-nous',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary),
                         ),
-                      )
-                    : _contactInfo != null
-                        ? SingleChildScrollView(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 20),
-                                _buildInfoCard(context, _contactInfo!),
-                                const SizedBox(height: 30),
-                                Text(
-                                  'Suivez-nous',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.textPrimary),
-                                ),
-                                const SizedBox(height: 20),
-                                _buildSocialRow(_contactInfo!),
-                              ],
-                            ),
-                          )
-                        : const Center(
-                            child: Text(
-                              'Aucune information de contact disponible.',
-                              style: TextStyle(color: AppColors.textSecondary),
-                            ),
-                          ),
+                        const SizedBox(height: 20),
+                        _buildSocialRow(contactInfo),
+                      ],
+                    ),
+                  );
+                }
+                return const Center(
+                  child: Text(
+                    'Aucune information de contact disponible.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
