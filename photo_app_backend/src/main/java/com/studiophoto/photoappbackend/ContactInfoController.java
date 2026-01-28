@@ -1,4 +1,14 @@
-package com.studiophoto.photoappbackend.public;
+package com.studiophoto.photoappbackend;
+
+import com.studiophoto.photoappbackend.admin.AdminContactInfoService;
+import com.studiophoto.photoappbackend.admin.dto.ContactInfoResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+
 
 import com.studiophoto.photoappbackend.admin.AdminContactInfoService;
 import com.studiophoto.photoappbackend.admin.dto.ContactInfoResponse;
