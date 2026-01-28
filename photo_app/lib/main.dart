@@ -60,7 +60,7 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(
               builder: (context) => HomeScreen(
                 userName: args?['userName'] ?? 'Utilisateur',
-                userId: args?['userId'] as int? ?? 0, // Corrected type casting and default value
+                userId: args?['userId'] as int? ?? 0, userEmail: '', // Corrected type casting and default value
               ),
             );
           default:

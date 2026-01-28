@@ -186,7 +186,7 @@ class ApiService {
   }
 
   static Future<ContactInfo> fetchContactInfo() async {
-    const url = '$baseUrl/admin/contact-info/api'; // Endpoint to fetch contact info
+    const url = '$baseUrl/public/contact-info'; // Endpoint to fetch contact info
     final response = await _safeGet(url);
     final Map<String, dynamic> responseData = _handleApiResponse(response);
     return ContactInfo.fromJson(responseData);

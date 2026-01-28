@@ -39,11 +39,13 @@ class RecentRequest {
 
 class HomeScreen extends StatefulWidget {
   final String userName;
+  final String userEmail;
   final int userId;
 
   const HomeScreen({
     super.key,
     required this.userName,
+    required this.userEmail,
     required this.userId,
   });
 
@@ -107,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _currentUserName = widget.userName;
-    _currentUserEmail = 'user-test@email.com'; // Initialize placeholder
+    _currentUserEmail = widget.userEmail;
     _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
     _connectivitySubscription =
         _connectivityService.connectivityStream.listen((result) {
@@ -315,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 2), // Reduced space
                   Text(
-                    'Hey, $_currentUserName',
+                    'Hey, $_currentUserName!',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,

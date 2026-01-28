@@ -60,7 +60,7 @@ class _SplashScreenState extends State<SplashScreen> {
             MaterialPageRoute(
               builder: (context) => HomeScreen(
                 userName: 'Utilisateur', // Default name from token, will be replaced with actual user data if API provides it
-                userId: ApiService.userId!,
+                userId: ApiService.userId!, userEmail: '',
               ),
             ),
           );

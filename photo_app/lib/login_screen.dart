@@ -63,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
             MaterialPageRoute(
               builder: (context) => HomeScreen(
                 userName: _isLoginWithPhone ? _phoneController.text : _emailController.text, // Use actual user name from API if available
-                userId: userId,
+                userId: userId, userEmail: '',
               ),
             ),
           );
