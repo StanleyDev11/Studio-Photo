@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:photo_app/api_service.dart';
 import 'package:photo_app/contact_screen.dart';
 import 'package:photo_app/edit_profile_screen.dart';
 
@@ -13,14 +14,16 @@ import 'package:photo_app/utils/geometric_background.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userName;
+  final String userLastName;
   final String userEmail;
   final File? avatar;
   final Function(File) onAvatarChanged;
-  final Function(String newName, String newEmail) onProfileUpdated;
+  final Function(String newName, String newLastName, String newEmail) onProfileUpdated;
 
   const ProfilePage({
     super.key,
     required this.userName,
+    required this.userLastName,
     required this.userEmail,
     required this.avatar,
     required this.onAvatarChanged,
@@ -34,6 +37,8 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   late File? _currentAvatar;
   late String _currentName;
+  
+  late String _currentLastName;
   late String _currentEmail;
 
   @override
@@ -41,6 +46,7 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     _currentAvatar = widget.avatar;
     _currentName = widget.userName;
+    _currentLastName = widget.userLastName;
     _currentEmail = widget.userEmail;
   }
 
@@ -66,6 +72,7 @@ class _ProfilePageState extends State<ProfilePage> {
       MaterialPageRoute(
         builder: (context) => EditProfilePage(
           currentName: _currentName,
+          currentLastName: _currentLastName,
           currentEmail: _currentEmail,
           currentPhone: placeholderPhone, // Pass placeholder
         ),
@@ -75,19 +82,23 @@ class _ProfilePageState extends State<ProfilePage> {
     if (result != null && result is Map<String, String>) {
       setState(() {
         _currentName = result['name']!;
+        _currentLastName = result['lastName']!;
         _currentEmail = result['email']!;
         // Phone number is edited but not displayed on this page or stored higher up yet.
       });
       // The onProfileUpdated callback in home_screen only accepts name and email.
-      widget.onProfileUpdated(result['name']!, result['email']!);
+      widget.onProfileUpdated(result['name']!, result['lastName']!, result['email']!);
     }
   }
 
-  void _logout() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-      (Route<dynamic> route) => false,
-    );
+  void _logout() async {
+    await ApiService.clearAuthDetails();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (Route<dynamic> route) => false,
+      );
+    }
   }
 
   @override
@@ -126,7 +137,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildAvatar(),
                     const SizedBox(height: 20),
                     Text(
-                      _currentName,
+                      '$_currentName $_currentLastName',
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith( // Use headlineMedium for a more prominent name
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,

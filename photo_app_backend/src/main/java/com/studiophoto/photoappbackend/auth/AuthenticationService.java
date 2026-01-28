@@ -35,12 +35,18 @@ public class AuthenticationService {
                 .status(Status.ACTIVE) // Default to ACTIVE to allow immediate login
                 .build();
 
-        userRepository.save(user);
+        var savedUser = userRepository.save(user);
 
-        String jwtToken = jwtService.generateToken(user);
+        String jwtToken = jwtService.generateToken(savedUser);
 
         return AuthenticationResponse.builder()
                 .token(jwtToken)
+                .id(savedUser.getId())
+                .firstname(savedUser.getFirstname())
+                .lastname(savedUser.getLastname())
+                .email(savedUser.getEmail())
+                .phone(savedUser.getPhone())
+                .role(savedUser.getRole())
                 .build();
     }
 
@@ -68,6 +74,12 @@ public class AuthenticationService {
 
         return AuthenticationResponse.builder()
                 .token(jwtToken)
+                .id(user.getId())
+                .firstname(user.getFirstname())
+                .lastname(user.getLastname())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .role(user.getRole())
                 .build();
     }
     

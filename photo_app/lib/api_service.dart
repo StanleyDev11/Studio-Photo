@@ -10,30 +10,55 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   static const String baseUrl = 'http://109.176.197.158:8080/api';
   static SharedPreferences? _preferences;
+
+  // User details
   static String? _authToken;
   static int? _userId;
+  static String? _userName;
+  static String? _userLastName;
+  static String? _userEmail;
 
   static Future<void> init() async {
     _preferences = await SharedPreferences.getInstance();
     _authToken = _preferences?.getString('authToken');
     _userId = _preferences?.getInt('userId');
+    _userName = _preferences?.getString('userName');
+    _userLastName = _preferences?.getString('userLastName');
+    _userEmail = _preferences?.getString('userEmail');
   }
 
+  // Getters for user details
   static String? get authToken => _authToken;
   static int? get userId => _userId;
+  static String? get userName => _userName;
+  static String? get userLastName => _userLastName;
+  static String? get userEmail => _userEmail;
 
-  static Future<void> saveAuthTokenAndUserId(String token, int userId) async {
-    _authToken = token;
-    _userId = userId;
-    await _preferences?.setString('authToken', token);
-    await _preferences?.setInt('userId', userId);
+  static Future<void> saveAuthDetails(Map<String, dynamic> authData) async {
+    _authToken = authData['token'];
+    _userId = authData['id'];
+    _userName = authData['firstname'];
+    _userLastName = authData['lastname'];
+    _userEmail = authData['email'];
+
+    await _preferences?.setString('authToken', _authToken!);
+    await _preferences?.setInt('userId', _userId!);
+    await _preferences?.setString('userName', _userName!);
+    await _preferences?.setString('userLastName', _userLastName!);
+    await _preferences?.setString('userEmail', _userEmail!);
   }
 
-  static Future<void> removeAuthTokenAndUserId() async {
+  static Future<void> clearAuthDetails() async {
     _authToken = null;
     _userId = null;
+    _userName = null;
+    _userLastName = null;
+    _userEmail = null;
     await _preferences?.remove('authToken');
     await _preferences?.remove('userId');
+    await _preferences?.remove('userName');
+    await _preferences?.remove('userLastName');
+    await _preferences?.remove('userEmail');
   }
 
   static Map<String, String> get _headers {
@@ -217,4 +242,6 @@ class ApiService {
     final response = await _safePost(url, body);
     _handleApiResponse(response); // Expects no content on success
   }
+
+  
 }

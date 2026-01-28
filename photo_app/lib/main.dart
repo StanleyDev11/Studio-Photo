@@ -56,11 +56,13 @@ class MyApp extends StatelessWidget {
               builder: (context) => const SignupScreen(),
             );
           case '/home':
-            final args = settings.arguments as Map<String, dynamic>?; // Récupération des arguments
+            final args = settings.arguments as Map<String, dynamic>?;
             return MaterialPageRoute(
               builder: (context) => HomeScreen(
-                userName: args?['userName'] ?? 'Utilisateur',
-                userId: args?['userId'] as int? ?? 0, userEmail: '', // Corrected type casting and default value
+                userName: args?['userName'] as String? ?? 'Utilisateur',
+                userLastName: args?['userLastName'] as String? ?? '',
+                userEmail: args?['userEmail'] as String? ?? '',
+                userId: args?['userId'] as int? ?? 0,
               ),
             );
           default:

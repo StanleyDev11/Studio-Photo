@@ -39,12 +39,14 @@ class RecentRequest {
 
 class HomeScreen extends StatefulWidget {
   final String userName;
+  final String userLastName;
   final String userEmail;
   final int userId;
 
   const HomeScreen({
     super.key,
     required this.userName,
+    required this.userLastName,
     required this.userEmail,
     required this.userId,
   });
@@ -68,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- Updatable profile info ---
   late String _currentUserName;
+  late String _currentUserLastName;
   late String _currentUserEmail;
 
   // --- New state variables for cart ---
@@ -109,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _currentUserName = widget.userName;
+    _currentUserLastName = widget.userLastName;
     _currentUserEmail = widget.userEmail;
     _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
     _connectivitySubscription =
@@ -146,6 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
         MaterialPageRoute(
           builder: (context) => ProfilePage(
             userName: _currentUserName,
+            userLastName: _currentUserLastName,
             userEmail: _currentUserEmail,
             avatar: _avatar,
             onAvatarChanged: (newAvatar) {
@@ -153,9 +158,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 _avatar = newAvatar;
               });
             },
-            onProfileUpdated: (newName, newEmail) {
+            onProfileUpdated: (newName, newLastName, newEmail) {
               setState(() {
                 _currentUserName = newName;
+                _currentUserLastName = newLastName;
                 _currentUserEmail = newEmail;
               });
             },
@@ -265,6 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(
                       builder: (context) => ProfilePage(
                         userName: _currentUserName,
+                        userLastName: _currentUserLastName,
                         userEmail: _currentUserEmail,
                         avatar: _avatar,
                         onAvatarChanged: (newAvatar) {
@@ -272,9 +279,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             _avatar = newAvatar;
                           });
                         },
-                        onProfileUpdated: (newName, newEmail) {
+                        onProfileUpdated: (newName, newLastName, newEmail) {
                           setState(() {
                             _currentUserName = newName;
+                            _currentUserLastName = newLastName;
                             _currentUserEmail = newEmail;
                           });
                         },
@@ -317,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 2), // Reduced space
                   Text(
-                    'Hey, $_currentUserName!',
+                    'Hey, $_currentUserName $_currentUserLastName!', //$_currentUserName je peux ajouter ceci pour avoir nom et prenom
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
@@ -909,14 +917,14 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(10.0),
               child: Column(
                 children: [
-                  Text(
-                    'Vos événements, capturés pour l\'éternité.',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                  // Text(
+                  //   'Immortalisez vos moments précieux en un clic !',
+                  //   style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  //     fontWeight: FontWeight.bold,
+                  //     color: AppColors.textPrimary,
+                  //   ),
+                  //   textAlign: TextAlign.center,
+                  // ),
                   const SizedBox(height: 8),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.help_outline, size: 24),

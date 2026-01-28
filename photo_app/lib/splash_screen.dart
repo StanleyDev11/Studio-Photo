@@ -59,8 +59,10 @@ class _SplashScreenState extends State<SplashScreen> {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (context) => HomeScreen(
-                userName: 'Utilisateur', // Default name from token, will be replaced with actual user data if API provides it
-                userId: ApiService.userId!, userEmail: '',
+                userName: ApiService.userName ?? 'Utilisateur',
+                userLastName: ApiService.userLastName ?? '',
+                userEmail: ApiService.userEmail ?? '',
+                userId: ApiService.userId!,
               ),
             ),
           );
