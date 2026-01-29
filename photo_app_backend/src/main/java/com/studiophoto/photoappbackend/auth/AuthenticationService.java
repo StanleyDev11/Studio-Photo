@@ -5,11 +5,15 @@ import com.studiophoto.photoappbackend.model.Status;
 import com.studiophoto.photoappbackend.model.User;
 import com.studiophoto.photoappbackend.repository.UserRepository;
 import com.studiophoto.photoappbackend.security.JwtService;
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -84,11 +88,38 @@ public class AuthenticationService {
     }
     
     public String verifyPinForPasswordReset(String identifier, String pin) {
-        // TODO: implémentation plus tard
-        return "reset-token-placeholder";
+        User user = userRepository.findByEmail(identifier)
+                .or(() -> userRepository.findByPhone(identifier))
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'identifiant : " + identifier));
+
+        // IMPORTANT: C'est une comparaison simple. Pour la production, le PIN devrait être hashé.
+        if (!pin.equals(user.getPin())) {
+            throw new RuntimeException("PIN incorrect.");
+        }
+
+        // Générer un token de réinitialisation avec une expiration courte (ex: 15 minutes)
+        // Note: le JwtService doit être capable de gérer des expirations différentes.
+        // On pourrait ajouter une méthode à JwtService ou passer la durée d'expiration.
+        // Pour l'instant, on utilise une méthode hypothétique generatePasswordResetToken.
+        // Il faudra l'ajouter au JwtService.
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("type", "password-reset"); // Pour différencier d'un token d'auth
+        return jwtService.generateToken(extraClaims, user); // Utilise l'expiration par défaut pour l'instant
     }
 
     public void resetPassword(String token, String newPassword) {
-        // TODO: implémentation plus tard
+        String username = jwtService.extractUsername(token);
+        Claims claims = jwtService.extractAllClaims(token); // Il faut une méthode pour extraire tous les claims
+
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'email : " + username));
+
+        // Valider le token (expiration, signature et type)
+        if (!jwtService.isTokenValid(token, user) || !"password-reset".equals(claims.get("type"))) {
+            throw new RuntimeException("Jeton de réinitialisation invalide ou expiré.");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 }
