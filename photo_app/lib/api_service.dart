@@ -4,6 +4,7 @@ import 'package:photo_app/models/contact_info.dart';
 import 'package:photo_app/models/promotion.dart';
 import 'package:photo_app/models/featured_content.dart';
 import 'package:photo_app/models/booking.dart';
+import 'package:photo_app/models/photo_format.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 
@@ -188,6 +189,14 @@ class ApiService {
     final List<dynamic> responseData = _handleApiResponse(response);
     return responseData.map((json) => Promotion.fromJson(json)).toList();
   }
+
+    static Future<List<PhotoFormat>> fetchDimensions() async {
+    const url = '$baseUrl/public/dimensions';
+    final response = await _safeGet(url);
+    final List<dynamic> responseData = _handleApiResponse(response);
+    return responseData.map((json) => PhotoFormat.fromJson(json)).toList();
+  }
+
 
   static Future<FeaturedContent> fetchFeaturedContent() async {
     const url = '$baseUrl/featured-content/active';

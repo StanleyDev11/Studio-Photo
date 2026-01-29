@@ -21,7 +21,7 @@ import 'package:photo_app/contact_screen.dart';
 import 'package:photo_app/booking_screen.dart';
 import 'package:photo_app/history_screen.dart';
 import 'package:photo_app/utils/geometric_background.dart';
-import 'package:photo_app/pricing_screen.dart';
+import 'package:photo_app/models/photo_format.dart';
 import 'package:photo_app/profile_page.dart';
 import 'login_screen.dart';
 import 'order_summary_screen.dart';
@@ -77,10 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
   CartMode _selectedMode = CartMode.detail;
   bool _isExpress = false;
   double _totalPrice = 0.0;
-  final Map<String, double> _prices = {
-    for (var priceInfo in PricingScreen.fallbackPrintPrices)
-      priceInfo['dimension']: (priceInfo['price'] as num).toDouble()
-  };
+  Map<String, double>? _prices;
+  bool _isLoadingPrices = true;
   // --- End of new state variables ---
 
   // --- Mock Data for History ---
@@ -133,7 +131,30 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     });
-    _calculateTotal();
+    _fetchPrices();
+  }
+
+  Future<void> _fetchPrices() async {
+    try {
+      final fetchedDimensions = await ApiService.fetchDimensions();
+      if (mounted) {
+        setState(() {
+          _prices = {
+            for (var dim in fetchedDimensions) dim.dimension: dim.price
+          };
+          _calculateTotal();
+          _isLoadingPrices = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Erreur de chargement des prix: $e")));
+        setState(() {
+          _isLoadingPrices = false;
+        });
+      }
+    }
   }
 
   @override
@@ -472,6 +493,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCommandsTab() {
+    if (_isLoadingPrices) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Container(
       color: AppColors.background,
       padding:
@@ -561,11 +586,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _calculateTotal() {
+    if (_prices == null) return;
+
     double total = 0;
     for (final imageUrl in _selectedImages) {
       final details = _photoDetails[imageUrl];
       if (details != null) {
-        final price = _prices[details['size']] ?? 0;
+        final price = _prices![details['size']] ?? 0;
         total += price * (details['quantity'] as int);
       }
     }
@@ -589,7 +616,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _photoDetails[imageUrl] = {'size': '10x15 cm', 'quantity': 1};
         }
         final photoDetails = _photoDetails[imageUrl]!;
-        final price = _prices[photoDetails['size']] ?? 0;
+        final price = _prices![photoDetails['size']] ?? 0;
         final subtotal = price * (photoDetails['quantity'] as int);
 
         return Card(
@@ -658,7 +685,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const Text('Taille :'),
                         DropdownButton<String>(
                           value: photoDetails['size'],
-                          items: _prices.keys
+                          items: _prices!.keys
                               .map((size) => DropdownMenuItem(
                                   value: size, child: Text(size)))
                               .toList(),
@@ -739,11 +766,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(12), // Rounded borders
                   ),
                   contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   prefixIcon:
                       const Icon(Icons.straighten, size: 20), // Added icon
                 ),
-                items: _prices.keys
+                items: _prices!.keys
                     .map((size) =>
                         DropdownMenuItem(value: size, child: Text(size)))
                     .toList(),
