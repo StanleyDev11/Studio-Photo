@@ -1,7 +1,7 @@
 import 'dart:ui';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -13,7 +13,7 @@ class EditProfilePage extends StatefulWidget {
     super.key,
     required this.currentName,
     required this.currentEmail,
-    required this.currentPhone,
+    required this.currentPhone, required String currentLastName,
   });
 
   @override

@@ -1,8 +1,7 @@
+import 'package:Picon/api_service.dart';
+import 'package:Picon/models/booking.dart';
+import 'package:Picon/utils/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/api_service.dart';
-import 'package:photo_app/models/booking.dart';
-
 
 class BookingScreen extends StatefulWidget {
   const BookingScreen({super.key});

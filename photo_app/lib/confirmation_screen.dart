@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:photo_app/models/booking.dart';
 import 'utils/colors.dart';
 
 class ConfirmationScreen extends StatelessWidget {

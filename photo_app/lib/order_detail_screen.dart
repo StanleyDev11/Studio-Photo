@@ -1,7 +1,7 @@
+import 'package:Picon/models/photo_order.dart';
+import 'package:Picon/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:photo_app/models/photo_order.dart';
-import 'package:photo_app/utils/colors.dart';
 
 class OrderDetailScreen extends StatelessWidget {
   final PhotoOrder order;

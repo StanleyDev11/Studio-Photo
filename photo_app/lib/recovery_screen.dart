@@ -1,13 +1,12 @@
 import 'dart:ui';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
 import 'package:pinput/pinput.dart';
 import 'package:country_code_picker/country_code_picker.dart';
-import 'package:photo_app/widgets/music_wave_loader.dart';
-import 'package:photo_app/api_service.dart'; // Import ApiService
-import 'package:photo_app/login_screen.dart'; // Import LoginScreen
+
 
 class RecoveryScreen extends StatefulWidget {
   const RecoveryScreen({super.key});

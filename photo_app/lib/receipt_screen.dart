@@ -1,10 +1,11 @@
 import 'dart:typed_data';
+import 'package:Picon/utils/colors.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:photo_app/utils/colors.dart';
+
 import 'package:printing/printing.dart';
 
 class ReceiptScreen extends StatelessWidget {

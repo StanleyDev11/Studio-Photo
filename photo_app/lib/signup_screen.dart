@@ -1,14 +1,12 @@
 import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
-import 'package:photo_app/widgets/loading_button.dart';
-import 'package:photo_app/widgets/music_wave_loader.dart';
-import 'package:pinput/pinput.dart';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
+import 'package:Picon/widgets/loading_button.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:pinput/pinput.dart';
 
-import 'package:photo_app/api_service.dart';
-import 'package:photo_app/login_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});

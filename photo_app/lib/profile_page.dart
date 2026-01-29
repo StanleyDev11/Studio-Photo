@@ -1,16 +1,16 @@
 import 'dart:io';
 import 'dart:ui';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/contact_screen.dart';
+import 'package:Picon/edit_profile_page.dart';
+import 'package:Picon/history_screen.dart';
+import 'package:Picon/login_screen.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:photo_app/api_service.dart';
-import 'package:photo_app/contact_screen.dart';
-import 'package:photo_app/edit_profile_screen.dart';
 
-import 'package:photo_app/history_screen.dart';
-import 'package:photo_app/login_screen.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userName;

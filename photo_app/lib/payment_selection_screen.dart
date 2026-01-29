@@ -1,12 +1,12 @@
 import 'dart:ui';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/receipt_screen.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
+import 'package:Picon/widgets/music_wave_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:photo_app/api_service.dart';
-import 'package:photo_app/models/photo_format.dart';
-import 'package:photo_app/receipt_screen.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
-import 'package:photo_app/widgets/music_wave_loader.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 

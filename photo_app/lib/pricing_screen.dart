@@ -1,10 +1,11 @@
 import 'dart:ui';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/models/photo_format.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:photo_app/api_service.dart';
-import 'package:photo_app/models/photo_format.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
+
 
 class PricingScreen extends StatefulWidget {
   const PricingScreen({super.key});

@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/home_screen.dart';
+import 'package:Picon/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:photo_app/api_service.dart'; // Import ApiService
-import 'package:photo_app/home_screen.dart'; // Import HomeScreen
-import 'package:photo_app/login_screen.dart'; // Import LoginScreen
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

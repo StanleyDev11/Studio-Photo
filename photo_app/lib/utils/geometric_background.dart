@@ -1,6 +1,6 @@
 import 'dart:math';
+import 'package:Picon/utils/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/utils/colors.dart';
 
 class GeometricBackground extends StatelessWidget {
   const GeometricBackground({super.key});

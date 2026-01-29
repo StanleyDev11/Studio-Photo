@@ -1,11 +1,12 @@
+import 'package:Picon/api_service.dart';
+import 'package:Picon/home_screen.dart';
+import 'package:Picon/login_screen.dart';
+import 'package:Picon/signup_screen.dart';
+import 'package:Picon/splash_screen.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/police.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/home_screen.dart';
-import 'package:photo_app/login_screen.dart';
-import 'package:photo_app/signup_screen.dart';
-import 'package:photo_app/splash_screen.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/api_service.dart'; // Import ApiService
-import 'package:photo_app/utils/police.dart'; // New import for Poppins font
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Required for SharedPreferences

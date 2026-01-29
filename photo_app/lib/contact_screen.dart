@@ -1,12 +1,12 @@
 import 'dart:ui';
 
+import 'package:Picon/api_service.dart';
+import 'package:Picon/models/contact_info.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:photo_app/api_service.dart'; // Import ApiService
-import 'package:photo_app/models/contact_info.dart';
 
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});

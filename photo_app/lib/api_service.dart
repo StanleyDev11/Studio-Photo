@@ -1,10 +1,10 @@
 import 'dart:convert';
+import 'package:Picon/models/booking.dart';
+import 'package:Picon/models/contact_info.dart';
+import 'package:Picon/models/featured_content.dart';
+import 'package:Picon/models/photo_format.dart';
+import 'package:Picon/models/promotion.dart';
 import 'package:http/http.dart' as http;
-import 'package:photo_app/models/contact_info.dart';
-import 'package:photo_app/models/promotion.dart';
-import 'package:photo_app/models/featured_content.dart';
-import 'package:photo_app/models/booking.dart';
-import 'package:photo_app/models/photo_format.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 
@@ -213,7 +213,7 @@ class ApiService {
   }
 
   static Future<List<Booking>> fetchUserBookings() async {
-    final url = '$baseUrl/bookings';
+    const url = '$baseUrl/bookings';
     final response = await _safeGet(url);
     final List<dynamic> responseData = _handleApiResponse(response);
     return responseData.map((json) => Booking.fromJson(json)).toList();
