@@ -92,30 +92,33 @@ public class AuthenticationService {
                 .or(() -> userRepository.findByPhone(identifier))
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'identifiant : " + identifier));
 
-        // IMPORTANT: C'est une comparaison simple. Pour la production, le PIN devrait être hashé.
-        if (!pin.equals(user.getPin())) {
+        // Use password encoder to check PIN for better security
+        if (!passwordEncoder.matches(pin, user.getPin())) {
             throw new RuntimeException("PIN incorrect.");
         }
 
-        // Générer un token de réinitialisation avec une expiration courte (ex: 15 minutes)
-        // Note: le JwtService doit être capable de gérer des expirations différentes.
-        // On pourrait ajouter une méthode à JwtService ou passer la durée d'expiration.
-        // Pour l'instant, on utilise une méthode hypothétique generatePasswordResetToken.
-        // Il faudra l'ajouter au JwtService.
         Map<String, Object> extraClaims = new HashMap<>();
-        extraClaims.put("type", "password-reset"); // Pour différencier d'un token d'auth
-        return jwtService.generateToken(extraClaims, user); // Utilise l'expiration par défaut pour l'instant
+        extraClaims.put("type", "password-reset"); 
+
+        // Generate a token with a 15-minute expiration
+        return jwtService.generateToken(extraClaims, user, 1000 * 60 * 15);
     }
 
     public void resetPassword(String token, String newPassword) {
-        String username = jwtService.extractUsername(token);
-        Claims claims = jwtService.extractAllClaims(token); // Il faut une méthode pour extraire tous les claims
+        final String username;
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (Exception e) {
+            throw new RuntimeException("Jeton de réinitialisation invalide ou expiré.");
+        }
 
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'email : " + username));
+        
+        final Claims claims = jwtService.extractAllClaims(token);
+        final String tokenType = claims.get("type", String.class);
 
-        // Valider le token (expiration, signature et type)
-        if (!jwtService.isTokenValid(token, user) || !"password-reset".equals(claims.get("type"))) {
+        if (!"password-reset".equals(tokenType) || !jwtService.isTokenValid(token, user)) {
             throw new RuntimeException("Jeton de réinitialisation invalide ou expiré.");
         }
 
