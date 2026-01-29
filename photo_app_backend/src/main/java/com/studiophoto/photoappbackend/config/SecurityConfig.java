@@ -29,7 +29,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                                  .authorizeHttpRequests(auth -> auth
                                         // Public access for static resources
-                                        .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**").permitAll()
+                                        .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
                                         // Public access for new public endpoints
                                         .requestMatchers("/api/public/**", "/api/promotions/**").permitAll()
                                         // Public access for authentication and admin login page

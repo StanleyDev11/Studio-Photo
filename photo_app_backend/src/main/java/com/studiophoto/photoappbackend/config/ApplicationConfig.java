@@ -63,6 +63,7 @@ public class ApplicationConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addResourceHandlers(ResourceHandlerRegistry registry) {
+                // Handler pour les images uploadées
                 registry.addResourceHandler("/uploads/**")
                         .addResourceLocations("file:" + storageProperties.getLocation() + "/");
             }
