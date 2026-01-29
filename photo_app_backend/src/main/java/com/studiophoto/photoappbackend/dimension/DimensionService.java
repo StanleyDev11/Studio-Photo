@@ -7,6 +7,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class DimensionService {
@@ -17,6 +20,24 @@ public class DimensionService {
         return dimensionRepository.findAll().stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
+    }
+
+    // --- Méthodes pour l'administration ---
+
+    public List<Dimension> findAll() {
+        return dimensionRepository.findAll();
+    }
+
+    public Optional<Dimension> findById(Long id) {
+        return dimensionRepository.findById(id);
+    }
+
+    public Dimension save(Dimension dimension) {
+        return dimensionRepository.save(dimension);
+    }
+
+    public void deleteById(Long id) {
+        dimensionRepository.deleteById(id);
     }
 
     private DimensionDto mapToDto(Dimension dimension) {
