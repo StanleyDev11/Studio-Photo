@@ -3,6 +3,7 @@ import 'package:Picon/models/booking.dart';
 import 'package:Picon/models/contact_info.dart';
 import 'package:Picon/models/featured_content.dart';
 import 'package:Picon/models/photo_format.dart';
+import 'package:Picon/models/order.dart';
 import 'package:Picon/models/promotion.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -252,5 +253,17 @@ class ApiService {
     _handleApiResponse(response); // Expects no content on success
   }
 
-  
+  static Future<Order> createOrder(Map<String, dynamic> orderDetails) async {
+    const url = '$baseUrl/orders';
+    final response = await _safePost(url, orderDetails);
+    return Order.fromJson(_handleApiResponse(response));
+  }
+
+  static Future<List<Order>> fetchMyOrders() async {
+    const url = '$baseUrl/orders/my-orders';
+    final response = await _safeGet(url);
+    final List<dynamic> responseData = _handleApiResponse(response);
+    return responseData.map((json) => Order.fromJson(json)).toList();
+  }
 }
+

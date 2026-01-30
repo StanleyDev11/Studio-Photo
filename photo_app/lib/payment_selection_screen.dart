@@ -106,10 +106,10 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     return buffer.toString();
   }
 
-  Future<void> _launchWhatsApp() async {
+  Future<void> _launchWhatsApp(String orderId) async {
     // TODO: Replace with the provider's real phone number
     const prestatairePhoneNumber = "+22892595661"; 
-    final message = _formatWhatsAppMessage(const Uuid().v4()); // Use a generated order ID for WhatsApp
+    final message = _formatWhatsAppMessage(orderId);
     
     // Use the universal wa.me link which is more reliable
     final universalUrl = Uri.parse("https://wa.me/$prestatairePhoneNumber?text=${Uri.encodeComponent(message)}");
@@ -134,35 +134,57 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     if (_selectedMethodName == null || _prices == null) return;
 
     _showLoadingDialog();
-    
-    // Generate a unique Order ID
-    final String orderId = const Uuid().v4(); // Generate a UUID for the order ID
 
-    // 1. Simulate payment processing
-    await Future.delayed(const Duration(seconds: 3));
+    try {
+      // 1. Format the order payload for the API
+      final List<Map<String, dynamic>> items = widget.orderDetails.entries.map((entry) {
+        final details = entry.value;
+        return {
+          'imageUrl': entry.key,
+          'size': details['size'],
+          'quantity': details['quantity'],
+        };
+      }).toList();
 
-    // 2. Pop loader
-    if(mounted) Navigator.of(context).pop();
+      final orderPayload = {
+        'isExpress': widget.orderDetails.values.any((d) => d['isExpress'] ?? false), // A revoir, l'info isExpress vient de l'ecran précedent
+        'paymentMethod': _selectedMethodName!,
+        'items': items,
+      };
+      
+      // 2. Call the API to create the order
+      final createdOrder = await ApiService.createOrder(orderPayload);
+      final String orderId = createdOrder.id.toString();
 
-    // 3. Launch WhatsApp with order details
-    await _launchWhatsApp();
+      // 3. Pop loader
+      if(mounted) Navigator.of(context).pop();
 
-    // 4. Navigate to final receipt screen
-    if(mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ReceiptScreen(
-            orderDetails: widget.orderDetails,
-            paymentMethod: _selectedMethodName!,
-            orderId: orderId,
-            prices: _prices!,
-            // Pass real user name and phone if available
-            userName: "John Doe", 
-            userPhone: "+22890000000",
+      // 4. Launch WhatsApp with the real order ID
+      await _launchWhatsApp(orderId);
+
+      // 5. Navigate to final receipt screen
+      if(mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReceiptScreen(
+              orderDetails: widget.orderDetails,
+              paymentMethod: _selectedMethodName!,
+              orderId: orderId,
+              prices: _prices!,
+              userName: ApiService.userName ?? "John Doe", 
+              userPhone: ApiService.userEmail ?? "+22890000000",
+            ),
           ),
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      if(mounted) {
+        Navigator.of(context).pop(); // Pop loader on error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la création de la commande: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
