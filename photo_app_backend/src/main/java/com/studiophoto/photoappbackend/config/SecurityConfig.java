@@ -58,7 +58,7 @@ public class SecurityConfig {
                                         .logoutSuccessUrl("/admin/login?logout")
                                         .permitAll()
                                 )
-                                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // Change to IF_REQUIRED for session-based login
+                                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Change to STATELESS for API
                                 .authenticationProvider(authenticationProvider)
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
                 

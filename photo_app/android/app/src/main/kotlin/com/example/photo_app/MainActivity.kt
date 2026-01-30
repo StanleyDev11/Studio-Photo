@@ -1,4 +1,4 @@
-package com.example.photo_app
+package com.example.picon
 
 import io.flutter.embedding.android.FlutterActivity
 
