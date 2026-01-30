@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:Picon/api_service.dart';
+import 'package:Picon/models/contact_info.dart';
 import 'package:Picon/receipt_screen.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
@@ -23,6 +24,9 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
   String? _selectedMethodName;
   Map<String, double>? _prices;
   bool _isLoadingPrices = true;
+  String _prestatairePhoneNumber = ""; // Initialisé à vide, sera rempli par l'API ou utilisera un fallback.
+  bool _isLoadingContactInfo = true;
+
 
   final List<Map<String, String>> _paymentMethods = [
     {'name': 'MasterCard / VISA', 'logo': 'assets/logos/mastercard.png', 'description': 'Payez en toute sécurité avec votre carte bancaire.'},
@@ -34,6 +38,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
   void initState() {
     super.initState();
     _fetchPrices();
+    _fetchContactInfo();
   }
 
   Future<void> _fetchPrices() async {
@@ -55,6 +60,27 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
       }
     }
   }
+
+  Future<void> _fetchContactInfo() async {
+    try {
+      final contactInfo = await ApiService.fetchContactInfo();
+      if (mounted) {
+        setState(() {
+          _prestatairePhoneNumber = contactInfo.phoneNumber;
+          _isLoadingContactInfo = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Erreur de chargement des infos contact: $e")));
+      setState(() {
+        _prestatairePhoneNumber = "+22892595661"; // Fallback en cas d'erreur
+        _isLoadingContactInfo = false;
+      });
+    }
+  }
+}
 
   void _onMethodSelected(String methodName) {
     setState(() {
@@ -80,16 +106,17 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
   }
 
   String _formatWhatsAppMessage(String orderId) {
-    // TODO: Fetch real user info (name, phone number) instead of placeholders
-    const userName = "John Doe"; 
-    const userPhone = "+22890000000";
+    // Utilisez les informations de l'utilisateur connecté via ApiService
+    final String userName = ApiService.userName != null && ApiService.userLastName != null
+        ? "${ApiService.userName!} ${ApiService.userLastName!}" : "Client Inconnu";
+    final String userPhone = ApiService.userEmail ?? "Non disponible"; // Utiliser l'email comme fallback si le numéro de téléphone n'est pas disponible dans ApiService
 
     final buffer = StringBuffer();
     buffer.writeln("🎉 *Nouvelle Commande Reçue* 🎉");
     buffer.writeln("---------------------------------");
     buffer.writeln("*Commande ID:* $orderId");
     buffer.writeln("*Client:* $userName");
-    buffer.writeln("*Contact:* $userPhone");
+    buffer.writeln("*Contact Client:* $userPhone"); // Préciser que c'est le contact du client
     buffer.writeln("*Mode de paiement:* $_selectedMethodName");
     buffer.writeln("---------------------------------");
     buffer.writeln("*Détails de la commande:*");
@@ -107,17 +134,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
   }
 
   Future<void> _launchWhatsApp(String orderId) async {
-    // TODO: Replace with the provider's real phone number
-    const prestatairePhoneNumber = "+22892595661"; 
-    final message = _formatWhatsAppMessage(orderId);
+    final String message = _formatWhatsAppMessage(orderId);
     
-    // Use the universal wa.me link which is more reliable
-    final universalUrl = Uri.parse("https://wa.me/$prestatairePhoneNumber?text=${Uri.encodeComponent(message)}");
+    final universalUrl = Uri.parse("https://wa.me/$_prestatairePhoneNumber?text=${Uri.encodeComponent(message)}");
 
     try {
-      // Attempt to launch the URL. 
-      // The `mode` LaunchMode.externalApplication is important to prefer opening the app
-      // instead of an in-app browser.
       if (!await launchUrl(universalUrl, mode: LaunchMode.externalApplication)) {
         throw 'Impossible de lancer WhatsApp.';
       }
@@ -206,7 +227,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
       ),
-      body: _isLoadingPrices
+      body: (_isLoadingPrices || _isLoadingContactInfo)
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
