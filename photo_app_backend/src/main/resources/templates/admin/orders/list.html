@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion des Dimensions - Studio Photo Admin</title>
+    <title>Gestion des Commandes - Studio Photo Admin</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
@@ -44,8 +44,8 @@
         .page-header h1 { font-size: 28px; font-weight: 700; margin: 0; }
         .page-header h1 i { color: var(--primary-color); margin-right: 15px; }
         .dataTables_wrapper { background: white; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow); }
-        #dimensionsTable thead th { background-color: #f8f9fa; border-bottom: 2px solid #dee2e6; font-weight: 600; padding: 15px 20px; }
-        #dimensionsTable tbody td { padding: 15px 20px; vertical-align: middle; }
+        #ordersTable thead th { background-color: #f8f9fa; border-bottom: 2px solid #dee2e6; font-weight: 600; padding: 15px 20px; }
+        #ordersTable tbody td { padding: 15px 20px; vertical-align: middle; }
         .table-actions { display: flex; gap: 8px; }
     </style>
 </head>
@@ -63,11 +63,11 @@
         <li><a th:href="@{/admin/dashboard}"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
         <li><a th:href="@{/admin/users}"><i class="fas fa-user-friends"></i><span>Utilisateurs</span></a></li>
         <li><a th:href="@{/admin/promotions}"><i class="fas fa-bullhorn"></i><span>Promotions</span></a></li>
-        <li><a th:href="@{/admin/dimensions}" class="active"><i class="fas fa-ruler-combined"></i><span>Dimensions</span></a></li>
+        <li><a th:href="@{/admin/dimensions}"><i class="fas fa-ruler-combined"></i><span>Dimensions</span></a></li>
         <li><a th:href="@{/admin/featured-content}"><i class="fas fa-star"></i><span>Contenu Mis en Avant</span></a></li>
         <li><a th:href="@{/admin/bookings}"><i class="fas fa-calendar-check"></i><span>Réservations</span></a></li>
         <li><a th:href="@{/admin/contact-info}"><i class="fas fa-address-book"></i><span>Infos Contact</span></a></li>
-        <li><a th:href="@{/admin/orders}"><i class="fas fa-shopping-basket"></i><span>Commandes</span></a></li>
+        <li><a th:href="@{/admin/orders}" class="active"><i class="fas fa-shopping-basket"></i><span>Commandes</span></a></li>
     </ul>
 </nav>
 
@@ -88,51 +88,40 @@
     <div class="content-wrapper">
         <!-- Page Header -->
         <div class="page-header">
-            <h1><i class="fas fa-ruler-combined"></i>Gestion des Dimensions</h1>
-            <a th:href="@{/admin/dimensions/add}" class="btn btn-primary">
-                <i class="fas fa-plus-circle mr-2"></i>Nouvelle Dimension
-            </a>
+            <h1><i class="fas fa-shopping-basket"></i>Gestion des Commandes</h1>
+            <!-- Pas de bouton "Ajouter" pour les commandes, elles sont créées par les utilisateurs -->
         </div>
 
-        <!-- Dimensions Table -->
+        <!-- Orders Table -->
         <div class="dataTables_wrapper">
-            <table id="dimensionsTable" class="table table-hover" style="width:100%">
+            <table id="ordersTable" class="table table-hover" style="width:100%">
                 <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Nom (ex: 9x13)</th>
-                    <th>Titre</th>
-                    <th>Image</th>
-                    <th>Prix</th>
-                    <th>Populaire</th>
+                    <th>Client</th>
+                    <th>Date</th>
+                    <th>Montant Total</th>
+                    <th>Statut</th>
+                    <th>Méthode Paiement</th>
+                    <th>Type Livraison</th>
                     <th>Actions</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="dimension : ${dimensions}">
-                    <td th:text="${dimension.id}">1</td>
-                    <td th:text="${dimension.name}">9x13 cm</td>
-                    <td th:text="${dimension.title}">Titre exemple</td>
-                    <td>
-                        <div th:if="${dimension.images != null and not #strings.isEmpty(dimension.images)}">
-                            <img th:src="${#strings.arraySplit(dimension.images, ',')[0]}" alt="Image dimension" style="max-width: 60px; height: auto; border-radius: 5px;"
-                                 onerror="this.style.display='none'"/>
-                        </div>
-                    </td>
-                    <td th:text="${#numbers.formatDecimal(dimension.price, 1, 'POINT', 2, 'COMMA')} + ' FCFA'">150.00 FCFA</td>
-                    <td>
-                        <span th:if="${dimension.isPopular}" class="badge badge-success">Oui</span>
-                        <span th:unless="${dimension.isPopular}" class="badge badge-secondary">Non</span>
-                    </td>
+                <tr th:each="order : ${orders}">
+                    <td th:text="${order.id}">1</td>
+                    <td th:text="${order.user != null ? order.user.email : 'N/A'}">client@example.com</td>
+                    <td th:text="${#temporals.format(order.createdAt, 'dd-MM-yyyy HH:mm')}">2026-01-29 10:00</td>
+                    <td th:text="${#numbers.formatDecimal(order.totalAmount, 1, 'POINT', 2, 'COMMA')} + ' FCFA'">1500.00 FCFA</td>
+                    <td><span th:text="${order.status.displayName}">PENDING</span></td>
+                    <td th:text="${order.paymentMethod}">Mobile Money</td>
+                    <td th:text="${order.deliveryType}">Standard</td>
                     <td>
                         <div class="table-actions">
-                            <a th:href="@{/admin/dimensions/edit/{id}(id=${dimension.id})}" class="btn btn-sm btn-outline-info" title="Modifier">
-                                <i class="fas fa-edit"></i>
+                            <a th:href="@{/admin/orders/{id}(id=${order.id})}" class="btn btn-sm btn-outline-info" title="Voir Détails">
+                                <i class="fas fa-eye"></i>
                             </a>
-                            <a th:href="@{/admin/dimensions/delete/{id}(id=${dimension.id})}" class="btn btn-sm btn-outline-danger delete-btn" title="Supprimer"
-                               th:data-id="${dimension.id}" th:data-name="${dimension.name}">
-                                <i class="fas fa-trash"></i>
-                            </a>
+                            <!-- TODO: Ajouter des boutons pour changer le statut ou supprimer si nécessaire -->
                         </div>
                     </td>
                 </tr>
@@ -149,7 +138,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script th:inline="javascript">
     $(document).ready(function() {
-        $('#dimensionsTable').DataTable({ "language": { "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json" } });
+        $('#ordersTable').DataTable({ "language": { "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json" } });
 
         // Flash messages
         var successMessage = /*[[${successMessage}]]*/ null;
@@ -160,27 +149,6 @@
         if (errorMessage) {
             Swal.fire('Erreur!', errorMessage, 'error');
         }
-
-        // Delete confirmation
-        $('#dimensionsTable').on('click', '.delete-btn', function(e) {
-            e.preventDefault();
-            const dimensionId = $(this).data('id');
-            const dimensionName = $(this).data('name');
-            Swal.fire({
-                title: 'Êtes-vous sûr ?',
-                text: "Voulez-vous vraiment supprimer la dimension '" + dimensionName + "' ? Cette action est irréversible.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Oui, supprimer !',
-                cancelButtonText: 'Annuler'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = $(this).attr('href');
-                }
-            });
-        });
     });
 </script>
 
