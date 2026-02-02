@@ -78,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _totalPrice = 0.0;
   Map<String, double>? _prices;
   bool _isLoadingPrices = true;
+  bool _isUploading = false;
   // --- End of new state variables ---
 
   // --- Mock Data for History ---
@@ -216,17 +217,28 @@ class _HomeScreenState extends State<HomeScreen> {
   void _quickPhotoOrder() async {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultiImage(imageQuality: 50);
+
     if (pickedFiles.isNotEmpty) {
       setState(() {
-        for (var file in pickedFiles) {
-          // In a real app, you would upload the file and get a URL.
-          // For this mock, we are using local paths, which might not render with Image.network.
-          // Let's assume the selection is for demonstration and the cart handles paths.
-          _selectedImages.add(file.path);
-        }
-        _calculateTotal();
+        _isUploading = true;
       });
-      _onTabTapped(2); // Switch to the Commands tab
+
+      try {
+        final uploadedUrls = await ApiService.uploadPhotos(pickedFiles);
+        setState(() {
+          _selectedImages.addAll(uploadedUrls);
+          _calculateTotal();
+        });
+        _onTabTapped(2); // Switch to the Commands tab
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de l\'envoi: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      } finally {
+        setState(() {
+          _isUploading = false;
+        });
+      }
     }
   }
 
@@ -248,6 +260,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     kToolbarHeight), // Adjusted top padding
             child: _buildBody(),
           ),
+          if (_isUploading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text('Envoi des photos...', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: _buildFloatingBottomNavBar(),

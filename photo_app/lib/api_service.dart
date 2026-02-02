@@ -265,5 +265,49 @@ class ApiService {
     final List<dynamic> responseData = _handleApiResponse(response);
     return responseData.map((json) => Order.fromJson(json)).toList();
   }
+
+  static Future<List<String>> uploadPhotos(List<dynamic> imageFiles) async {
+    const url = '$baseUrl/orders/upload';
+    final request = http.MultipartRequest('POST', Uri.parse(url));
+
+    // Add headers, especially the authorization token
+    request.headers.addAll({
+      'Authorization': 'Bearer $_authToken',
+    });
+
+    // Add userId to the request fields
+    if (_userId != null) {
+      request.fields['userId'] = _userId.toString();
+    } else {
+      throw Exception('User not authenticated. Cannot upload photos.');
+    }
+
+    // Add files to the request
+    for (var imageFile in imageFiles) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'files', // This key should match the backend's @RequestParam name
+        imageFile.path,
+      ));
+    }
+
+    try {
+      final streamedResponse = await request.send().timeout(const Duration(minutes: 2));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final responseData = jsonDecode(response.body);
+        // Assuming the backend returns a JSON object with a key 'urls' which is a list of strings
+        if (responseData is Map && responseData.containsKey('urls')) {
+          return List<String>.from(responseData['urls']);
+        } else {
+          throw Exception('Invalid response format from server.');
+        }
+      } else {
+        throw Exception('Failed to upload photos. Server responded with status code ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error uploading photos: $e');
+    }
+  }
 }
 

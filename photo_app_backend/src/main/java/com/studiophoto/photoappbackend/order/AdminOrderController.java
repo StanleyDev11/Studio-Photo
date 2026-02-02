@@ -4,7 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin/orders")
@@ -15,9 +19,19 @@ public class AdminOrderController {
 
     @GetMapping
     public String listOrders(Model model) {
-        model.addAttribute("orders", orderService.findAll()); // Assurez-vous que orderService.findAll() existe
-        return "admin/orders/list"; // Vue à créer : templates/admin/orders/list.html
+        model.addAttribute("orders", orderService.findAll());
+        return "admin/orders/list";
     }
 
-    // TODO: Ajouter des méthodes pour afficher les détails, modifier le statut, etc.
+    @GetMapping("/{id}")
+    public String viewOrderDetails(@PathVariable("id") Long id, Model model, RedirectAttributes redirectAttributes) {
+        Optional<Order> orderOptional = orderService.findById(id); 
+        if (orderOptional.isPresent()) {
+            model.addAttribute("order", orderOptional.get());
+            return "admin/orders/detail"; 
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage", "Commande non trouvée.");
+            return "redirect:/admin/orders";
+        }
+    }
 }
