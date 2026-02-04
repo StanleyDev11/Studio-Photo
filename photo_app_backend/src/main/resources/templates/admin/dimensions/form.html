@@ -43,24 +43,7 @@
 <body>
 
 <!-- Sidebar -->
-<nav class="sidebar">
-    <div class="sidebar-header">
-        <a href="/admin/dashboard" class="logo">
-            <div class="logo-icon"><img th:src="@{/images/logo.jpeg}" alt="Logo" style="width: 100%; height: auto; border-radius: 10px;"></div>
-            <div class="logo-text">Picon Studio</div>
-        </a>
-    </div>
-    <ul class="nav-links">
-        <li><a th:href="@{/admin/dashboard}"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
-        <li><a th:href="@{/admin/users}"><i class="fas fa-user-friends"></i><span>Utilisateurs</span></a></li>
-        <li><a th:href="@{/admin/promotions}"><i class="fas fa-bullhorn"></i><span>Promotions</span></a></li>
-        <li><a th:href="@{/admin/dimensions}" class="active"><i class="fas fa-ruler-combined"></i><span>Dimensions</span></a></li>
-        <li><a th:href="@{/admin/featured-content}"><i class="fas fa-star"></i><span>Contenu Mis en Avant</span></a></li>
-        <li><a th:href="@{/admin/bookings}"><i class="fas fa-calendar-check"></i><span>Réservations</span></a></li>
-        <li><a th:href="@{/admin/orders}"><i class="fas fa-shopping-basket"></i><span>Commandes</span></a></li>
-        <li><a th:href="@{/admin/contact-info}"><i class="fas fa-address-book"></i><span>Infos Contact</span></a></li>
-    </ul>
-</nav>
+<nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
 
 <!-- Main Content -->
 <div class="main-content">
