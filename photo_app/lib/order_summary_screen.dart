@@ -67,7 +67,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     int photoCount = _editableOrderDetails.keys.length;
 
     _editableOrderDetails.forEach((key, details) {
-      final price = _prices![details['size']] ?? 0;
+      final price = _prices?[details['size']] ?? 0;
       newSubtotal += price * (details['quantity'] as int);
     });
 
@@ -138,7 +138,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                                         style: const TextStyle(
                                             fontWeight: FontWeight.bold)),
                                     Text(
-                                        'Prix unitaire: ${_prices![details['size']]} FCFA'),
+                                        'Prix unitaire: ${_prices?[details['size']] ?? 0} FCFA'),
                                   ],
                                 ),
                               ),

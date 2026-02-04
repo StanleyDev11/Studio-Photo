@@ -12,7 +12,7 @@ class PhotoFormat with _$PhotoFormat {
     required List<String> images,
     required String title,
     required String description,
-    required bool isPopular,
+    @Default(false) bool isPopular,
   }) = _PhotoFormat;
 
   factory PhotoFormat.fromJson(Map<String, Object?> json) => _$PhotoFormatFromJson(json);

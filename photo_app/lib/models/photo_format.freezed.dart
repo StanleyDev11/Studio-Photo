@@ -178,7 +178,7 @@ class _$PhotoFormatImpl with DiagnosticableTreeMixin implements _PhotoFormat {
       required final List<String> images,
       required this.title,
       required this.description,
-      required this.isPopular})
+      this.isPopular = false})
       : _images = images;
 
   factory _$PhotoFormatImpl.fromJson(Map<String, dynamic> json) =>
@@ -201,6 +201,7 @@ class _$PhotoFormatImpl with DiagnosticableTreeMixin implements _PhotoFormat {
   @override
   final String description;
   @override
+  @JsonKey()
   final bool isPopular;
 
   @override
@@ -271,7 +272,7 @@ abstract class _PhotoFormat implements PhotoFormat {
       required final List<String> images,
       required final String title,
       required final String description,
-      required final bool isPopular}) = _$PhotoFormatImpl;
+      final bool isPopular}) = _$PhotoFormatImpl;
 
   factory _PhotoFormat.fromJson(Map<String, dynamic> json) =
       _$PhotoFormatImpl.fromJson;

@@ -617,7 +617,7 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final imageUrl in _selectedImages) {
       final details = _photoDetails[imageUrl];
       if (details != null) {
-        final price = _prices![details['size']] ?? 0;
+        final price = _prices?[details['size']] ?? 0;
         total += price * (details['quantity'] as int);
       }
     }
