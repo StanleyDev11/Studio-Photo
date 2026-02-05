@@ -15,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestTemplate; // Added import
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -27,7 +28,8 @@ public class ApplicationConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> repository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                .or(() -> repository.findByPhone(username))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with identifier: " + username));
     }
 
     @Bean
@@ -48,6 +50,11 @@ public class ApplicationConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
     // NEW: Initialize StorageService on startup
     @Bean
     CommandLineRunner init(StorageService storageService) {
@@ -62,6 +69,7 @@ public class ApplicationConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addResourceHandlers(ResourceHandlerRegistry registry) {
+                // Handler pour les images uploadées
                 registry.addResourceHandler("/uploads/**")
                         .addResourceLocations("file:" + storageProperties.getLocation() + "/");
             }

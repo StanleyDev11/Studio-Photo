@@ -1,0 +1,6 @@
+featured-content/delete/4:1  Failed to load resource: the server responded with a status of 405 ()
+
+
+
+
+J'arrive pas supprimer les contenu de la page  contenu mise en avant  apres avoir insrer le sweet alerte et aussi le swet alerte n'est pas sur l'ajout et la modification

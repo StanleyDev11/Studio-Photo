@@ -2,30 +2,29 @@
 
 import 'dart:async';
 import 'dart:ui';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/booking_screen.dart';
+import 'package:Picon/contact_screen.dart';
+import 'package:Picon/history_screen.dart';
+import 'package:Picon/no_connection_screen.dart';
+import 'package:Picon/notifications_screen.dart';
+import 'package:Picon/portfolio_screen.dart';
+import 'package:Picon/pricing_screen.dart';
+import 'package:Picon/profile_page.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/connectivity_service.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'package:photo_app/no_connection_screen.dart';
-import 'package:photo_app/notifications_screen.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/connectivity_service.dart';
-import 'package:photo_app/api_service.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:photo_app/portfolio_screen.dart';
-import 'package:photo_app/pricing_screen.dart';
-import 'package:photo_app/contact_screen.dart';
-import 'package:photo_app/booking_screen.dart';
-import 'package:photo_app/history_screen.dart';
-import 'package:photo_app/utils/geometric_background.dart';
-import 'package:photo_app/pricing_screen.dart';
-import 'package:photo_app/profile_page.dart';
+
 import 'login_screen.dart';
 import 'order_summary_screen.dart';
-import 'package:photo_app/utils/lines_background.dart';
 
 // --- Model Class for Mock Data ---
 class RecentRequest {
@@ -39,11 +38,15 @@ class RecentRequest {
 
 class HomeScreen extends StatefulWidget {
   final String userName;
+  final String userLastName;
+  final String userEmail;
   final int userId;
 
   const HomeScreen({
     super.key,
     required this.userName,
+    required this.userLastName,
+    required this.userEmail,
     required this.userId,
   });
 
@@ -66,16 +69,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- Updatable profile info ---
   late String _currentUserName;
+  late String _currentUserLastName;
   late String _currentUserEmail;
 
   // --- New state variables for cart ---
   CartMode _selectedMode = CartMode.detail;
   bool _isExpress = false;
   double _totalPrice = 0.0;
-  final Map<String, double> _prices = {
-    for (var priceInfo in PricingScreen.fallbackPrintPrices)
-      priceInfo['dimension']: (priceInfo['price'] as num).toDouble()
-  };
+  Map<String, double>? _prices;
+  bool _isLoadingPrices = true;
+  bool _isUploading = false;
   // --- End of new state variables ---
 
   // --- Mock Data for History ---
@@ -107,7 +110,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _currentUserName = widget.userName;
-    _currentUserEmail = 'user-test@email.com'; // Initialize placeholder
+    _currentUserLastName = widget.userLastName;
+    _currentUserEmail = widget.userEmail;
     _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
     _connectivitySubscription =
         _connectivityService.connectivityStream.listen((result) {
@@ -127,7 +131,30 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     });
-    _calculateTotal();
+    _fetchPrices();
+  }
+
+  Future<void> _fetchPrices() async {
+    try {
+      final fetchedDimensions = await ApiService.fetchDimensions();
+      if (mounted) {
+        setState(() {
+          _prices = {
+            for (var dim in fetchedDimensions) dim.dimension: dim.price
+          };
+          _calculateTotal();
+          _isLoadingPrices = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Erreur de chargement des prix: $e")));
+        setState(() {
+          _isLoadingPrices = false;
+        });
+      }
+    }
   }
 
   @override
@@ -144,6 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
         MaterialPageRoute(
           builder: (context) => ProfilePage(
             userName: _currentUserName,
+            userLastName: _currentUserLastName,
             userEmail: _currentUserEmail,
             avatar: _avatar,
             onAvatarChanged: (newAvatar) {
@@ -151,9 +179,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 _avatar = newAvatar;
               });
             },
-            onProfileUpdated: (newName, newEmail) {
+            onProfileUpdated: (newName, newLastName, newEmail) {
               setState(() {
                 _currentUserName = newName;
+                _currentUserLastName = newLastName;
                 _currentUserEmail = newEmail;
               });
             },
@@ -188,34 +217,63 @@ class _HomeScreenState extends State<HomeScreen> {
   void _quickPhotoOrder() async {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultiImage(imageQuality: 50);
+
     if (pickedFiles.isNotEmpty) {
       setState(() {
-        for (var file in pickedFiles) {
-          // In a real app, you would upload the file and get a URL.
-          // For this mock, we are using local paths, which might not render with Image.network.
-          // Let's assume the selection is for demonstration and the cart handles paths.
-          _selectedImages.add(file.path);
-        }
-        _calculateTotal();
+        _isUploading = true;
       });
-      _onTabTapped(2); // Switch to the Commands tab
+
+      try {
+        final uploadedUrls = await ApiService.uploadPhotos(pickedFiles);
+        setState(() {
+          _selectedImages.addAll(uploadedUrls);
+          _calculateTotal();
+        });
+        _onTabTapped(2); // Switch to the Commands tab
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de l\'envoi: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      } finally {
+        setState(() {
+          _isUploading = false;
+        });
+      }
     }
   }
 
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
       body: Stack(
         children: [
-          // const AnimatedBackground(),
-          _buildFixedTopBar(context),
+          const GeometricBackground(), // Using GeometricBackground
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _buildFixedTopBar(context),
+          ),
           Padding(
             padding: EdgeInsets.only(
                 top: MediaQuery.of(context).padding.top +
-                    60), // Adjusted top padding
+                    kToolbarHeight), // Adjusted top padding
             child: _buildBody(),
           ),
+          if (_isUploading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text('Envoi des photos...', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: _buildFloatingBottomNavBar(),
@@ -238,116 +296,110 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFixedTopBar(BuildContext context) {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(6)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Container(
-            color: AppColors.primary,
-            padding: EdgeInsets.fromLTRB(
-                10.0, MediaQuery.of(context).padding.top + 2, 10.0, 2.0),
-            child: Stack(
-              alignment: Alignment.center, // Centrer le contenu principal
-              children: [
-                Column(
-                  mainAxisSize:
-                      MainAxisSize.min, // Prend juste l'espace nécessaire
-                  children: [
-                    Image.asset(
-                      'assets/images/pro.png',
-                      height: 35, // Taille réduite pour le logo
-                      fit: BoxFit.contain,
-                    ),
-                    const SizedBox(
-                        height: 4), // Petit espace entre le logo et le texte
-                    Text(
-                      'Ravi de vous revoir, $_currentUserName',
-                      textAlign: TextAlign.center, // Centrer le texte
-                      style: const TextStyle(
-                        color: Colors.white,
-                        // fontWeight: FontWeight.bold,
-                        fontSize: 12,
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(20)), // Rounded bottom corners
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Increased blur
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.primary
+                .withOpacity(0.4), // Slightly transparent primary color
+            border: Border.all(
+                color: Colors.white.withOpacity(0.2)), // Subtle border
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(20)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+              16.0,
+              MediaQuery.of(context).padding.top + 8,
+              16.0,
+              8.0), // Reduced vertical padding
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProfilePage(
+                        userName: _currentUserName,
+                        userLastName: _currentUserLastName,
+                        userEmail: _currentUserEmail,
+                        avatar: _avatar,
+                        onAvatarChanged: (newAvatar) {
+                          setState(() {
+                            _avatar = newAvatar;
+                          });
+                        },
+                        onProfileUpdated: (newName, newLastName, newEmail) {
+                          setState(() {
+                            _currentUserName = newName;
+                            _currentUserLastName = newLastName;
+                            _currentUserEmail = newEmail;
+                          });
+                        },
                       ),
                     ),
-                  ],
+                  );
+                },
+                icon: CircleAvatar(
+                  radius: 18,
+                  backgroundImage: _avatar != null
+                      ? FileImage(_avatar!) as ImageProvider
+                      : null,
+                  backgroundColor:
+                      _avatar == null ? AppColors.accent : Colors.transparent,
+                  child: _avatar == null
+                      ? Text(
+                          _currentUserName
+                              .trim()
+                              .split(' ')
+                              .where((s) => s.isNotEmpty)
+                              .map((s) => s[0])
+                              .take(2)
+                              .join()
+                              .toUpperCase(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        )
+                      : null,
                 ),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const NotificationsScreen()),
-                      );
-                    },
-                    icon: const Icon(Icons.notifications_none,
-                        color: Colors.white, size: 24),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/images/pro.png',
+                    height: 30, // Smaller logo
+                    fit: BoxFit.contain,
                   ),
-                ),
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProfilePage(
-                            userName: _currentUserName,
-                            userEmail: _currentUserEmail,
-                            avatar: _avatar,
-                            onAvatarChanged: (newAvatar) {
-                              setState(() {
-                                _avatar = newAvatar;
-                              });
-                            },
-                            onProfileUpdated: (newName, newEmail) {
-                              setState(() {
-                                _currentUserName = newName;
-                                _currentUserEmail = newEmail;
-                              });
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                    icon: CircleAvatar(
-                      radius: 18,
-                      backgroundImage: _avatar != null
-                          ? FileImage(_avatar!) as ImageProvider
-                          : null,
-                      backgroundColor: _avatar == null
-                          ? AppColors.accent
-                          : Colors.transparent,
-                      child: _avatar == null
-                          ? Text(
-                              _currentUserName
-                                  .trim()
-                                  .split(' ')
-                                  .where((s) => s.isNotEmpty)
-                                  .map((s) => s[0])
-                                  .take(2)
-                                  .join()
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14),
-                            )
-                          : null,
+                  const SizedBox(height: 2), // Reduced space
+                  Text(
+                    'Hey, $_currentUserLastName!', //$_currentUserName je peux ajouter ceci pour avoir nom et prenom
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11, // Smaller text
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const NotificationsScreen()),
+                  );
+                },
+                icon: const Icon(Icons.notifications_none,
+                    color: Colors.white, size: 22), // Smaller icon
+              ),
+            ],
           ),
         ),
       ),
@@ -466,6 +518,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCommandsTab() {
+    if (_isLoadingPrices) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Container(
       color: AppColors.background,
       padding:
@@ -526,8 +582,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       TextButton.icon(
                         onPressed: _clearCart,
-                        icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                        label: const Text('Vider le panier', style: TextStyle(color: AppColors.error)),
+                        icon: const Icon(Icons.delete_outline,
+                            color: AppColors.error),
+                        label: const Text('Vider le panier',
+                            style: TextStyle(color: AppColors.error)),
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
@@ -553,11 +611,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _calculateTotal() {
+    if (_prices == null) return;
+
     double total = 0;
     for (final imageUrl in _selectedImages) {
       final details = _photoDetails[imageUrl];
       if (details != null) {
-        final price = _prices[details['size']] ?? 0;
+        final price = _prices?[details['size']] ?? 0;
         total += price * (details['quantity'] as int);
       }
     }
@@ -581,7 +641,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _photoDetails[imageUrl] = {'size': '10x15 cm', 'quantity': 1};
         }
         final photoDetails = _photoDetails[imageUrl]!;
-        final price = _prices[photoDetails['size']] ?? 0;
+        final price = _prices![photoDetails['size']] ?? 0;
         final subtotal = price * (photoDetails['quantity'] as int);
 
         return Card(
@@ -650,7 +710,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const Text('Taille :'),
                         DropdownButton<String>(
                           value: photoDetails['size'],
-                          items: _prices.keys
+                          items: _prices!.keys
                               .map((size) => DropdownMenuItem(
                                   value: size, child: Text(size)))
                               .toList(),
@@ -731,11 +791,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(12), // Rounded borders
                   ),
                   contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   prefixIcon:
                       const Icon(Icons.straighten, size: 20), // Added icon
                 ),
-                items: _prices.keys
+                items: _prices!.keys
                     .map((size) =>
                         DropdownMenuItem(value: size, child: Text(size)))
                     .toList(),
@@ -901,131 +961,199 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopCard() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          6.0, 0, 6.0, 30.0), // Ajout de padding en bas pour le bouton
+      padding: const EdgeInsets.symmetric(
+          horizontal: 16.0, vertical: 8.0), // Consistent padding
       child: Card(
-        clipBehavior: Clip.none, // Permet au bouton de déborder
+        clipBehavior: Clip.antiAlias, // Ensures content respects card borders
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        elevation: 4,
-        child: Stack(
-          clipBehavior: Clip.none, // Permet au bouton de déborder
-          alignment: Alignment.center,
+        elevation: 8, // Slightly more prominent shadow
+        child: Column(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.primary, width: 2),
-              ),
-              child: ClipRRect(
-                // Added ClipRRect
-                borderRadius: BorderRadius.circular(
-                    16), // Match container's border radius
-                child: Image.asset(
-                  'assets/carousel/mxx.jpeg', //image dans le card d'accueil au homescreen
-                  fit: BoxFit.contain,
-                ),
+            AspectRatio(
+              aspectRatio: 16 / 9, // Common aspect ratio for images
+              child: Image.asset(
+                'assets/carousel/mxx.jpeg',
+                fit: BoxFit.cover, // Fill the space, crop if necessary
               ),
             ),
-            Positioned(
-              bottom: -25.0, // Descendu pour chevaucher la bordure
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.help_outline, size: 24),
-                label: const Text("Comment ça marche ?",
-                    style: TextStyle(fontSize: 16)),
-                onPressed: () => _showHowItWorksDialog(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.primary,
-                  shape: const StadiumBorder(),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  side: const BorderSide(color: AppColors.primary, width: 2),
-                ),
-              )
-                  .animate(
-                    onComplete: (controller) => controller.repeat(),
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                children: [
+                  // Text(
+                  //   'Immortalisez vos moments précieux en un clic !',
+                  //   style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  //     fontWeight: FontWeight.bold,
+                  //     color: AppColors.textPrimary,
+                  //   ),
+                  //   textAlign: TextAlign.center,
+                  // ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.help_outline, size: 24),
+                    label: const Text("Comment ça marche ?",
+                        style: TextStyle(fontSize: 16)),
+                    onPressed: () => _showHowItWorksDialog(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          AppColors.primary, // Primary color for the button
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(12)), // Rounded corners
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                      elevation: 4,
+                    ),
                   )
-                  .shimmer(
-                    delay: 2000.milliseconds,
-                    duration: 1000.milliseconds,
-                    color: Colors.white.withOpacity(0.5),
-                  ),
-            )
+                      .animate()
+                      .fade(duration: 800.ms, delay: 200.ms)
+                      .slideY(begin: 0.2, curve: Curves.easeOut),
+                ],
+              ),
+            ),
           ],
         ),
-      ),
+      )
+          .animate()
+          .fade(duration: 500.ms)
+          .slideY(begin: 0.1, curve: Curves.easeOut),
     );
   }
 
   Widget _buildQuickActions() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 16.0),
-      child: Wrap(
-        spacing: 16.0,
-        runSpacing: 16.0,
-        alignment: WrapAlignment.spaceAround,
-        children: [
-          _buildQuickActionButton(
-            icon: Icons.photo_album,
-            label: 'Portfolio',
-            onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const PortfolioScreen())),
-          ),
-          _buildQuickActionButton(
-            icon: Icons.archive_outlined,
-            label: 'Mes commandes',
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const HistoryScreen())),
-          ),
-          _buildQuickActionButton(
-            icon: Icons.straighten,
-            label: 'Prix & dimensions',
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const PricingScreen())),
-          ),
-          _buildQuickActionButton(
-            icon: Icons.flash_on,
-            label: 'Commande rapide',
-            onTap: () => _onTabTapped(1), // Switch to Photos tab
-          ),
-          _buildQuickActionButton(
-            icon: Icons.chat_bubble_outline,
-            label: 'Nous contacter',
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const ContactScreen())),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+      child: GridView.builder(
+        shrinkWrap: true, // Important for nested scroll views
+        physics:
+            const NeverScrollableScrollPhysics(), // Disable GridView's own scrolling
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3, // 3 items per row
+          crossAxisSpacing: 16.0,
+          mainAxisSpacing: 16.0,
+          childAspectRatio: 0.85, // Adjust aspect ratio for better look
+        ),
+        itemCount: 6, // Total number of quick actions
+        itemBuilder: (context, index) {
+          switch (index) {
+            case 0:
+              return _buildAnimatedQuickActionButton(
+                icon: Icons.photo_album,
+                label: 'Portfolio',
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const PortfolioScreen())),
+                delay: 0.ms,
+              );
+            case 1:
+              return _buildAnimatedQuickActionButton(
+                icon: Icons.archive_outlined,
+                label: 'Mes commandes',
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const HistoryScreen())),
+                delay: 100.ms,
+              );
+            case 2:
+              return _buildAnimatedQuickActionButton(
+                icon: Icons.straighten,
+                label: 'Prix & dimensions',
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const PricingScreen())),
+                delay: 200.ms,
+              );
+            case 3:
+              return _buildAnimatedQuickActionButton(
+                icon: Icons.flash_on,
+                label: 'Commande rapide',
+                onTap: () =>
+                    _quickPhotoOrder(), // Directly call quick photo order
+                delay: 300.ms,
+              );
+            case 4:
+              return _buildAnimatedQuickActionButton(
+                icon: Icons.calendar_today, // Changed icon
+                label: 'Réserver', // Changed label
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const BookingScreen())),
+                delay: 400.ms,
+              );
+            case 5:
+              return _buildAnimatedQuickActionButton(
+                icon: Icons.chat_bubble_outline,
+                label: 'Nous contacter',
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const ContactScreen())),
+                delay: 500.ms,
+              );
+            default:
+              return Container(); // Fallback
+          }
+        },
       ),
     );
   }
 
-  Widget _buildQuickActionButton(
-      {required IconData icon,
-      required String label,
-      required VoidCallback onTap}) {
+  Widget _buildAnimatedQuickActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required Duration delay,
+  }) {
     return GestureDetector(
       onTap: onTap,
-      child: SizedBox(
-        width: 80, // Constrain width to encourage wrapping
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
-              child: Icon(icon, color: AppColors.primary, size: 28),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center, // Center the text
-              style:
-                  const TextStyle(color: AppColors.textPrimary, fontSize: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.card.withOpacity(0.4), // Glassmorphic background
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
-      ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Inner blur
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: AppColors.primary, size: 36), // Larger icon
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      )
+          .animate()
+          .fade(delay: delay, duration: 400.ms)
+          .slideY(begin: 0.1, curve: Curves.easeOut),
     );
   }
 
@@ -1033,13 +1161,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final recentHistory = _mockHistory
         .where((req) =>
             req.date.isAfter(DateTime.now().subtract(const Duration(days: 7))))
-        .take(3)
-        .toList();
+        .toList(); // Get all recent history
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 16.0),
       sliver: SliverToBoxAdapter(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1065,38 +1193,85 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            ...recentHistory.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
-                        child: Icon(item.icon, color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.title,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w500)),
-                            Text(DateFormat('dd MMM yyyy').format(item.date),
-                                style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.arrow_forward_ios,
-                          size: 16, color: AppColors.textSecondary),
-                    ],
+            if (recentHistory.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Aucune activité récente.',
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
-                )),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: recentHistory.length,
+                itemBuilder: (context, index) {
+                  final item = recentHistory[index];
+                  return _buildHistoryCard(item, index);
+                },
+              ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildHistoryCard(RecentRequest item, int index) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.card.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+            ),
+            child: ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: CircleAvatar(
+                backgroundColor: AppColors.primary.withOpacity(0.1),
+                child: Icon(item.icon, color: AppColors.primary),
+              ),
+              title: Text(
+                item.title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+              ),
+              subtitle: Text(
+                DateFormat('dd MMM yyyy').format(item.date),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios,
+                  size: 16, color: AppColors.textSecondary),
+              onTap: () {
+                // Implement navigation to detailed history or relevant screen
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const HistoryScreen()));
+              },
+            ),
+          ),
+        ),
+      ),
+    )
+        .animate()
+        .fade(delay: (100 * index).ms, duration: 400.ms)
+        .slideX(begin: 0.05, curve: Curves.easeOut);
   }
 
   Widget _buildAdCarousel() {
@@ -1114,26 +1289,36 @@ class _HomeScreenState extends State<HomeScreen> {
     Widget buildItem(String path, bool isAsset) {
       return Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 5.0),
+        margin: const EdgeInsets.symmetric(
+            horizontal: 8.0), // Increased horizontal margin
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(20),
+          color: AppColors.card.withOpacity(0.4), // Glassmorphic background
+          borderRadius: BorderRadius.circular(20), // Increased border radius
+          border:
+              Border.all(color: Colors.white.withOpacity(0.2)), // Subtle border
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1), // Add shadow for depth
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: isAsset
-              ? Image.asset(path, fit: BoxFit.contain)
-              : Image.network(path, fit: BoxFit.contain),
+          borderRadius:
+              BorderRadius.circular(20), // Match container's border radius
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Inner blur effect
+            child: isAsset
+                ? Image.asset(path,
+                    fit: BoxFit
+                        .cover) // Use BoxFit.cover for better image display
+                : Image.network(path, fit: BoxFit.cover),
+          ),
         ),
-      )
-          .animate(
-            onComplete: (controller) => controller.repeat(),
-          )
-          .shimmer(
-            delay: 2000.milliseconds,
-            duration: 1000.milliseconds,
-            color: AppColors.background.withOpacity(0.5),
-          );
+      ).animate().fade(duration: 500.ms).slideX(
+          begin: 0.1,
+          curve: Curves.easeOut); // Apply simple fade and slide animation
     }
 
     Widget buildLocalCarousel(String message) {

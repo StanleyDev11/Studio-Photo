@@ -1,6 +1,6 @@
+import 'package:Picon/utils/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/widgets/music_wave_loader.dart';
+
 
 class LoadingButton extends StatefulWidget {
   final Future<void> Function()? onPressed;

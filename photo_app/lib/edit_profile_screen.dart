@@ -1,17 +1,19 @@
 import 'dart:ui';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 
 class EditProfilePage extends StatefulWidget {
   final String currentName;
+  final String currentLastName;
   final String currentEmail;
   final String currentPhone;
 
   const EditProfilePage({
     super.key,
     required this.currentName,
+    required this.currentLastName,
     required this.currentEmail,
     required this.currentPhone,
   });
@@ -23,6 +25,7 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
+  late TextEditingController _lastNameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   final _passwordController = TextEditingController();
@@ -35,6 +38,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.currentName);
+    _lastNameController = TextEditingController(text: widget.currentLastName);
     _emailController = TextEditingController(text: widget.currentEmail);
     _phoneController = TextEditingController(text: widget.currentPhone);
   }
@@ -42,6 +46,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -53,6 +58,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (_formKey.currentState!.validate()) {
       final returnData = {
         'name': _nameController.text,
+        'lastName': _lastNameController.text,
         'email': _emailController.text,
         'phone': _phoneController.text,
       };
@@ -128,7 +134,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
             children: <Widget>[
               TextFormField(
                 controller: _nameController,
-                decoration: _glassyInputDecoration('Nom complet', icon: Icons.person_outline),
+                decoration: _glassyInputDecoration('Prénom', icon: Icons.person_outline),
+                validator: (value) => (value?.isEmpty ?? true) ? 'Champ requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _lastNameController,
+                decoration: _glassyInputDecoration('Nom de famille', icon: Icons.person_outline),
                 validator: (value) => (value?.isEmpty ?? true) ? 'Champ requis' : null,
               ),
               const SizedBox(height: 16),

@@ -1,11 +1,12 @@
 import 'dart:ui';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/home_screen.dart';
+import 'package:Picon/recovery_screen.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/home_screen.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
+
 import 'package:country_code_picker/country_code_picker.dart';
-import 'package:photo_app/recovery_screen.dart';
-import 'package:photo_app/widgets/music_wave_loader.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,9 +17,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'test@example.com');
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController(text: 'password123');
+  final _passwordController = TextEditingController();
   bool _obscureText = true;
   bool _isLoading = false;
   bool _isLoginWithPhone = true;
@@ -44,13 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         if (mounted) {
-          // Assuming API returns token and user ID
-          final String token = responseData['token'];
-          // You might need to add userId to the response from your backend for full functionality
-          // For now, hardcoding as 1, but this should come from the API response
-          final int userId = 1; //response['userId']; 
-
-          await ApiService.saveAuthTokenAndUserId(token, userId);
+          await ApiService.saveAuthDetails(responseData);
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -61,8 +56,10 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (context) => HomeScreen(
-                userName: _isLoginWithPhone ? _phoneController.text : _emailController.text, // Use actual user name from API if available
-                userId: userId,
+                userName: responseData['firstname'] ?? '',
+                userLastName: responseData['lastname'] ?? '',
+                userEmail: responseData['email'] ?? '',
+                userId: responseData['id'] ?? 0,
               ),
             ),
           );
@@ -70,7 +67,9 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur de connexion: $e'), backgroundColor: Colors.red),
+            SnackBar(
+                content: Text('Erreur de connexion: $e'),
+                backgroundColor: Colors.red),
           );
         }
       } finally {
@@ -163,12 +162,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Connectez-vous pour continuer',
                     textAlign: TextAlign.center,
-                    style: textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
+                    style: textTheme.bodyMedium
+                        ?.copyWith(color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 24),
                   _buildLoginMethodToggle(),
                   const SizedBox(height: 24),
-                  
                   if (_isLoginWithPhone)
                     TextFormField(
                       controller: _phoneController,
@@ -178,36 +177,106 @@ class _LoginScreenState extends State<LoginScreen> {
                           onChanged: (countryCode) {},
                           initialSelection: 'TG',
                           favorite: const ['+228', '+225', '+223'],
-                          countryFilter: const ['DZ', 'AO', 'BJ', 'BW', 'BF', 'BI', 'CM', 'CV', 'CF', 'TD', 'KM', 'CG', 'CD', 'CI', 'DJ', 'EG', 'GQ', 'ER', 'ET', 'GA', 'GM', 'GH', 'GN', 'GW', 'KE', 'LS', 'LR', 'LY', 'MG', 'MW', 'ML', 'MR', 'MU', 'YT', 'MA', 'MZ', 'NA', 'NE', 'NG', 'RE', 'RW', 'SH', 'ST', 'SN', 'SC', 'SL', 'SO', 'ZA', 'SS', 'SD', 'SZ', 'TZ', 'TG', 'TN', 'UG', 'EH', 'ZM', 'ZW'],
-                          textStyle: TextStyle(color: AppColors.textPrimary.withOpacity(0.9)),
+                          countryFilter: const [
+                            'DZ',
+                            'AO',
+                            'BJ',
+                            'BW',
+                            'BF',
+                            'BI',
+                            'CM',
+                            'CV',
+                            'CF',
+                            'TD',
+                            'KM',
+                            'CG',
+                            'CD',
+                            'CI',
+                            'DJ',
+                            'EG',
+                            'GQ',
+                            'ER',
+                            'ET',
+                            'GA',
+                            'GM',
+                            'GH',
+                            'GN',
+                            'GW',
+                            'KE',
+                            'LS',
+                            'LR',
+                            'LY',
+                            'MG',
+                            'MW',
+                            'ML',
+                            'MR',
+                            'MU',
+                            'YT',
+                            'MA',
+                            'MZ',
+                            'NA',
+                            'NE',
+                            'NG',
+                            'RE',
+                            'RW',
+                            'SH',
+                            'ST',
+                            'SN',
+                            'SC',
+                            'SL',
+                            'SO',
+                            'ZA',
+                            'SS',
+                            'SD',
+                            'SZ',
+                            'TZ',
+                            'TG',
+                            'TN',
+                            'UG',
+                            'EH',
+                            'ZM',
+                            'ZW'
+                          ],
+                          textStyle: TextStyle(
+                              color: AppColors.textPrimary.withOpacity(0.9)),
                         ),
                       ),
                       keyboardType: TextInputType.phone,
-                      validator: (value) => (value?.isEmpty ?? true) ? 'Champ requis' : null,
+                      validator: (value) =>
+                          (value?.isEmpty ?? true) ? 'Champ requis' : null,
                     )
                   else
                     TextFormField(
-                      controller: _emailController,
-                      decoration: _glassyInputDecoration('Email', icon: Icons.email_outlined),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Champ requis';
-                        if (!RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)) return 'Email invalide';
-                        return null;
-                      }
-                    ),
-
+                        controller: _emailController,
+                        decoration: _glassyInputDecoration('Email',
+                            icon: Icons.email_outlined),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return 'Champ requis';
+                          if (!RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+                              .hasMatch(value)) return 'Email invalide';
+                          return null;
+                        }),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscureText,
-                    decoration: _glassyInputDecoration('Mot de passe', icon: Icons.lock_outline).copyWith(
+                    decoration: _glassyInputDecoration('Mot de passe',
+                            icon: Icons.lock_outline)
+                        .copyWith(
                       suffixIcon: IconButton(
-                        icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility, color: AppColors.textPrimary.withOpacity(0.7)),
-                        onPressed: () => setState(() => _obscureText = !_obscureText),
+                        icon: Icon(
+                            _obscureText
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: AppColors.textPrimary.withOpacity(0.7)),
+                        onPressed: () =>
+                            setState(() => _obscureText = !_obscureText),
                       ),
                     ),
-                    validator: (value) => (value?.isEmpty ?? true) ? 'Champ requis' : null,
+                    validator: (value) =>
+                        (value?.isEmpty ?? true) ? 'Champ requis' : null,
                   ),
                   const SizedBox(height: 16),
                   Align(
@@ -216,7 +285,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const RecoveryScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => const RecoveryScreen()),
                         );
                       },
                       child: const Text('Mot de passe oublié ?'),
@@ -226,26 +296,33 @@ class _LoginScreenState extends State<LoginScreen> {
                   ElevatedButton(
                     onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))
-                    ),
-                    child: _isLoading 
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24))),
+                    child: _isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('Connexion', style: TextStyle(color: Colors.white, fontSize: 16)),
+                        : const Text('Connexion',
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 16)),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("Pas de compte ?", style: textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary)),
+                      Text("Pas de compte ?",
+                          style: textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.textPrimary)),
                       TextButton(
-                        onPressed: () => Navigator.pushNamed(context, '/signup'),
-                        child: const Text('S\'inscrire', style: TextStyle(color: AppColors.primary)),
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/signup'),
+                        child: const Text('S\'inscrire',
+                            style: TextStyle(color: AppColors.primary)),
                       ),
                     ],
                   ),
@@ -273,14 +350,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 duration: const Duration(milliseconds: 300),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: _isLoginWithPhone ? AppColors.primary : Colors.transparent,
+                  color: _isLoginWithPhone
+                      ? AppColors.primary
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Text(
                   'Téléphone',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _isLoginWithPhone ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
+                    color: _isLoginWithPhone
+                        ? Colors.white
+                        : AppColors.textPrimary.withOpacity(0.7),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -294,14 +375,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 duration: const Duration(milliseconds: 300),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: !_isLoginWithPhone ? AppColors.primary : Colors.transparent,
+                  color: !_isLoginWithPhone
+                      ? AppColors.primary
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Text(
                   'Email',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: !_isLoginWithPhone ? Colors.white : AppColors.textPrimary.withOpacity(0.7),
+                    color: !_isLoginWithPhone
+                        ? Colors.white
+                        : AppColors.textPrimary.withOpacity(0.7),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -313,10 +398,14 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  InputDecoration _glassyInputDecoration(String label, {IconData? icon, Widget? prefix}) {
+  InputDecoration _glassyInputDecoration(String label,
+      {IconData? icon, Widget? prefix}) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: prefix ?? (icon != null ? Icon(icon, color: AppColors.textPrimary.withOpacity(0.7)) : null),
+      prefixIcon: prefix ??
+          (icon != null
+              ? Icon(icon, color: AppColors.textPrimary.withOpacity(0.7))
+              : null),
       filled: true,
       fillColor: Colors.white.withOpacity(0.3),
       labelStyle: TextStyle(color: AppColors.textPrimary.withOpacity(0.7)),

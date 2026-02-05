@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/home_screen.dart';
+import 'package:Picon/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:photo_app/api_service.dart'; // Import ApiService
-import 'package:photo_app/home_screen.dart'; // Import HomeScreen
-import 'package:photo_app/login_screen.dart'; // Import LoginScreen
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -16,7 +16,7 @@ class _SplashScreenState extends State<SplashScreen> {
   VideoPlayerController? _controller;
   int _currentVideoIndex = 0;
   final List<String> _videoAssets = [
-    'assets/splash.mp4',
+    // 'assets/splash.mp4',
     'assets/splash1.mp4',
   ];
 
@@ -59,7 +59,9 @@ class _SplashScreenState extends State<SplashScreen> {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (context) => HomeScreen(
-                userName: 'Utilisateur', // Default name from token, will be replaced with actual user data if API provides it
+                userName: ApiService.userName ?? 'Utilisateur',
+                userLastName: ApiService.userLastName ?? '',
+                userEmail: ApiService.userEmail ?? '',
                 userId: ApiService.userId!,
               ),
             ),

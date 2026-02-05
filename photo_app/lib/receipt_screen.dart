@@ -1,11 +1,11 @@
 import 'dart:typed_data';
+import 'package:Picon/utils/colors.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:photo_app/pricing_screen.dart';
-import 'package:photo_app/utils/colors.dart';
+
 import 'package:printing/printing.dart';
 
 class ReceiptScreen extends StatelessWidget {
@@ -14,6 +14,7 @@ class ReceiptScreen extends StatelessWidget {
   final String orderId;
   final String userName;
   final String userPhone;
+  final Map<String, double> prices;
 
   const ReceiptScreen({
     super.key,
@@ -22,14 +23,11 @@ class ReceiptScreen extends StatelessWidget {
     required this.orderId,
     this.userName = "Client",
     this.userPhone = "+XXX XXXXXXXX",
+    required this.prices,
   });
 
   double _calculateTotalPrice(Map<String, Map<String, dynamic>> details, String paymentMethod) {
     double subtotal = 0;
-    final Map<String, double> prices = {
-      for (var priceInfo in PricingScreen.fallbackPrintPrices)
-        priceInfo['dimension']: (priceInfo['price'] as num).toDouble()
-    };
     details.forEach((key, item) {
       final price = prices[item['size']] ?? 0;
       subtotal += price * (item['quantity'] as int);
@@ -78,7 +76,7 @@ class ReceiptScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final entry = orderDetails.entries.elementAt(index);
                   final item = entry.value;
-                  final itemPrice = (PricingScreen.fallbackPrintPrices.firstWhere((p) => p['dimension'] == item['size'])['price'] as num).toDouble();
+                  final itemPrice = prices[item['size']] ?? 0;
                   return pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
@@ -217,7 +215,7 @@ class ReceiptScreen extends StatelessWidget {
       itemBuilder: (context, index) {
         final entry = orderDetails.entries.elementAt(index);
         final item = entry.value;
-        final itemPrice = (PricingScreen.fallbackPrintPrices.firstWhere((p) => p['dimension'] == item['size'])['price'] as num).toDouble();
+        final itemPrice = prices[item['size']] ?? 0;
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

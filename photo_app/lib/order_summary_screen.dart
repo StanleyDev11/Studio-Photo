@@ -1,6 +1,7 @@
 import 'dart:io';
+import 'package:Picon/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/pricing_screen.dart';
+
 import 'payment_selection_screen.dart';
 import 'utils/colors.dart';
 
@@ -24,40 +25,57 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   double _deliveryFee = 0;
   double _totalPrice = 0;
 
-  // Use the same centralized price list
-  final Map<String, double> _prices = {
-    for (var priceInfo in PricingScreen.fallbackPrintPrices)
-      priceInfo['dimension']: (priceInfo['price'] as num).toDouble()
-  };
+  Map<String, double>? _prices;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Create a deep copy to make it mutable
     _editableOrderDetails = Map<String, Map<String, dynamic>>.from(
       widget.orderDetails.map(
         (key, value) => MapEntry(key, Map<String, dynamic>.from(value)),
       ),
     );
-    _calculatePrices();
+    _fetchPrices();
+  }
+
+  Future<void> _fetchPrices() async {
+    try {
+      final dimensions = await ApiService.fetchDimensions();
+      if (mounted) {
+        setState(() {
+          _prices = {for (var dim in dimensions) dim.dimension: dim.price};
+          _calculatePrices();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Erreur de chargement des prix: $e")));
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _calculatePrices() {
+    if (_prices == null) return;
+
     double newSubtotal = 0;
     int photoCount = _editableOrderDetails.keys.length;
 
     _editableOrderDetails.forEach((key, details) {
-      final price = _prices[details['size']] ?? 0;
+      final price = _prices?[details['size']] ?? 0;
       newSubtotal += price * (details['quantity'] as int);
     });
 
     double newDeliveryFee = 0;
     if (widget.isExpress) {
-        if (photoCount <= 10) {
-            newDeliveryFee = 1500;
-        }
-        // The logic for > 10 photos where price is discussed is not implemented here
-        // as it requires user interaction. The fee is simply not added automatically.
+      if (photoCount <= 10) {
+        newDeliveryFee = 1500;
+      }
     }
 
     setState(() {
@@ -85,61 +103,72 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: _editableOrderDetails.entries.map((entry) {
-                final imageUrl = entry.key;
-                final details = entry.value;
-                final isLocalFile = !imageUrl.startsWith('http');
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16.0),
+                    children: _editableOrderDetails.entries.map((entry) {
+                      final imageUrl = entry.key;
+                      final details = entry.value;
+                      final isLocalFile = !imageUrl.startsWith('http');
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12.0),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: isLocalFile
-                              ? Image.file(File(imageUrl), width: 80, height: 80, fit: BoxFit.cover)
-                              : Image.network(imageUrl, width: 80, height: 80, fit: BoxFit.cover),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12.0),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Row(
                             children: [
-                              Text('Taille: ${details['size']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Text('Prix unitaire: ${_prices[details['size']]} FCFA'),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: isLocalFile
+                                    ? Image.file(File(imageUrl),
+                                        width: 80, height: 80, fit: BoxFit.cover)
+                                    : Image.network(imageUrl,
+                                        width: 80, height: 80, fit: BoxFit.cover),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Taille: ${details['size']}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                    Text(
+                                        'Prix unitaire: ${_prices?[details['size']] ?? 0} FCFA'),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle_outline),
+                                    onPressed: () => _updateQuantity(imageUrl, -1),
+                                  ),
+                                  Text('${details['quantity']}',
+                                      style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold)),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle,
+                                        color: AppColors.primary),
+                                    onPressed: () => _updateQuantity(imageUrl, 1),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle_outline),
-                              onPressed: () => _updateQuantity(imageUrl, -1),
-                            ),
-                            Text('${details['quantity']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                            IconButton(
-                              icon: const Icon(Icons.add_circle, color: AppColors.primary),
-                              onPressed: () => _updateQuantity(imageUrl, 1),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                      );
+                    }).toList(),
                   ),
-                );
-              }).toList(),
+                ),
+                _buildPriceSummary(),
+              ],
             ),
-          ),
-          _buildPriceSummary(),
-        ],
-      ),
     );
   }
 
@@ -161,7 +190,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
           _buildSummaryRow('Sous-total', '${_subtotal.toStringAsFixed(0)} FCFA'),
           _buildSummaryRow('Livraison', widget.isExpress ? 'Xpress' : 'Standard'),
           if (widget.isExpress)
-            _buildSummaryRow('Frais de livraison', '+ ${_deliveryFee.toStringAsFixed(0)} FCFA'),
+            _buildSummaryRow(
+                'Frais de livraison', '+ ${_deliveryFee.toStringAsFixed(0)} FCFA'),
           const Divider(height: 20),
           _buildSummaryRow(
             'TOTAL',
@@ -174,13 +204,19 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
               foregroundColor: AppColors.textOnPrimary,
               backgroundColor: AppColors.primary,
               minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => PaymentSelectionScreen(orderDetails: _editableOrderDetails),
+                  builder: (context) =>
+                      PaymentSelectionScreen(
+                        orderDetails: _editableOrderDetails,
+                        totalAmount: _totalPrice, // Pass total price
+                        isExpress: widget.isExpress, // Pass express delivery status
+                      ),
                 ),
               );
             },
@@ -196,14 +232,17 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
 
   Widget _buildSummaryRow(String title, String value, {bool isTotal = false}) {
     final style = isTotal
-        ? const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary)
+        ? const TextStyle(
+            fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary)
         : const TextStyle(fontSize: 16, color: AppColors.textSecondary);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: style.copyWith(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
+          Text(title,
+              style: style.copyWith(
+                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
           Text(value, style: style),
         ],
       ),

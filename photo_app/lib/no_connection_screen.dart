@@ -1,6 +1,6 @@
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
 
 class NoConnectionScreen extends StatelessWidget {
   const NoConnectionScreen({super.key});

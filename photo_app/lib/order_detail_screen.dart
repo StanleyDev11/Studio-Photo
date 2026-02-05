@@ -1,22 +1,23 @@
+import 'package:Picon/models/order.dart';
+import 'package:Picon/models/order_item.dart';
+import 'package:Picon/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:photo_app/models/photo_order.dart';
-import 'package:photo_app/utils/colors.dart';
 
 class OrderDetailScreen extends StatelessWidget {
-  final PhotoOrder order;
+  final Order order;
 
   const OrderDetailScreen({super.key, required this.order});
 
-  Map<String, dynamic> _getStatusInfo(OrderStatus status) {
+  Map<String, dynamic> _getStatusInfo(String status) {
     switch (status) {
-      case OrderStatus.completed:
+      case 'COMPLETED':
         return {'text': 'Terminée', 'color': Colors.green.shade700, 'icon': Icons.check_circle};
-      case OrderStatus.processing:
+      case 'PROCESSING':
         return {'text': 'En cours', 'color': Colors.blue.shade700, 'icon': Icons.sync};
-      case OrderStatus.cancelled:
+      case 'CANCELLED':
         return {'text': 'Annulée', 'color': Colors.red.shade700, 'icon': Icons.cancel};
-      case OrderStatus.pending:
+      case 'PENDING':
       default:
         return {'text': 'En attente', 'color': Colors.orange.shade700, 'icon': Icons.hourglass_top};
     }
@@ -27,7 +28,7 @@ class OrderDetailScreen extends StatelessWidget {
     final statusInfo = _getStatusInfo(order.status);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Détails de la commande'),
+        title: const Text('Détails de la commande'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -41,7 +42,7 @@ class OrderDetailScreen extends StatelessWidget {
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          ...order.items.map((item) => _buildOrderItemCard(item)),
+          ...order.orderItems.map((item) => _buildOrderItemCard(item)),
         ],
       ),
     );
@@ -60,7 +61,7 @@ class OrderDetailScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  order.id,
+                  'CMD-${order.id}',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
                 ),
                 Chip(
@@ -72,10 +73,10 @@ class OrderDetailScreen extends StatelessWidget {
               ],
             ),
             const Divider(height: 24),
-            _buildSummaryRow('Date', DateFormat('dd MMMM yyyy, HH:mm').format(order.date)),
-            _buildSummaryRow('Montant Total', '${order.totalPrice.toStringAsFixed(0)} FCFA'),
+            _buildSummaryRow('Date', DateFormat('dd MMMM yyyy, HH:mm').format(order.createdAt)),
+            _buildSummaryRow('Montant Total', '${order.totalAmount.toStringAsFixed(0)} FCFA'),
             _buildSummaryRow('Paiement', order.paymentMethod),
-            _buildSummaryRow('Type', order.type == OrderType.detail ? 'Par détail' : 'Par lot'),
+            _buildSummaryRow('Type de livraison', order.deliveryType),
           ],
         ),
       ),
@@ -106,7 +107,7 @@ class OrderDetailScreen extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8.0),
-              child: Image.asset(
+              child: Image.network(
                 item.imageUrl,
                 width: 80,
                 height: 80,
@@ -119,12 +120,12 @@ class OrderDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Format: ${item.size}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text('Format: ${item.photoSize}', style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   Text('Quantité: ${item.quantity}'),
                   const SizedBox(height: 4),
                   Text(
-                    'Sous-total: ${(item.price * item.quantity).toStringAsFixed(0)} FCFA',
+                    'Sous-total: ${(item.pricePerUnit * item.quantity).toStringAsFixed(0)} FCFA',
                     style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
                   ),
                 ],

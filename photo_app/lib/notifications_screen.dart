@@ -1,5 +1,5 @@
+import 'package:Picon/utils/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_app/utils/colors.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});

@@ -5,12 +5,12 @@ plugins {
 }
 
 android {
-    namespace 'com.example.photo_app' // Remplacez par le namespace de votre application
+    namespace 'com.example.picon' // Remplacez par le namespace de votre application
     compileSdk 35 // SDK de compilation
 
     defaultConfig {
-        applicationId 'com.example.photo_app' // Identifiant unique de l'application
-        minSdk 23 // Minimum SDK supporté
+        applicationId 'com.example.picon' // Identifiant unique de l'application
+        minSdkVersion flutter.minSdkVersion // Minimum SDK supporté
         targetSdk 35 // SDK cible
         versionCode 1 // Numéro de version de build
         versionName '1.0.0' // Nom de la version

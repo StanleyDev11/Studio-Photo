@@ -1,5 +1,5 @@
-name: photo_app
-description: "A new Flutter project with user profile management."
+name: Picon
+description: "Faites vous imprimer vos photos facilement depuis votre mobile."
 publish_to: 'none'
 version: 0.1.0
 
@@ -24,7 +24,7 @@ dependencies:
   google_sign_in: ^6.2.0
 
   # For caching images
-  cached_network_image: ^3.2.1
+  cached_network_image: ^3.4.1
 
   # To manage local user data
   shared_preferences: ^2.1.0
@@ -51,6 +51,7 @@ dependencies:
   uuid: ^4.5.2
   barcode_widget: ^2.0.4
   google_fonts: ^6.3.2
+  feda_flutter: ^0.0.1 # Assuming this is the latest version
 
 dev_dependencies:
   flutter_test:

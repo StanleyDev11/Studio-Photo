@@ -1,9 +1,13 @@
+import 'package:Picon/api_service.dart';
+import 'package:Picon/models/order.dart';
+import 'package:Picon/order_detail_screen.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:photo_app/models/photo_order.dart';
-import 'package:photo_app/order_detail_screen.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
+
+// The old OrderType enum, can be removed or adapted if the backend provides this info
+enum OrderType { detail, batch }
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -13,68 +17,41 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  // --- Mock Data ---
-  final List<PhotoOrder> _allOrders = [
-    PhotoOrder(
-      id: 'CMD-2407-001',
-      date: DateTime.now().subtract(const Duration(days: 2)),
-      status: OrderStatus.completed,
-      totalPrice: 2500,
-      paymentMethod: 'Flooz',
-      type: OrderType.detail,
-      items: [
-        OrderItem(imageUrl: 'assets/carousel/car.jpg', size: '10x15 cm', quantity: 10, price: 150),
-        OrderItem(imageUrl: 'assets/carousel/car1.jpg', size: '15x20 cm', quantity: 2, price: 500),
-      ],
-    ),
-    PhotoOrder(
-      id: 'CMD-2407-002',
-      date: DateTime.now().subtract(const Duration(days: 5)),
-      status: OrderStatus.processing,
-      totalPrice: 4500,
-      paymentMethod: 'MasterCard',
-      type: OrderType.batch,
-      items: List.generate(15, (i) => OrderItem(imageUrl: 'assets/images/pro.png', size: '10x15 cm', quantity: 1, price: 300)),
-    ),
-    PhotoOrder(
-      id: 'CMD-2406-005',
-      date: DateTime.now().subtract(const Duration(days: 15)),
-      status: OrderStatus.cancelled,
-      totalPrice: 1200,
-      paymentMethod: 'Mix by Yass',
-      type: OrderType.detail,
-      items: [
-        OrderItem(imageUrl: 'assets/carousel/mxx.jpeg', size: '10x15 cm', quantity: 8, price: 150),
-      ],
-    ),
-    PhotoOrder(
-      id: 'CMD-2406-004',
-      date: DateTime.now().subtract(const Duration(days: 28)),
-      status: OrderStatus.completed,
-      totalPrice: 9000,
-      paymentMethod: 'Flooz',
-      type: OrderType.batch,
-      items: List.generate(30, (i) => OrderItem(imageUrl: 'assets/carousel/pflex.jpeg', size: '15x20 cm', quantity: 1, price: 300)),
-    ),
-  ];
-
-  late List<PhotoOrder> _filteredOrders;
-  OrderType? _selectedFilter;
+  late Future<List<Order>> _ordersFuture;
+  List<Order> _allOrders = [];
+  List<Order> _filteredOrders = [];
+  String? _selectedFilter; // Using String to match OrderStatus enum values
 
   @override
   void initState() {
     super.initState();
-    _filteredOrders = _allOrders;
-    _selectedFilter = null; // Show all by default
+    _ordersFuture = _fetchOrders();
   }
 
-  void _filterOrders(OrderType? newFilter) {
+  Future<List<Order>> _fetchOrders() async {
+    try {
+      final orders = await ApiService.fetchMyOrders();
+      setState(() {
+        _allOrders = orders;
+        _filteredOrders = orders;
+      });
+      return orders;
+    } catch (e) {
+      // Handle error appropriately
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erreur de chargement de l'historique: $e"), backgroundColor: Colors.red),
+      );
+      return [];
+    }
+  }
+
+  void _filterOrders(String? newFilter) {
     setState(() {
       _selectedFilter = newFilter;
       if (newFilter == null) {
         _filteredOrders = _allOrders;
       } else {
-        _filteredOrders = _allOrders.where((order) => order.type == newFilter).toList();
+        _filteredOrders = _allOrders.where((order) => order.status == newFilter).toList();
       }
     });
   }
@@ -94,11 +71,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: SegmentedButton<OrderType?>(
+                child: SegmentedButton<String?>(
                   segments: const [
                     ButtonSegment(value: null, label: Text('Toutes')),
-                    ButtonSegment(value: OrderType.detail, label: Text('Par Détail')),
-                    ButtonSegment(value: OrderType.batch, label: Text('Par Lot')),
+                    ButtonSegment(value: "PENDING", label: Text('En attente')),
+                    ButtonSegment(value: "COMPLETED", label: Text('Terminée')),
                   ],
                   selected: {_selectedFilter},
                   onSelectionChanged: (newSelection) {
@@ -113,16 +90,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
               Expanded(
-                child: _filteredOrders.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        itemCount: _filteredOrders.length,
-                        itemBuilder: (context, index) {
-                          final order = _filteredOrders[index];
-                          return _buildHistoryCard(order);
-                        },
-                      ),
+                child: FutureBuilder<List<Order>>(
+                  future: _ordersFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(child: Text("Erreur: ${snapshot.error}"));
+                    }
+                    if (_filteredOrders.isEmpty) {
+                      return _buildEmptyState();
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      itemCount: _filteredOrders.length,
+                      itemBuilder: (context, index) {
+                        final order = _filteredOrders[index];
+                        return _buildHistoryCard(order);
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -148,8 +137,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildHistoryCard(PhotoOrder order) {
+  Widget _buildHistoryCard(Order order) {
     final statusInfo = _getStatusInfo(order.status);
+    final orderItems = order.orderItems;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
@@ -158,12 +148,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => OrderDetailScreen(order: order),
-            ),
-          );
+          // Navigator.push(
+          //   context,
+          //   MaterialPageRoute(
+          //     builder: (context) => OrderDetailScreen(order: order),
+          //   ),
+          // );
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,11 +165,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    order.id,
+                    'CMD-${order.id}',
                     style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                   ),
                   Text(
-                    DateFormat('dd MMMM yyyy').format(order.date),
+                    DateFormat('dd MMMM yyyy').format(order.createdAt),
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ],
@@ -189,36 +179,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  // Image Preview
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      order.items.first.imageUrl,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, st) => const Icon(Icons.photo, size: 60, color: AppColors.textSecondary),
+                  if (orderItems.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network( // Use Image.network for URLs
+                        orderItems.first.imageUrl,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, st) => const Icon(Icons.photo, size: 60, color: AppColors.textSecondary),
+                      ),
                     ),
-                  ),
+                  if (orderItems.isEmpty)
+                    const Icon(Icons.photo, size: 60, color: AppColors.textSecondary),
                   const SizedBox(width: 16),
-                  // Order Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${order.items.length} article${order.items.length > 1 ? 's' : ''}',
+                          '${orderItems.length} article${orderItems.length > 1 ? 's' : ''}',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${order.totalPrice.toStringAsFixed(0)} FCFA',
+                          '${order.totalAmount.toStringAsFixed(0)} FCFA',
                           style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
                         ),
                       ],
                     ),
                   ),
-                  // Status Chip
                   Column(
                     children: [
                       Chip(
@@ -239,15 +229,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Map<String, dynamic> _getStatusInfo(OrderStatus status) {
+  Map<String, dynamic> _getStatusInfo(String status) {
     switch (status) {
-      case OrderStatus.completed:
+      case 'COMPLETED':
         return {'text': 'Terminée', 'color': Colors.green.shade700, 'icon': Icons.check_circle};
-      case OrderStatus.processing:
+      case 'PROCESSING':
         return {'text': 'En cours', 'color': Colors.blue.shade700, 'icon': Icons.sync};
-      case OrderStatus.cancelled:
+      case 'CANCELLED':
         return {'text': 'Annulée', 'color': Colors.red.shade700, 'icon': Icons.cancel};
-      case OrderStatus.pending:
+      case 'PENDING':
       default:
         return {'text': 'En attente', 'color': Colors.orange.shade700, 'icon': Icons.hourglass_top};
     }

@@ -1,43 +1,26 @@
 import 'dart:ui';
+import 'package:Picon/api_service.dart';
+import 'package:Picon/models/photo_format.dart';
+import 'package:Picon/utils/colors.dart';
+import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:photo_app/api_service.dart';
-import 'package:photo_app/utils/colors.dart';
-import 'package:photo_app/utils/geometric_background.dart';
+
 
 class PricingScreen extends StatefulWidget {
   const PricingScreen({super.key});
-
-  // Fallback data in case the API call fails
-  static final List<Map<String, dynamic>> fallbackPrintPrices = [
-    {'dimension': '9x13 cm', 'price': 75},
-    {'dimension': '10x15 cm', 'price': 150},
-    {'dimension': '13x18 cm', 'price': 125},
-    {'dimension': '15x21 cm', 'price': 175},
-    {'dimension': '20x25 cm', 'price': 375},
-    {'dimension': '20x30 cm', 'price': 500},
-    {'dimension': '24x30 cm', 'price': 750},
-    {'dimension': '30x40 cm', 'price': 1250},
-    {'dimension': '30x45 cm', 'price': 1500},
-    {'dimension': '30x90 cm', 'price': 2000},
-    {'dimension': '40x50 cm', 'price': 2500},
-    {'dimension': '40x60 cm', 'price': 3250},
-    {'dimension': '50x60 cm', 'price': 3750},
-    {'dimension': '60x90 cm', 'price': 4500},
-    {'dimension': '60x120 cm', 'price': 6250},
-  ];
 
   @override
   State<PricingScreen> createState() => _PricingScreenState();
 }
 
 class _PricingScreenState extends State<PricingScreen> {
-  late Future<List<Map<String, dynamic>>> _pricesFuture;
+  late Future<List<PhotoFormat>> _pricesFuture;
 
   @override
   void initState() {
     super.initState();
-    _pricesFuture = Future.value(PricingScreen.fallbackPrintPrices);
+    _pricesFuture = ApiService.fetchDimensions();
   }
 
   @override
@@ -65,24 +48,19 @@ class _PricingScreenState extends State<PricingScreen> {
         children: [
           const GeometricBackground(),
           SafeArea(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
+            child: FutureBuilder<List<PhotoFormat>>(
               future: _pricesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // If error or no data, use fallback data
                 if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                  // Optional: Log the error for debugging
-                  // if (snapshot.hasError) { print(snapshot.error); }
-                  return _buildGridView(PricingScreen.fallbackPrintPrices, isOffline: true);
+                  return Center(child: Text("Impossible de charger les tarifs. ${snapshot.error ?? ''}"));
                 }
 
-                // If data is successfully fetched, use it
-                final apiPrices = snapshot.data!;
-                // The API is assumed to return the final prices. The division rule was for the fallback data.
-                return _buildGridView(apiPrices);
+                final prices = snapshot.data!;
+                return _buildGridView(prices);
               },
             ),
           ),
@@ -91,7 +69,7 @@ class _PricingScreenState extends State<PricingScreen> {
     );
   }
 
-  Widget _buildGridView(List<Map<String, dynamic>> prices, {bool isOffline = false}) {
+  Widget _buildGridView(List<PhotoFormat> prices, {bool isOffline = false}) {
     final currencyFormatter = NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
 
     return Column(
@@ -118,8 +96,8 @@ class _PricingScreenState extends State<PricingScreen> {
             itemBuilder: (context, index) {
               final item = prices[index];
               return _PriceTile(
-                dimension: item['dimension'],
-                price: currencyFormatter.format(item['price']),
+                dimension: item.dimension,
+                price: currencyFormatter.format(item.price),
               );
             },
           ),

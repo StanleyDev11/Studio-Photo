@@ -716,28 +716,7 @@
 </div>
 
 <!-- Sidebar Navigation -->
-<nav class="sidebar">
-    <div class="sidebar-header">
-        <a href="/admin/dashboard" class="logo">
-            <div class="logo-icon">
-                <img th:src="@{/images/logo.jpeg}" alt="Picon Studio Photo Logo" style="width: 100%; height: auto; border-radius: 10px;">
-            </div>
-            <div class="logo-text">Picon Studio</div>
-        </a>
-    </div>
-        <ul class="nav-links">
-            <li><a href="/admin/dashboard" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
-            <li><a href="/admin/users" class="active"><i class="fas fa-user-friends"></i><span>Utilisateurs</span></a></li>
-            <li><a href="/admin/promotions" class="active"><i class="fas fa-bullhorn"></i><span>Promotions</span></a></li>
-            <li><a href="/admin/featured-content"><i class="fas fa-star"></i><span>Contenu Mis en Avant</span></a></li>
-            <li><a href="/admin/bookings"><i class="fas fa-calendar-check"></i><span>Réservations</span></a></li>
-            <li><a href="#"><i class="fas fa-photo-video"></i><span>Photos</span></a></li>
-            <li><a href="#"><i class="fas fa-shopping-basket"></i><span>Commandes</span></a></li>
-            <li><a href="#"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a></li>
-            <li><a href="#"><i class="fas fa-chart-line"></i><span>Statistiques</span></a></li>
-            <li><a href="#"><i class="fas fa-cog"></i><span>Paramètres</span></a></li>
-        </ul>
-</nav>
+<nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
 
 <!-- Main Content -->
 <div class="main-content">
@@ -872,7 +851,6 @@
                     <th>Rôle</th>
                     <th>Statut</th>
                     <th>Date d'inscription</th>
-                    <th>Dernière connexion</th>
                     <th>Actions</th>
                 </tr>
                 </thead>
@@ -1085,12 +1063,6 @@
                     }
                 },
                 {
-                    data: 'lastLogin',
-                    render: function(data) {
-                        return data ? moment(data).fromNow() : 'Jamais';
-                    }
-                },
-                {
                     data: null,
                     orderable: false,
                     render: function(data, type, row) {
@@ -1118,7 +1090,7 @@
                     }
                 }
             ],
-            order: [4, 'desc'],
+            order: [6, 'desc'],
             pageLength: 25,
             responsive: true
         });
