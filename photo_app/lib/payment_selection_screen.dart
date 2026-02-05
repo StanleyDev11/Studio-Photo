@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
+import 'package:feda_flutter/feda_flutter.dart';
 
 class PaymentSelectionScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
@@ -44,11 +45,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     _fetchPrices();
     // _fetchContactInfo(); // Removed: no longer needed
     // Initialize Fedapay
-    FedaFlutter.init(
-      publicKey: "pk_sandbox_LNC4KNFoONbjhlBWh9kwRgSU",
-      secretKey: "sk_sandbox_5eglTc3hCd6lTA8agN_O32jz",
-      environment: FedaFlutterEnvironment.sandbox,
+    final feda = FedaFlutter(
+      apiKey: "sk_sandbox_5eglTc3hCd6lTA8agN_O32jz",
+      environment: ApiEnvironment.sandbox,
     );
+    feda.initialize();
   }
 
   Future<void> _fetchPrices() async {
@@ -66,7 +67,8 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
             SnackBar(content: Text("Erreur de chargement des prix: $e")));
         setState(() {
           _isLoadingPrices = false;
-        });
+        }
+        );
       }
     }
   }

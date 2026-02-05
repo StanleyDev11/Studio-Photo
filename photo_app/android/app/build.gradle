@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId 'com.example.picon' // Identifiant unique de l'application
-        minSdk 23 // Minimum SDK supporté
+        minSdkVersion flutter.minSdkVersion // Minimum SDK supporté
         targetSdk 35 // SDK cible
         versionCode 1 // Numéro de version de build
         versionName '1.0.0' // Nom de la version
