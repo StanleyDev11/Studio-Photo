@@ -39,7 +39,7 @@ public class Order {
     @Column(nullable = false)
     private BigDecimal totalAmount;
 
-    @Column(nullable = false)
+    @Column
     private String paymentMethod;
 
     @Column(nullable = false)
