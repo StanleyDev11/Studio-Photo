@@ -312,9 +312,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           padding: EdgeInsets.fromLTRB(
               16.0,
-              MediaQuery.of(context).padding.top + 8,
+              MediaQuery.of(context).padding.top + 4,
               16.0,
-              8.0), // Reduced vertical padding
+              4.0), // Reduced vertical padding
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -378,14 +378,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 2), // Reduced space
-                  Text(
-                    'Hey, $_currentUserLastName!', //$_currentUserName je peux ajouter ceci pour avoir nom et prenom
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11, // Smaller text
-                    ),
-                  ),
+                  // Text(
+                  //   'Hey, $_currentUserLastName!',
+                  //   textAlign: TextAlign.center,
+                  //   style: const TextStyle(
+                  //     color: Colors.white,
+                  //     fontSize: 11, // Smaller text
+                  //   ),
+                  // ),
                 ],
               ),
               IconButton(
@@ -397,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
                 icon: const Icon(Icons.notifications_none,
-                    color: Colors.white, size: 22), // Smaller icon
+                    color: Colors.white, size: 28), // Increased icon size
               ),
             ],
           ),
