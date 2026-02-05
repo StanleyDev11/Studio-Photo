@@ -7,8 +7,6 @@ import 'package:Picon/utils/geometric_background.dart';
 import 'package:Picon/widgets/music_wave_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:fedapay_flutter/fedapay_flutter.dart'; // Import FedaFlutter
-
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
