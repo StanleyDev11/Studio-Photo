@@ -7,5 +7,5 @@ import java.util.List;
 public class CreateOrderRequest {
     private boolean isExpress;
     private String paymentMethod;
-    private List<CreateOrderItemRequest> items;
+    private List<CreateOrderItemRequest> items = new ArrayList<>();
 }

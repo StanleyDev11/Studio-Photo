@@ -39,6 +39,12 @@ public class OrderService {
         // 3. Créer les OrderItems et calculer le sous-total
         BigDecimal subtotal = BigDecimal.ZERO;
         for (CreateOrderItemRequest itemRequest : request.getItems()) {
+            if (itemRequest.getImageUrl() == null || itemRequest.getImageUrl().isBlank()) {
+                throw new IllegalArgumentException("L'URL de l'image ne peut pas être nulle ou vide pour un article de commande.");
+            }
+            if (itemRequest.getSize() == null) {
+                throw new IllegalArgumentException("Le format de photo ne peut pas être nul pour un article de commande.");
+            }
             BigDecimal pricePerUnit = priceMap.get(itemRequest.getSize());
             if (pricePerUnit == null) {
                 throw new IllegalArgumentException("Le format de photo '" + itemRequest.getSize() + "' n'est pas valide.");
@@ -70,15 +76,21 @@ public class OrderService {
     @Transactional
     public Order createPendingOrderForFedapay(FedapayInitiateRequest request, User user) {
         // Build the order items from the FedapayInitiateRequest
-        List<OrderItem> orderItems = request.getItems().stream().map(itemDto ->
-                OrderItem.builder()
-                        .imageUrl(itemDto.getImageUrl())
-                        .photoSize(itemDto.getSize())
-                        .quantity(itemDto.getQuantity())
-                        .pricePerUnit(itemDto.getPrice()) // Assuming price is passed or calculated in FedapayInitiateRequest.OrderItemDto
-                        .build()
-        ).collect(Collectors.toList());
+        List<OrderItem> orderItems = request.getItems().stream().map(itemDto -> {
+            if (itemDto.getImageUrl() == null || itemDto.getImageUrl().isBlank()) {
+                throw new IllegalArgumentException("L'URL de l'image ne peut pas être nulle ou vide pour un article de commande.");
+            }
+            return OrderItem.builder()
+                    .imageUrl(itemDto.getImageUrl())
+                    .photoSize(itemDto.getSize())
+                    .quantity(itemDto.getQuantity())
+                    .pricePerUnit(itemDto.getPrice()) // Assuming price is passed or calculated in FedapayInitiateRequest.OrderItemDto
+                    .build();
+        }).collect(Collectors.toList());
 
+        if (request.getTotalAmount() == null) {
+            throw new IllegalArgumentException("Le montant total ne peut pas être nul pour une commande Fedapay.");
+        }
         Order newOrder = Order.builder()
                 .user(user)
                 .paymentMethod(null) // Payment method will be set after confirmation by webhook
