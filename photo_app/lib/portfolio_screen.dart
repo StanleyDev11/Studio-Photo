@@ -244,7 +244,7 @@ class _DimensionDetailDialogState extends State<DimensionDetailDialog> {
                       ),
                       items: widget.format.images.map((img) {
                         return CachedNetworkImage(
-                          imageUrl: '${ApiService.baseUrl}$img',
+                          imageUrl: '${ApiService.baseUrl.replaceAll('/api', '')}$img',
                           fit: BoxFit.contain,
                           width: double.infinity,
                           placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
