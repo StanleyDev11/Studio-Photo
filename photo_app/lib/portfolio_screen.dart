@@ -6,6 +6,7 @@ import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 
 
@@ -120,13 +121,13 @@ class DimensionTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          Image.asset(
-            format.images.first,
+          CachedNetworkImage(
+            imageUrl: '${ApiService.baseUrl.replaceAll('/api', '')}${format.images.first}',
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            errorBuilder: (_, __, ___) =>
-                const Icon(Icons.image_not_supported),
+            placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+            errorWidget: (context, url, error) => const Icon(Icons.image_not_supported),
           ),
           _TileInfo(format: format),
           if (format.isPopular) const _PopularBadge(),
@@ -242,10 +243,12 @@ class _DimensionDetailDialogState extends State<DimensionDetailDialog> {
                             setState(() => currentIndex = i),
                       ),
                       items: widget.format.images.map((img) {
-                        return Image.asset(
-                          img,
+                        return CachedNetworkImage(
+                          imageUrl: '${ApiService.baseUrl}$img',
                           fit: BoxFit.contain,
                           width: double.infinity,
+                          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                          errorWidget: (context, url, error) => const Icon(Icons.broken_image),
                         );
                       }).toList(),
                     ),
