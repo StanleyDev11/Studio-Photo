@@ -7,14 +7,22 @@ import 'package:Picon/utils/geometric_background.dart';
 import 'package:Picon/widgets/music_wave_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:fedapay_flutter/fedapay_flutter.dart'; // Import FedaFlutter
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 class PaymentSelectionScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
+  final double totalAmount;
+  final bool isExpress;
 
-  const PaymentSelectionScreen({super.key, required this.orderDetails});
+  const PaymentSelectionScreen({
+    super.key,
+    required this.orderDetails,
+    required this.totalAmount,
+    required this.isExpress,
+  });
 
   @override
   State<PaymentSelectionScreen> createState() => _PaymentSelectionScreenState();
@@ -24,21 +32,25 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
   String? _selectedMethodName;
   Map<String, double>? _prices;
   bool _isLoadingPrices = true;
-  String _prestatairePhoneNumber = ""; // Initialisé à vide, sera rempli par l'API ou utilisera un fallback.
-  bool _isLoadingContactInfo = true;
+  // String _prestatairePhoneNumber = ""; // Removed: no longer needed for static methods
+  // bool _isLoadingContactInfo = true; // Removed: no longer needed
 
 
   final List<Map<String, String>> _paymentMethods = [
-    {'name': 'MasterCard / VISA', 'logo': 'assets/logos/mastercard.png', 'description': 'Payez en toute sécurité avec votre carte bancaire.'},
-    {'name': 'Flooz', 'logo': 'assets/logos/flooz.webp', 'description': 'Utilisez votre compte Flooz pour un paiement rapide et facile.'},
-    {'name': 'Mix by Yass', 'logo': 'assets/logos/mixbyyass.jpg', 'description': 'Mode de paiement local, contactez le service client pour finaliser.'},
+    {'name': 'Fedapay Sandbox', 'logo': 'assets/logos/pro.png', 'description': 'Payez via Fedapay (environnement Sandbox).'}, // Fedapay is the only method
   ];
 
   @override
   void initState() {
     super.initState();
     _fetchPrices();
-    _fetchContactInfo();
+    // _fetchContactInfo(); // Removed: no longer needed
+    // Initialize Fedapay
+    FedaFlutter.init(
+      publicKey: "pk_sandbox_LNC4KNFoONbjhlBWh9kwRgSU",
+      secretKey: "sk_sandbox_5eglTc3hCd6lTA8agN_O32jz",
+      environment: FedaFlutterEnvironment.sandbox,
+    );
   }
 
   Future<void> _fetchPrices() async {
@@ -61,26 +73,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     }
   }
 
-  Future<void> _fetchContactInfo() async {
-    try {
-      final contactInfo = await ApiService.fetchContactInfo();
-      if (mounted) {
-        setState(() {
-          _prestatairePhoneNumber = contactInfo.phoneNumber;
-          _isLoadingContactInfo = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Erreur de chargement des infos contact: $e")));
-      setState(() {
-        _prestatairePhoneNumber = "+22892595661"; // Fallback en cas d'erreur
-        _isLoadingContactInfo = false;
-      });
-    }
-  }
-}
+
 
   void _onMethodSelected(String methodName) {
     setState(() {
@@ -105,51 +98,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     );
   }
 
-  String _formatWhatsAppMessage(String orderId) {
-    // Utilisez les informations de l'utilisateur connecté via ApiService
-    final String userName = ApiService.userName != null && ApiService.userLastName != null
-        ? "${ApiService.userName!} ${ApiService.userLastName!}" : "Client Inconnu";
-    final String userPhone = ApiService.userEmail ?? "Non disponible"; // Utiliser l'email comme fallback si le numéro de téléphone n'est pas disponible dans ApiService
 
-    final buffer = StringBuffer();
-    buffer.writeln("🎉 *Nouvelle Commande Reçue* 🎉");
-    buffer.writeln("---------------------------------");
-    buffer.writeln("*Commande ID:* $orderId");
-    buffer.writeln("*Client:* $userName");
-    buffer.writeln("*Contact Client:* $userPhone"); // Préciser que c'est le contact du client
-    buffer.writeln("*Mode de paiement:* $_selectedMethodName");
-    buffer.writeln("---------------------------------");
-    buffer.writeln("*Détails de la commande:*");
-
-    widget.orderDetails.forEach((key, details) {
-      buffer.writeln("- Photo: ${key.split('/').last}"); // Show only filename
-      buffer.writeln("  Taille: ${details['size']}");
-      buffer.writeln("  Quantité: ${details['quantity']}");
-    });
-    
-    buffer.writeln("---------------------------------");
-    buffer.writeln("Merci de traiter cette commande.");
-
-    return buffer.toString();
-  }
-
-  Future<void> _launchWhatsApp(String orderId) async {
-    final String message = _formatWhatsAppMessage(orderId);
-    
-    final universalUrl = Uri.parse("https://wa.me/$_prestatairePhoneNumber?text=${Uri.encodeComponent(message)}");
-
-    try {
-      if (!await launchUrl(universalUrl, mode: LaunchMode.externalApplication)) {
-        throw 'Impossible de lancer WhatsApp.';
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors du lancement de WhatsApp: $e')),
-        );
-      }
-    }
-  }
 
   Future<void> _processPayment() async {
     if (_selectedMethodName == null || _prices == null) return;
@@ -157,53 +106,58 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     _showLoadingDialog();
 
     try {
-      // 1. Format the order payload for the API
       final List<Map<String, dynamic>> items = widget.orderDetails.entries.map((entry) {
         final details = entry.value;
         return {
           'imageUrl': entry.key,
           'size': details['size'],
           'quantity': details['quantity'],
+          // 'price': _prices![details['size']], // Add price per unit if needed by backend for order item creation
         };
       }).toList();
 
       final orderPayload = {
-        'isExpress': widget.orderDetails.values.any((d) => d['isExpress'] ?? false), // A revoir, l'info isExpress vient de l'ecran précedent
+        'isExpress': widget.isExpress, // Use widget.isExpress
         'paymentMethod': _selectedMethodName!,
         'items': items,
+        'userId': ApiService.userId,
+        'totalAmount': widget.totalAmount, // Pass totalAmount
       };
+
+      // --- Fedapay Integration Logic (now the only payment method) ---
+      final String paymentUrl = await ApiService.initiateFedapayPayment(orderPayload);
       
-      // 2. Call the API to create the order
-      final createdOrder = await ApiService.createOrder(orderPayload);
-      final String orderId = createdOrder.id.toString();
+      if(mounted) Navigator.of(context).pop(); // Pop loader
 
-      // 3. Pop loader
-      if(mounted) Navigator.of(context).pop();
+      if (await canLaunchUrl(Uri.parse(paymentUrl))) {
+        await launchUrl(Uri.parse(paymentUrl), mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Impossible de lancer l\'URL de paiement Fedapay : $paymentUrl';
+      }
 
-      // 4. Launch WhatsApp with the real order ID
-      await _launchWhatsApp(orderId);
-
-      // 5. Navigate to final receipt screen
-      if(mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ReceiptScreen(
-              orderDetails: widget.orderDetails,
-              paymentMethod: _selectedMethodName!,
-              orderId: orderId,
-              prices: _prices!,
-              userName: ApiService.userName ?? "John Doe", 
-              userPhone: ApiService.userEmail ?? "+22890000000",
-            ),
-          ),
-        );
+      // After launching URL, we expect Fedapay to redirect back.
+      // For now, we'll navigate to a receipt screen, but a real integration
+      // would involve listening for webhooks or deep links.
+      if (mounted) {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => ReceiptScreen(
+                      orderDetails: widget.orderDetails,
+                      paymentMethod: _selectedMethodName!,
+                      orderId: "FEDAPAY_PENDING", // Placeholder, will be updated by webhook
+                      prices: _prices!,
+                      userName: ApiService.userName ?? "John Doe",
+                      userPhone: ApiService.userEmail ?? "+22890000000",
+                  ),
+              ),
+          );
       }
     } catch (e) {
       if(mounted) {
         Navigator.of(context).pop(); // Pop loader on error
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la création de la commande: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Erreur lors du traitement du paiement: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -227,7 +181,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
       ),
-      body: (_isLoadingPrices || _isLoadingContactInfo)
+      body: (_isLoadingPrices /* || _isLoadingContactInfo */) // _isLoadingContactInfo removed
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [

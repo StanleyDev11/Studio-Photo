@@ -212,7 +212,11 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) =>
-                      PaymentSelectionScreen(orderDetails: _editableOrderDetails),
+                      PaymentSelectionScreen(
+                        orderDetails: _editableOrderDetails,
+                        totalAmount: _totalPrice, // Pass total price
+                        isExpress: widget.isExpress, // Pass express delivery status
+                      ),
                 ),
               );
             },

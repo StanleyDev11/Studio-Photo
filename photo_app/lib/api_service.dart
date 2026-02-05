@@ -309,5 +309,16 @@ class ApiService {
       throw Exception('Error uploading photos: $e');
     }
   }
+
+  static Future<String> initiateFedapayPayment(Map<String, dynamic> orderPayload) async {
+    const url = '$baseUrl/payments/fedapay/initiate';
+    final response = await _safePost(url, orderPayload);
+    final responseData = _handleApiResponse(response);
+    if (responseData != null && responseData.containsKey('paymentUrl')) {
+      return responseData['paymentUrl'];
+    } else {
+      throw Exception('Failed to initiate Fedapay payment: Invalid response from server.');
+    }
+  }
 }
 
