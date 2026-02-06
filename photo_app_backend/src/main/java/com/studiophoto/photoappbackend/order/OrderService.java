@@ -33,7 +33,9 @@ public class OrderService {
                 .user(user)
                 .paymentMethod(request.getPaymentMethod())
                 .deliveryType(request.isExpress() ? "Xpress" : "Standard")
+                .deliveryAddress(request.getDeliveryAddress()) // Set delivery address
                 .status(OrderStatus.PENDING) // Le statut initial est en attente
+                .paymentStatus("PENDING") // Initial payment status
                 .build();
 
         // 3. Créer les OrderItems et calculer le sous-total
@@ -95,7 +97,9 @@ public class OrderService {
                 .user(user)
                 .paymentMethod(null) // Payment method will be set after confirmation by webhook
                 .deliveryType(request.isExpress() ? "Xpress" : "Standard")
+                .deliveryAddress(request.getDeliveryAddress()) // Set delivery address
                 .status(OrderStatus.PENDING_PAYMENT) // Initial status for Fedapay
+                .paymentStatus("PENDING_PAYMENT") // Initial payment status for Fedapay
                 .totalAmount(request.getTotalAmount()) // Use total amount from request
                 .orderItems(orderItems)
                 .build();
@@ -111,7 +115,9 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Commande non trouvée avec l'ID: " + orderId));
         order.setStatus(status);
-        order.setPaymentMethod(paymentMethod);
+        if (paymentMethod != null) {
+            order.setPaymentMethod(paymentMethod);
+        }
         return orderRepository.save(order);
     }
 

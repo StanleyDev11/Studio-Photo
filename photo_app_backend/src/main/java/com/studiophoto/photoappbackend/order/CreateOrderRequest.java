@@ -9,5 +9,6 @@ import java.util.List;
 public class CreateOrderRequest {
     private boolean isExpress;
     private String paymentMethod;
+    private String deliveryAddress; // Added delivery address field
     private List<CreateOrderItemRequest> items = new ArrayList<>();
 }

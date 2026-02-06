@@ -16,6 +16,7 @@ public class FedapayInitiateRequest {
     private Long userId;
     private String paymentMethod;
     private boolean isExpress;
+    private String deliveryAddress; // Added delivery address field
     private BigDecimal totalAmount; // Added totalAmount from mobile app
     private List<OrderItemDto> items;
 

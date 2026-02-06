@@ -34,4 +34,38 @@ public class AdminOrderController {
             return "redirect:/admin/orders";
         }
     }
+
+    @GetMapping("/{id}/confirm")
+    public String confirmOrder(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
+        try {
+            orderService.updateOrderStatusAndPaymentMethod(id, OrderStatus.PROCESSING, null);
+            redirectAttributes.addFlashAttribute("successMessage", "Commande #" + id + " a été confirmée et est en cours de traitement.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/orders";
+    }
+
+    @GetMapping("/{id}/cancel")
+    public String cancelOrder(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
+        try {
+            orderService.updateOrderStatusAndPaymentMethod(id, OrderStatus.CANCELLED, null);
+            redirectAttributes.addFlashAttribute("successMessage", "Commande #" + id + " a été annulée.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/orders";
+    }
+
+    @GetMapping("/{id}/complete")
+    public String completeOrder(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
+        try {
+            orderService.updateOrderStatusAndPaymentMethod(id, OrderStatus.COMPLETED, null);
+            redirectAttributes.addFlashAttribute("successMessage", "Commande #" + id + " a été marquée comme terminée.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/orders";
+    }
 }
+
