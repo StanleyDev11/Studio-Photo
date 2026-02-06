@@ -1,9 +1,19 @@
 package com.studiophoto.photoappbackend.order;
 
 public enum OrderStatus {
-    PENDING,      // Commande créée, en attente de paiement ou de traitement
-    PENDING_PAYMENT, // Commande en attente de paiement via un système externe
-    PROCESSING,   // Paiement reçu, en cours de préparation
-    COMPLETED,    // Commande terminée et livrée/récupérée
-    CANCELLED     // Commande annulée
+    PENDING("En attente"),
+    PENDING_PAYMENT("En attente de paiement"),
+    PROCESSING("En traitement"),
+    COMPLETED("Terminée"),
+    CANCELLED("Annulée");
+
+    private final String displayName;
+
+    OrderStatus(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
 }

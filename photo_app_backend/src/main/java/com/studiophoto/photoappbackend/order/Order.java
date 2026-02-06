@@ -1,5 +1,6 @@
 package com.studiophoto.photoappbackend.order;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.studiophoto.photoappbackend.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -28,6 +29,7 @@ public class Order {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @JsonManagedReference
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();
