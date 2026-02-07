@@ -320,5 +320,16 @@ class ApiService {
       throw Exception('Failed to initiate Fedapay payment: Invalid response from server.');
     }
   }
+
+  static Future<String> initiatePaydunyaPayment(Map<String, dynamic> orderPayload) async {
+    const url = '$baseUrl/payments/paydunya/initiate';
+    final response = await _safePost(url, orderPayload);
+    final responseData = _handleApiResponse(response);
+    if (responseData != null && responseData.containsKey('paymentUrl')) {
+      return responseData['paymentUrl'];
+    } else {
+      throw Exception('Failed to initiate PayDunya payment: Invalid response from server.');
+    }
+  }
 }
 

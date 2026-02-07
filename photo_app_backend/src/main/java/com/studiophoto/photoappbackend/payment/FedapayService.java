@@ -66,7 +66,7 @@ public class FedapayService {
         headers.set("Authorization", authHeader);
 
         Map<String, Object> transactionPayload = new LinkedHashMap<>();
-        transactionPayload.put("amount", request.getTotalAmount().intValue()); // Use totalAmount from request
+        transactionPayload.put("amount", request.getTotalAmount().multiply(BigDecimal.valueOf(100)).intValue()); // Convert to cents for Fedapay
         transactionPayload.put("currency", "XOF");
         // Use orderId in description for webhook to retrieve later
         transactionPayload.put("description", "Payment for Photo Order #" + orderId);

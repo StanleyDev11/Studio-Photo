@@ -787,13 +787,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 value: commonSize,
                 decoration: InputDecoration(
                   labelText: 'Dimension', // Shorter label for smaller input
+                  labelStyle: const TextStyle(fontSize: 12), // Smaller font size for the label
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12), // Rounded borders
                   ),
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Reduced here
                   prefixIcon:
-                      const Icon(Icons.straighten, size: 20), // Added icon
+                      const Icon(Icons.straighten, size: 16), // Reduced here
                 ),
                 items: _prices!.keys
                     .map((size) =>

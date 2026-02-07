@@ -39,7 +39,12 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
       'name': 'PiconPay',
       'logo': 'assets/logos/pro.png',
       'description': 'Payez via Fedapay (environnement Sandbox).'
-    }, // Fedapay is the only method
+    }, 
+    {
+      'name': 'PayDunya',
+      'logo': 'assets/logos/pro.png', // Placeholder logo
+      'description': 'Payer avec PayDunya (Orange Money, Wave, CB...)'
+    },
   ];
 
   @override
@@ -111,7 +116,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
           'imageUrl': entry.key,
           'size': details['size'],
           'quantity': details['quantity'],
-          // 'price': _prices![details['size']], // Add price per unit if needed by backend for order item creation
+          'price': _prices![details['size']], // Add price per unit if needed by backend for order item creation
         };
       }).toList();
 
@@ -123,9 +128,15 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         'totalAmount': widget.totalAmount, // Pass totalAmount
       };
 
-      // --- Fedapay Integration Logic (now the only payment method) ---
-      final String paymentUrl =
-          await ApiService.initiateFedapayPayment(orderPayload);
+      // --- Payment Integration Logic ---
+      String paymentUrl = "";
+      if (_selectedMethodName == 'PiconPay') {
+         paymentUrl = await ApiService.initiateFedapayPayment(orderPayload);
+      } else if (_selectedMethodName == 'PayDunya') {
+         paymentUrl = await ApiService.initiatePaydunyaPayment(orderPayload);
+      } else {
+        throw "Méthode de paiement non supportée.";
+      }
 
       if (mounted) Navigator.of(context).pop(); // Pop loader
 

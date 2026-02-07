@@ -13,10 +13,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentController {
 
     private final FedapayService fedapayService;
+    private final PayDunyaService payDunyaService;
 
     @PostMapping("/fedapay/initiate")
     public ResponseEntity<FedapayInitiateResponse> initiateFedapayPayment(@RequestBody FedapayInitiateRequest request) {
         FedapayInitiateResponse response = fedapayService.initiatePayment(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/paydunya/initiate")
+    public ResponseEntity<java.util.Map<String, String>> initiatePaydunyaPayment(@RequestBody java.util.Map<String, Object> request) {
+        String paymentUrl = payDunyaService.initiatePayment(request);
+        return ResponseEntity.ok(java.util.Map.of("paymentUrl", paymentUrl));
     }
 }
