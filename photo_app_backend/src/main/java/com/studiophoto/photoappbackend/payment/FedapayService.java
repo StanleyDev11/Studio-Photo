@@ -125,11 +125,13 @@ public class FedapayService {
         customerPayload.put("country", "TG"); // Assuming Togo, TODO: Make dynamic or configurable
         transactionPayload.put("customer", customerPayload);
 
-        log.info("Fedapay transaction payload: {}", transactionPayload);
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(transactionPayload, headers);
-
         try {
+            String transactionPayloadString = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(transactionPayload);
+            headers.setContentLength(transactionPayloadString.getBytes().length);
+            log.info("Fedapay transaction payload: {}", transactionPayloadString);
+
+            HttpEntity<String> entity = new HttpEntity<>(transactionPayloadString, headers);
+
             ResponseEntity<Map> response = restTemplate.exchange(
                     fedapayApiBaseUrl + "/transactions",
                     HttpMethod.POST,
@@ -150,6 +152,8 @@ public class FedapayService {
             }
             throw new RuntimeException("Fedapay API did not return a valid payment URL.");
 
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new RuntimeException("Error converting payload to JSON", e);
         } catch (Exception e) {
             throw new RuntimeException("Error communicating with Fedapay API: " + e.getMessage(), e);
         }
