@@ -13,6 +13,11 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +28,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
+
 @Service
 @RequiredArgsConstructor
 public class FedapayService {
@@ -32,16 +39,44 @@ public class FedapayService {
     private final RestTemplate restTemplate;
     private final UserRepository userRepository; // Injected UserRepository
 
-    // Fedapay API keys (from user prompt)
-    // TODO: Store these keys securely, e.g., in application.properties or environment variables.
-    private final String PUBLIC_KEY = "pk_sandbox_LNC4KNFoONbjhlBWh9kwRgSU";
-    private final String SECRET_KEY = "sk_sandbox_5eglTc3hCd6lTA8agN_O32jz";
+    @Value("${fedapay.public-key}")
+    private String publicKey;
 
-    // Fedapay Sandbox API endpoint
-    private static final String FEDAPAY_API_BASE_URL = "https://sandbox-api.fedapay.com/v1";
-    private static final String FEDAPAY_TRANSACTIONS_ENDPOINT = FEDAPAY_API_BASE_URL + "/transactions";
-    // TODO: Make this configurable (e.g., from application.properties)
-    private static final String BACKEND_BASE_URL = "http://109.176.197.158:8080";
+    @Value("${fedapay.secret-key}")
+    private String secretKey;
+
+    @Value("${fedapay.api-base-url}")
+    private String fedapayApiBaseUrl;
+
+    @Value("${backend.base-url}")
+    private String backendBaseUrl;
+
+    @Value("${fedapay.webhook-secret}")
+    private String webhookSecret;
+
+    public boolean verifySignature(String payload, String signature) {
+        try {
+            Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secret_key = new SecretKeySpec(webhookSecret.getBytes(), "HmacSHA256");
+            sha256_HMAC.init(secret_key);
+            String hash = bytesToHex(sha256_HMAC.doFinal(payload.getBytes()));
+            return Objects.equals(hash, signature);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            // It is recommended to log the exception
+            return false;
+        }
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        final char[] hexArray = "0123456789abcdef".toCharArray();
+        char[] hexChars = new char[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
 
     public FedapayInitiateResponse initiatePayment(FedapayInitiateRequest request) {
         // 1. Retrieve User
@@ -60,7 +95,7 @@ public class FedapayService {
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         
         // Basic Authentication with Secret Key
-        String auth = SECRET_KEY + ":";
+        String auth = secretKey + ":";
         byte[] encodedAuth = Base64.getEncoder().encode(auth.getBytes(StandardCharsets.UTF_8));
         String authHeader = "Basic " + new String(encodedAuth);
         headers.set("Authorization", authHeader);
@@ -70,8 +105,8 @@ public class FedapayService {
         transactionPayload.put("currency", "XOF");
         // Use orderId in description for webhook to retrieve later
         transactionPayload.put("description", "Payment for Photo Order #" + orderId);
-        transactionPayload.put("callback_url", BACKEND_BASE_URL + "/api/payments/fedapay/webhook"); // Our webhook endpoint
-        transactionPayload.put("cancel_url", BACKEND_BASE_URL + "/payment_cancel"); // TODO: Define a proper cancel URL
+        transactionPayload.put("callback_url", backendBaseUrl + "/api/payments/fedapay/webhook"); // Our webhook endpoint
+        transactionPayload.put("cancel_url", backendBaseUrl + "/payment_cancel"); // TODO: Define a proper cancel URL
 
         // Customer details
         Map<String, String> customerPayload = new LinkedHashMap<>();
@@ -86,7 +121,7 @@ public class FedapayService {
 
         try {
             ResponseEntity<Map> response = restTemplate.exchange(
-                    FEDAPAY_TRANSACTIONS_ENDPOINT,
+                    fedapayApiBaseUrl + "/transactions",
                     HttpMethod.POST,
                     entity,
                     Map.class

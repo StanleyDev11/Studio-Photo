@@ -33,11 +33,9 @@ public class FedapayWebhookController {
         log.info("Received Fedapay webhook. Signature: {}, Payload: {}", fedapaySignature, payloadJson);
 
         // 1. Verify webhook signature (CRITICAL SECURITY STEP)
-        // TODO: Implement actual signature verification using FedapayService's SECRET_KEY
-        // Example (conceptual): if (!fedapayService.verifySignature(payloadJson, fedapaySignature)) {
-        //                         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid webhook signature");
-        //                      }
-        log.warn("Webhook signature verification is currently bypassed for development. Enable in production!");
+        if (!fedapayService.verifySignature(payloadJson, fedapaySignature)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid webhook signature");
+        }
 
         try {
             // Parse the payload
