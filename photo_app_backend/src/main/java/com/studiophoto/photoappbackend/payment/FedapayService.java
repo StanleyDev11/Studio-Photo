@@ -98,8 +98,12 @@ public class FedapayService {
         headers.set("Authorization", "Bearer " + secretKey);
 
         Map<String, Object> transactionPayload = new LinkedHashMap<>();
-        transactionPayload.put("amount", request.getTotalAmount().multiply(BigDecimal.valueOf(100)).intValue()); // Convert to cents for Fedapay
-        transactionPayload.put("currency", "XOF");
+        transactionPayload.put("amount", request.getTotalAmount().intValue());
+        
+        Map<String, String> currencyPayload = new LinkedHashMap<>();
+        currencyPayload.put("iso", "XOF");
+        transactionPayload.put("currency", currencyPayload);
+
         // Use orderId in description for webhook to retrieve later
         transactionPayload.put("description", "Payment for Photo Order #" + orderId);
         transactionPayload.put("callback_url", backendBaseUrl + "/api/payments/fedapay/webhook"); // Our webhook endpoint
