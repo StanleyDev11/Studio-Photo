@@ -94,11 +94,8 @@ public class FedapayService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         
-        // Basic Authentication with Secret Key
-        String auth = secretKey + ":";
-        byte[] encodedAuth = Base64.getEncoder().encode(auth.getBytes(StandardCharsets.UTF_8));
-        String authHeader = "Basic " + new String(encodedAuth);
-        headers.set("Authorization", authHeader);
+        // Set Authorization header for Fedapay API
+        headers.set("Authorization", "Bearer " + secretKey);
 
         Map<String, Object> transactionPayload = new LinkedHashMap<>();
         transactionPayload.put("amount", request.getTotalAmount().multiply(BigDecimal.valueOf(100)).intValue()); // Convert to cents for Fedapay
