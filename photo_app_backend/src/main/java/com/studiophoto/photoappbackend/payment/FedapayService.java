@@ -30,8 +30,11 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class FedapayService {
 
     private final OrderService orderService;
@@ -117,6 +120,8 @@ public class FedapayService {
         customerPayload.put("phone_number", user.getPhone());
         customerPayload.put("country", "TG"); // Assuming Togo, TODO: Make dynamic or configurable
         transactionPayload.put("customer", customerPayload);
+
+        log.info("Fedapay transaction payload: {}", transactionPayload);
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(transactionPayload, headers);
 
