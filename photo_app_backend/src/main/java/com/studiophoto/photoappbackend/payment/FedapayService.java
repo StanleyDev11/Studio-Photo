@@ -117,7 +117,11 @@ public class FedapayService {
         customerPayload.put("firstname", user.getFirstname());
         customerPayload.put("lastname", user.getLastname());
         customerPayload.put("email", user.getEmail());
-        customerPayload.put("phone_number", user.getPhone());
+        String phone = user.getPhone();
+        if (phone != null && !phone.startsWith("+")) {
+            phone = "+228" + phone;
+        }
+        customerPayload.put("phone_number", phone);
         customerPayload.put("country", "TG"); // Assuming Togo, TODO: Make dynamic or configurable
         transactionPayload.put("customer", customerPayload);
 
