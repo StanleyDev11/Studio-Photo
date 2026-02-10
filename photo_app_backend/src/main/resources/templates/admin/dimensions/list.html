@@ -47,25 +47,49 @@
         #dimensionsTable thead th { background-color: #f8f9fa; border-bottom: 2px solid #dee2e6; font-weight: 600; padding: 15px 20px; }
         #dimensionsTable tbody td { padding: 15px 20px; vertical-align: middle; }
         .table-actions { display: flex; gap: 8px; }
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none; /* Initially hidden */
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+</div>
 
 <!-- Sidebar Navigation -->
 <nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
 
 <!-- Main Content -->
 <div class="main-content">
-    <!-- Top Bar -->
-    <header class="top-bar">
-        <div></div> <!-- Placeholder for search or other elements -->
-        <div class="user-info">
-            <span class="user-name" th:text="${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}"></span>
-            <form th:action="@{/logout}" method="post" style="display: inline; margin-left: 15px;">
-                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-sign-out-alt"></i></button>
-            </form>
-        </div>
-    </header>
+    <!-- Inclusion du header depuis le fragment -->
+    <div th:insert="~{admin/fragments/header :: mainHeader}"></div>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper">
@@ -82,7 +106,6 @@
             <table id="dimensionsTable" class="table table-hover" style="width:100%">
                 <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Nom (ex: 9x13)</th>
                     <th>Titre</th>
                     <th>Image</th>
@@ -93,7 +116,6 @@
                 </thead>
                 <tbody>
                 <tr th:each="dimension : ${dimensions}">
-                    <td th:text="${dimension.id}">1</td>
                     <td th:text="${dimension.name}">9x13 cm</td>
                     <td th:text="${dimension.title}">Titre exemple</td>
                     <td>
@@ -132,6 +154,14 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script th:inline="javascript">
     $(document).ready(function() {
+        // Loading overlay
+        function showLoading() {
+            $('#loadingOverlay').fadeIn();
+        }
+
+        function hideLoading() {
+            $('#loadingOverlay').fadeOut();
+        }
         $('#dimensionsTable').DataTable({ "language": { "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json" } });
 
         // Flash messages
@@ -160,6 +190,7 @@
                 cancelButtonText: 'Annuler'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    showLoading(); // Show spinner before redirect
                     window.location.href = $(this).attr('href');
                 }
             });

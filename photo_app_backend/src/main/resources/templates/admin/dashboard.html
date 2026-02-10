@@ -515,33 +515,48 @@
                 padding: 20px;
             }
         }
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none; /* Initially hidden */
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+</div>
 <!-- Sidebar Navigation -->
 <nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
 
 <!-- Main Content -->
 <div class="main-content">
-    <!-- Top Bar -->
-    <header class="top-bar">
-        <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Rechercher utilisateurs, photos, commandes...">
-        </div>
-        <div class="user-info">
-            <div class="user-details">
-                <div class="user-name" th:text="${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}"></div>
-                <div class="user-role" sec:authentication="principal.authorities"></div>
-            </div>
-            <div class="user-avatar" id="userInitials"></div>
-            <form th:action="@{/admin/logout}" method="post" style="display: inline;">
-                <button type="submit" class="btn btn-outline-danger btn-sm">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-            </form>
-        </div>
-    </header>
+    <!-- Inclusion du header depuis le fragment -->
+    <div th:insert="~{admin/fragments/header :: mainHeader}"></div>
 
     <!-- Dashboard Content -->
     <div class="content-wrapper">
@@ -749,13 +764,21 @@
 </div>
 
 <!-- Scripts -->
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://unpkg.com/popper.js@1.16.1/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script th:inline="javascript">
     /*<![CDATA[*/
+    function showLoading() {
+        $('#loadingOverlay').fadeIn();
+    }
+
+    function hideLoading() {
+        $('#loadingOverlay').fadeOut();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Initiales de l'utilisateur
         const userName = /*[[${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}]]*/ 'Admin';
@@ -780,6 +803,7 @@
         setInterval(updateDateTime, 60000); // Mettre à jour chaque minute
 
         // Récupérer les statistiques du dashboard
+        showLoading(); // Show spinner before fetch
         fetch('/admin/api/dashboard-stats')
             .then(response => {
                 if (!response.ok) throw new Error('Network response was not ok');
@@ -798,6 +822,9 @@
                 document.getElementById('totalPhotos').innerText = '2,345';
                 document.getElementById('totalPendingOrders').innerText = '12';
                 document.getElementById('totalRevenue').innerText = '€4,250';
+            })
+            .finally(() => {
+                hideLoading(); // Hide spinner after fetch completes (success or error)
             });
 
         // Initialiser le graphique

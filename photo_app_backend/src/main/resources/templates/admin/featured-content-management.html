@@ -273,33 +273,48 @@
             background: white;
             margin-top: 30px;
         }
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none; /* Initially hidden */
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+</div>
 <!-- Sidebar Navigation -->
 <nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
 
 <!-- Main Content -->
 <div class="main-content">
-    <!-- Top Bar -->
-    <header class="top-bar">
-        <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Rechercher...">
-        </div>
-        <div class="user-info">
-            <div class="user-details">
-                <div class="user-name" th:text="${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}"></div>
-                <div class="user-role" sec:authentication="principal.authorities"></div>
-            </div>
-            <div class="user-avatar" id="userInitials"></div>
-            <form th:action="@{/admin/logout}" method="post" style="display: inline;">
-                <button type="submit" class="btn btn-outline-danger btn-sm">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-            </form>
-        </div>
-    </header>
+    <!-- Inclusion du header depuis le fragment -->
+    <div th:insert="~{admin/fragments/header :: mainHeader}"></div>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper">
@@ -316,7 +331,6 @@
             <table id="featuredContentTable" class="table table-hover" style="width:100%">
                 <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Titre</th>
                     <th>Image</th>
                     <th>Texte Bouton</th>
@@ -330,7 +344,6 @@
                 </thead>
                 <tbody>
                 <tr th:each="content : ${featuredContents}">
-                    <td th:text="${content.id}">1</td>
                     <td th:text="${content.title}">Contenu Vedette</td>
                     <td><img th:src="${content.imageUrl}" alt="Image Contenu" class="featured-image-preview"></td>
                     <td th:text="${content.buttonText}">Voir Plus</td>
@@ -366,7 +379,7 @@
 
 <!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://unpkg.com/popper.js@1.16.1/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
@@ -374,6 +387,14 @@
 <script th:inline="javascript">
     /*<![CDATA[*/
     $(document).ready(function() {
+        // Loading overlay
+        function showLoading() {
+            $('#loadingOverlay').fadeIn();
+        }
+
+        function hideLoading() {
+            $('#loadingOverlay').fadeOut();
+        }
         $('#featuredContentTable').DataTable({
             language: {
                 url: '/i18n/French.json' // Assurez-vous que le fichier de traduction existe localement
@@ -400,6 +421,7 @@
                 cancelButtonText: 'Annuler'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    showLoading(); // Show spinner before fetch
                     fetch(`/admin/featured-content/delete/${contentId}`, {
                         method: 'POST',
                         headers: {
@@ -408,15 +430,17 @@
                     })
                     .then(response => {
                         if (response.ok) {
-                            location.reload();
+                            location.reload(); // Page reloads, spinner will naturally disappear
                             Swal.fire('Supprimé !', 'Le contenu mis en avant a été supprimé.', 'success');
                         } else {
                             Swal.fire('Erreur', 'Erreur lors de la suppression du contenu mis en avant.', 'error');
+                            hideLoading(); // Hide if there's an error and no reload
                         }
                     })
                     .catch(error => {
                         console.error('Error deleting featured content:', error);
                         Swal.fire('Erreur', 'Erreur lors de la suppression du contenu mis en avant.', 'error');
+                        hideLoading(); // Hide on fetch error
                     });
                 }
             });
