@@ -127,7 +127,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           SafeArea(
             child: SingleChildScrollView(
               child: Column(

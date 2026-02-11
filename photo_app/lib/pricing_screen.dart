@@ -46,7 +46,7 @@ class _PricingScreenState extends State<PricingScreen> {
       ),
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           SafeArea(
             child: FutureBuilder<List<PhotoFormat>>(
               future: _pricesFuture,

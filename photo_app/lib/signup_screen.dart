@@ -59,7 +59,7 @@ class _SignupScreenState extends State<SignupScreen> {
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           SafeArea(
             child: SingleChildScrollView(
               child: Column(

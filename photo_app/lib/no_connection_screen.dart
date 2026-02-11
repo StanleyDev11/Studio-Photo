@@ -10,7 +10,7 @@ class NoConnectionScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

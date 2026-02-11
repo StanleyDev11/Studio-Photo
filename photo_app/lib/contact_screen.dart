@@ -50,7 +50,7 @@ class _ContactScreenState extends State<ContactScreen> {
       ),
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           SafeArea(
             child: FutureBuilder<ContactInfo>(
               future: _contactInfoFuture,

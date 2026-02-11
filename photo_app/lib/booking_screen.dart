@@ -175,7 +175,7 @@ class _BookingScreenState extends State<BookingScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           CustomScrollView(
             slivers: [
               _buildAppBar(),

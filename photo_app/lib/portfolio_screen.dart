@@ -64,7 +64,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
       ),
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           SafeArea(
             child: FutureBuilder<List<PhotoFormat>>(
               future: _dimensionsFuture,

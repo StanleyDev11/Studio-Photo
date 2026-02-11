@@ -124,7 +124,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           SingleChildScrollView(
             padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight, bottom: 20),
             child: Center(
@@ -144,12 +144,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      _currentEmail,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith( // Use bodyLarge for email
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    // Text(
+                    //   _currentEmail,
+                    //   style: Theme.of(context).textTheme.bodyLarge?.copyWith( // Use bodyLarge for email
+                    //     color: AppColors.textSecondary,
+                    //   ),
+                    // ),
                     const SizedBox(height: 40),
                     _buildMenuItems(),
                   ],
@@ -174,7 +174,7 @@ class _ProfilePageState extends State<ProfilePage> {
               radius: 70,
               backgroundImage: _currentAvatar != null
                   ? FileImage(_currentAvatar!) as ImageProvider
-                  : const AssetImage('assets/images/pro1.png'), // A default placeholder
+                  : const AssetImage('assets/images/user.png'), // A default placeholder
             ),
           ),
           Positioned(

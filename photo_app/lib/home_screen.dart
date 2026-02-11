@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:Picon/api_service.dart';
 import 'package:Picon/booking_screen.dart';
+import 'package:Picon/booking_status_screen.dart';
 import 'package:Picon/contact_screen.dart';
 import 'package:Picon/history_screen.dart';
 import 'package:Picon/no_connection_screen.dart';
@@ -311,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBody: true,
       body: Stack(
         children: [
-          const GeometricBackground(), // Using GeometricBackground
+          GeometricBackground(), // Using GeometricBackground
           Positioned(
             top: 0,
             left: 0,
@@ -489,15 +490,16 @@ class _HomeScreenState extends State<HomeScreen> {
         SliverToBoxAdapter(
           child: Column(
             children: [
-              const SizedBox(height: 2), // Reduced space above the card
+              const SizedBox(height: 2), // 
               _buildTopCard(),
             ],
           ),
         ),
         SliverToBoxAdapter(child: _buildQuickActions()),
         _buildHistorySection(),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)), //padding en bas de la page des actions
         SliverToBoxAdapter(child: _buildAdCarousel()),
-        const SliverToBoxAdapter(child: SizedBox(height: 150)),
+        const SliverToBoxAdapter(child: SizedBox(height: 140)), //padding en bas de la page des carousels
       ],
     );
   }
@@ -518,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
           } else {
             final images = snapshot.data!;
             return GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 120),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisSpacing: 16.0,
@@ -589,7 +591,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       color: AppColors.background,
       padding:
-          const EdgeInsets.only(bottom: 120, top: 5), // Adjusted bottom padding
+          const EdgeInsets.only(bottom: 140, top: 5), // Adjusted bottom padding
       child: Stack(
         // Added Stack for background
         children: [
@@ -1088,7 +1090,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildQuickActions() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 8.0),
+      padding: const EdgeInsets.fromLTRB(6.0, 2.0, 16.0, 2.0), //padding en bas de la page des actions
       child: GridView.builder(
         shrinkWrap: true, // Important for nested scroll views
         physics:
@@ -1134,20 +1136,22 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             case 3:
               return _buildAnimatedQuickActionButton(
-                icon: Icons.flash_on,
-                label: 'Commande rapide',
-                onTap: () =>
-                    _quickPhotoOrder(), // Directly call quick photo order
-                delay: 300.ms,
-              );
-            case 4:
-              return _buildAnimatedQuickActionButton(
                 icon: Icons.calendar_today, // Changed icon
                 label: 'Réserver', // Changed label
                 onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const BookingScreen())),
+                        builder: (context) => BookingScreen())),
+                delay: 300.ms,
+              );
+            case 4:
+              return _buildAnimatedQuickActionButton(
+                icon: Icons.checklist_rtl,
+                label: 'Mes réservations',
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => BookingStatusScreen())),
                 delay: 400.ms,
               );
             case 5:
@@ -1225,7 +1229,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHistorySection() {
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 0.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 2.0, 16.0, 0.0),
       sliver: SliverToBoxAdapter(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1329,11 +1333,17 @@ class _HomeScreenState extends State<HomeScreen> {
               trailing: const Icon(Icons.arrow_forward_ios,
                   size: 16, color: AppColors.textSecondary),
               onTap: () {
-                // Implement navigation to detailed history or relevant screen
-                Navigator.push(
+                if (item.type == HistoryItemType.booking) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const BookingStatusScreen()));
+                } else {
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (context) => const HistoryScreen()));
+                }
               },
             ),
           ),
@@ -1504,27 +1514,27 @@ class _HomeScreenState extends State<HomeScreen> {
     final steps = [
       {
         'icon': Icons.photo_library_outlined,
-        'title': 'Étape 1: Sélectionnez vos photos',
+        'title': 'Sélectionnez vos photos',
         'subtitle':
-            'Parcourez votre galerie et choisissez les souvenirs que vous souhaitez immortaliser.',
+            'Parcourez votre galerie et choisissez vos meilleurs souvenirs.',
       },
       {
         'icon': Icons.straighten_outlined,
-        'title': 'Étape 2: Choisissez format et quantité',
+        'title': 'Format et quantité',
         'subtitle':
-            'Pour chaque photo, sélectionnez la taille d\'impression et le nombre de copies désirées.',
+            'Choisissez la taille d\'impression et le nombre de copies.',
       },
       {
         'icon': Icons.payment_outlined,
-        'title': 'Étape 3: Validez et payez',
+        'title': 'Validez et payez',
         'subtitle':
-            'Vérifiez votre commande, choisissez votre mode de paiement et réglez en toute sécurité.',
+            'Vérifiez votre commande et payez en toute sécurité.',
       },
       {
         'icon': Icons.local_shipping_outlined,
-        'title': 'Étape 4: Recevez votre commande',
+        'title': 'Recevez votre commande',
         'subtitle':
-            'Nous préparons vos photos avec soin et vous notifions dès qu\'elles sont prêtes !',
+            'Nous préparons vos photos et vous notifions dès qu\'elles sont prêtes !',
       },
     ];
 
@@ -1532,116 +1542,223 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      transitionDuration: const Duration(milliseconds: 400),
+      transitionDuration: const Duration(milliseconds: 500),
       pageBuilder: (context, animation, secondaryAnimation) => Container(),
       transitionBuilder: (context, anim1, anim2, child) {
-        return ScaleTransition(
-          scale: anim1,
-          child: AlertDialog(
-            backgroundColor: Colors.transparent,
-            contentPadding: EdgeInsets.zero,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-            content: Stack(
-              children: [
-                const ClipRRect(
-                  borderRadius: BorderRadius.all(Radius.circular(20)),
-                  child: GeometricBackground(),
-                ),
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        "Comment ça marche ?",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary),
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
+        return FadeTransition(
+          opacity: anim1,
+          child: ScaleTransition(
+            scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
+            child: AlertDialog(
+              backgroundColor: Colors.transparent,
+              contentPadding: EdgeInsets.zero,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20.0),
+              content: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    width: double.maxFinite,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.92)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(
+                        color: isDark ? Colors.white24 : AppColors.primary.withOpacity(0.2),
+                        width: 2,
                       ),
-                      const SizedBox(height: 20),
-                      ...steps.asMap().entries.map((entry) {
-                        int idx = entry.key;
-                        Map<String, Object> step = entry.value;
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8.0),
-                          color: AppColors.primary.withOpacity(0.05),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            side: BorderSide(
-                                color: AppColors.primary.withOpacity(0.2)),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              children: [
-                                Icon(step['icon'] as IconData,
-                                    color: AppColors.primary, size: 40),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        step['title'] as String,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Background architectural elements
+                        const Positioned.fill(child: GeometricBackground()),
+
+                        Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: 8),
+                              Text(
+                                "Comment ça marche ?",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.5,
+                                  color: isDark ? Colors.white : AppColors.primary,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 10,
+                                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              // Steps with Timeline
+                              Stack(
+                                children: [
+                                  // Timeline Line
+                                  Positioned(
+                                    left: 24,
+                                    top: 40,
+                                    bottom: 60,
+                                    child: Container(
+                                      width: 2,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            AppColors.primary.withOpacity(0.5),
+                                            AppColors.primary.withOpacity(0.1),
+                                          ],
+                                        ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        step['subtitle'] as String,
-                                        style: const TextStyle(
-                                            color: AppColors.textSecondary,
-                                            fontSize: 14),
-                                      ),
-                                    ],
+                                    ),
+                                  ),
+                                  Column(
+                                    children: List.generate(steps.length, (idx) {
+                                      final step = steps[idx];
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 24.0),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // Icon Hub
+                                            Container(
+                                              width: 50,
+                                              height: 50,
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? AppColors.primary.withOpacity(0.3)
+                                                    : Colors.white,
+                                                shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppColors.primary.withOpacity(0.2),
+                                                    blurRadius: 12,
+                                                    spreadRadius: 2,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Center(
+                                                child: Icon(
+                                                  step['icon'] as IconData,
+                                                  color: AppColors.primary,
+                                                  size: 24,
+                                                ),
+                                              ),
+                                            ).animate().scale(
+                                              delay: (150 * idx).ms,
+                                              duration: 400.ms,
+                                              curve: Curves.elasticOut,
+                                            ),
+                                            const SizedBox(width: 20),
+                                            // Content
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    step['title'] as String,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.w800,
+                                                      fontSize: 18,
+                                                      color: isDark ? Colors.white : AppColors.textPrimary,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                    step['subtitle'] as String,
+                                                    style: TextStyle(
+                                                      color: isDark
+                                                          ? Colors.white.withOpacity(0.95)
+                                                          : AppColors.textPrimary,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w500,
+                                                      height: 1.4,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ).animate().fadeIn(delay: (100 * idx).ms).slideX(begin: 0.1);
+                                    }),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              // Bottom Button
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withOpacity(0.3),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text(
+                                    "C'EST PARTI !",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                    ),
                                   ),
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Top Right Close Button
+                        Positioned(
+                          top: 16,
+                          right: 16,
+                          child: InkWell(
+                            onTap: () => Navigator.of(context).pop(),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white10 : Colors.black12,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 20,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
                             ),
                           ),
-                        )
-                            .animate()
-                            .fadeIn(
-                                delay: (200 * (idx + 1)).ms, duration: 500.ms)
-                            .slideX(begin: -0.2, curve: Curves.easeOut);
-                      }).toList(),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: Colors.white,
-                          shape: const StadiumBorder(),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 32, vertical: 12),
                         ),
-                        child: const Text("J'ai compris !",
-                            style: TextStyle(fontSize: 16)),
-                      )
-                    ],
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child:
-                          const Icon(Icons.close, color: AppColors.textPrimary),
+                      ],
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         );

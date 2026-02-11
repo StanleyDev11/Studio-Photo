@@ -96,7 +96,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),

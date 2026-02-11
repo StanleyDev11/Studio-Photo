@@ -201,7 +201,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
               ? const Center(child: CircularProgressIndicator())
               : Stack(
                   children: [
-                    const GeometricBackground(),
+                    GeometricBackground(),
                     Column(
                       children: [
                         Padding(
