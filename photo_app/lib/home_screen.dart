@@ -27,15 +27,27 @@ import 'package:image_picker/image_picker.dart';
 import 'login_screen.dart';
 import 'order_summary_screen.dart';
 import 'package:Picon/models/promotion.dart';
+import 'package:Picon/models/order.dart';
+import 'package:Picon/models/booking.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// --- Model Class for Mock Data ---
-class RecentRequest {
+// --- Model Class for Real History Data ---
+enum HistoryItemType { order, booking }
+
+class HistoryItem {
   final String title;
   final DateTime date;
   final IconData icon;
+  final HistoryItemType type;
+  final dynamic originalObject;
 
-  RecentRequest({required this.title, required this.date, required this.icon});
+  HistoryItem({
+    required this.title,
+    required this.date,
+    required this.icon,
+    required this.type,
+    this.originalObject,
+  });
 }
 // --- End of Model Class ---
 
@@ -83,33 +95,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingPrices = true;
   bool _isUploading = false;
   Future<List<Promotion>>? _promotionsFuture;
+  Future<List<HistoryItem>>? _historyFuture;
   RealtimeService? _realtimeService;
   // --- End of new state variables ---
 
-  // --- Mock Data for History ---
-  final List<RecentRequest> _mockHistory = [
-    RecentRequest(
-        title: "Commande de 15 photos",
-        date: DateTime.now().subtract(const Duration(days: 1)),
-        icon: Icons.photo_camera),
-    RecentRequest(
-        title: "Réservation - Mariage",
-        date: DateTime.now().subtract(const Duration(days: 3)),
-        icon: Icons.calendar_today),
-    RecentRequest(
-        title: "Tirage 20x30",
-        date: DateTime.now().subtract(const Duration(days: 6)),
-        icon: Icons.print),
-    RecentRequest(
-        title: "Commande Album",
-        date: DateTime.now().subtract(const Duration(days: 10)),
-        icon: Icons.book),
-    RecentRequest(
-        title: "Photos d'identité",
-        date: DateTime.now().subtract(const Duration(days: 4)),
-        icon: Icons.person),
-  ];
-  // --- End of Mock Data ---
 
   @override
   void initState() {
@@ -119,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _currentUserEmail = widget.userEmail;
     _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
     _promotionsFuture = ApiService.fetchPromotions();
+    _historyFuture = _fetchRecentHistory();
     _connectivitySubscription =
         _connectivityService.connectivityStream.listen((result) {
       if (result == ConnectivityResult.none) {
@@ -164,6 +154,49 @@ class _HomeScreenState extends State<HomeScreen> {
     _realtimeService?.connect();
   }
 
+  Future<List<HistoryItem>> _fetchRecentHistory() async {
+    try {
+      final results = await Future.wait([
+        ApiService.fetchMyOrders(),
+        ApiService.fetchUserBookings(),
+      ]);
+
+      final List<Order> orders = results[0] as List<Order>;
+      final List<Booking> bookings = results[1] as List<Booking>;
+
+      final List<HistoryItem> items = [];
+
+      for (var order in orders) {
+        items.add(HistoryItem(
+          title: "Commande #${order.id}",
+          date: order.createdAt,
+          icon: Icons.shopping_bag,
+          type: HistoryItemType.order,
+          originalObject: order,
+        ));
+      }
+
+      for (var booking in bookings) {
+        items.add(HistoryItem(
+          title: booking.title,
+          date: booking.startTime,
+          icon: Icons.event,
+          type: HistoryItemType.booking,
+          originalObject: booking,
+        ));
+      }
+
+      // Sort by date descending
+      items.sort((a, b) => b.date.compareTo(a.date));
+
+      // Limit to 5
+      return items.take(5).toList();
+    } catch (e) {
+      print("Error fetching history: $e");
+      return [];
+    }
+  }
+
   Future<void> _fetchPrices() async {
     try {
       final fetchedDimensions = await ApiService.fetchDimensions();
@@ -172,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _prices = {
             for (var dim in fetchedDimensions) dim.dimension: dim.price
           };
-          _calculateTotal();
+          // _calculateTotal(); // Note: if _calculateTotal is needed, ensure it exists
           _isLoadingPrices = false;
         });
       }
@@ -1190,10 +1223,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHistorySection() {
-    final recentHistory = _mockHistory
-        .where((req) =>
-            req.date.isAfter(DateTime.now().subtract(const Duration(days: 7))))
-        .toList(); // Get all recent history
 
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 0.0),
@@ -1225,34 +1254,43 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            if (recentHistory.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    'Aucune activité récente.',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-                itemCount: recentHistory.length,
-                itemBuilder: (context, index) {
-                  final item = recentHistory[index];
-                  return _buildHistoryCard(item, index);
-                },
-              ),
+            FutureBuilder<List<HistoryItem>>(
+              future: _historyFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final recentHistory = snapshot.data ?? [];
+                if (recentHistory.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        'Aucune activité récente.',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  itemCount: recentHistory.length,
+                  itemBuilder: (context, index) {
+                    final item = recentHistory[index];
+                    return _buildHistoryCard(item, index);
+                  },
+                );
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHistoryCard(RecentRequest item, int index) {
+  Widget _buildHistoryCard(HistoryItem item, int index) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 4,

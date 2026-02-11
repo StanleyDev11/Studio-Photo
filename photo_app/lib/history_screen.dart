@@ -1,13 +1,11 @@
 import 'package:Picon/api_service.dart';
+import 'package:Picon/models/booking.dart';
 import 'package:Picon/models/order.dart';
 import 'package:Picon/order_detail_screen.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-// The old OrderType enum, can be removed or adapted if the backend provides this info
-enum OrderType { detail, batch }
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -17,43 +15,33 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  late Future<List<Order>> _ordersFuture;
+  late Future<void> _fetchDataFuture;
   List<Order> _allOrders = [];
-  List<Order> _filteredOrders = [];
-  String? _selectedFilter; // Using String to match OrderStatus enum values
+  List<Booking> _allBookings = [];
+  String _selectedTab = 'COMMANDS'; // 'COMMANDS' or 'BOOKINGS'
+  String? _selectedFilter;
 
   @override
   void initState() {
     super.initState();
-    _ordersFuture = _fetchOrders();
+    _fetchDataFuture = _fetchAllHistory();
   }
 
-  Future<List<Order>> _fetchOrders() async {
+  Future<void> _fetchAllHistory() async {
     try {
-      final orders = await ApiService.fetchMyOrders();
+      final results = await Future.wait([
+        ApiService.fetchMyOrders(),
+        ApiService.fetchUserBookings(),
+      ]);
       setState(() {
-        _allOrders = orders;
-        _filteredOrders = orders;
+        _allOrders = results[0] as List<Order>;
+        _allBookings = results[1] as List<Booking>;
       });
-      return orders;
     } catch (e) {
-      // Handle error appropriately
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur de chargement de l'historique: $e"), backgroundColor: Colors.red),
+        SnackBar(content: Text("Erreur de chargement: $e"), backgroundColor: Colors.red),
       );
-      return [];
     }
-  }
-
-  void _filterOrders(String? newFilter) {
-    setState(() {
-      _selectedFilter = newFilter;
-      if (newFilter == null) {
-        _filteredOrders = _allOrders;
-      } else {
-        _filteredOrders = _allOrders.where((order) => order.status == newFilter).toList();
-      }
-    });
   }
 
   @override
@@ -71,45 +59,47 @@ class _HistoryScreenState extends State<HistoryScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: SegmentedButton<String?>(
+                child: SegmentedButton<String>(
                   segments: const [
-                    ButtonSegment(value: null, label: Text('Toutes')),
-                    ButtonSegment(value: "PENDING", label: Text('En attente')),
-                    ButtonSegment(value: "COMPLETED", label: Text('Terminée')),
+                    ButtonSegment(value: 'COMMANDS', label: Text('Commandes'), icon: Icon(Icons.shopping_bag)),
+                    ButtonSegment(value: 'BOOKINGS', label: Text('Réservations'), icon: Icon(Icons.event)),
                   ],
-                  selected: {_selectedFilter},
+                  selected: {_selectedTab},
                   onSelectionChanged: (newSelection) {
-                    _filterOrders(newSelection.first);
+                    setState(() {
+                      _selectedTab = newSelection.first;
+                      _selectedFilter = null;
+                    });
                   },
-                  style: SegmentedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.5),
-                    foregroundColor: AppColors.primary,
-                    selectedForegroundColor: Colors.white,
-                    selectedBackgroundColor: AppColors.primary,
-                  ),
                 ),
               ),
+              if (_selectedTab == 'COMMANDS') _buildOrderFilters(),
               Expanded(
-                child: FutureBuilder<List<Order>>(
-                  future: _ordersFuture,
+                child: FutureBuilder<void>(
+                  future: _fetchDataFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    if (snapshot.hasError) {
-                      return Center(child: Text("Erreur: ${snapshot.error}"));
+                    
+                    if (_selectedTab == 'COMMANDS') {
+                      final orders = _selectedFilter == null 
+                          ? _allOrders 
+                          : _allOrders.where((o) => o.status == _selectedFilter).toList();
+                      if (orders.isEmpty) return _buildEmptyState('Aucune commande');
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        itemCount: orders.length,
+                        itemBuilder: (context, index) => _buildHistoryCard(orders[index]),
+                      );
+                    } else {
+                      if (_allBookings.isEmpty) return _buildEmptyState('Aucune réservation');
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        itemCount: _allBookings.length,
+                        itemBuilder: (context, index) => _buildBookingCard(_allBookings[index]),
+                      );
                     }
-                    if (_filteredOrders.isEmpty) {
-                      return _buildEmptyState();
-                    }
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      itemCount: _filteredOrders.length,
-                      itemBuilder: (context, index) {
-                        final order = _filteredOrders[index];
-                        return _buildHistoryCard(order);
-                      },
-                    );
                   },
                 ),
               ),
@@ -120,17 +110,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return const Center(
+  Widget _buildOrderFilters() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _filterChip(null, 'Toutes'),
+            const SizedBox(width: 8),
+            _filterChip('PENDING', 'En attente'),
+            const SizedBox(width: 8),
+            _filterChip('COMPLETED', 'Terminée'),
+            const SizedBox(width: 8),
+            _filterChip('CANCELLED', 'Annulée'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip(String? value, String label) {
+    final isSelected = _selectedFilter == value;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _selectedFilter = selected ? value : null;
+        });
+      },
+      selectedColor: AppColors.primary.withOpacity(0.2),
+      checkmarkColor: AppColors.primary,
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long, size: 80, color: AppColors.textSecondary),
-          SizedBox(height: 16),
+          const Icon(Icons.receipt_long, size: 80, color: AppColors.textSecondary),
+          const SizedBox(height: 16),
           Text(
-            'Aucune commande ne correspond à ce filtre.',
+            message,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, color: AppColors.textSecondary),
+            style: const TextStyle(fontSize: 18, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -182,7 +207,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   if (orderItems.isNotEmpty)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network( // Use Image.network for URLs
+                      child: Image.network(
                         orderItems.first.imageUrl,
                         width: 60,
                         height: 60,
@@ -211,13 +236,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                   Column(
                     children: [
-                      Chip(
-                        avatar: Icon(statusInfo['icon'], color: statusInfo['color'], size: 18),
-                        label: Text(statusInfo['text'], style: TextStyle(color: statusInfo['color'], fontWeight: FontWeight.bold)),
-                        backgroundColor: statusInfo['color'].withOpacity(0.1),
-                        side: BorderSide(color: statusInfo['color'].withOpacity(0.2)),
-                      ),
-                       const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
+                      _statusChip(order.status),
+                      const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
                     ],
                   ),
                 ],
@@ -229,17 +249,69 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  Widget _buildBookingCard(Booking booking) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.calendar_today, color: AppColors.accent),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    booking.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('dd MMM yyyy à HH:mm').format(booking.startTime),
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            _statusChip(booking.status.name.toUpperCase()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String status) {
+    final info = _getStatusInfo(status);
+    return Chip(
+      avatar: Icon(info['icon'], color: info['color'], size: 18),
+      label: Text(info['text'], style: TextStyle(color: info['color'], fontWeight: FontWeight.bold, fontSize: 12)),
+      backgroundColor: info['color'].withOpacity(0.1),
+      side: BorderSide(color: info['color'].withOpacity(0.2)),
+    );
+  }
+
   Map<String, dynamic> _getStatusInfo(String status) {
     switch (status) {
       case 'COMPLETED':
-        return {'text': 'Terminée', 'color': Colors.green.shade700, 'icon': Icons.check_circle};
+      case 'CONFIRMED':
+        return {'text': 'Confirmée', 'color': Colors.green.shade700, 'icon': Icons.check_circle};
       case 'PROCESSING':
-        return {'text': 'En cours', 'color': Colors.blue.shade700, 'icon': Icons.sync};
+      case 'PENDING':
+        return {'text': 'En attente', 'color': Colors.orange.shade700, 'icon': Icons.hourglass_top};
       case 'CANCELLED':
         return {'text': 'Annulée', 'color': Colors.red.shade700, 'icon': Icons.cancel};
-      case 'PENDING':
       default:
-        return {'text': 'En attente', 'color': Colors.orange.shade700, 'icon': Icons.hourglass_top};
+        return {'text': status, 'color': Colors.grey.shade700, 'icon': Icons.help_outline};
     }
   }
 }

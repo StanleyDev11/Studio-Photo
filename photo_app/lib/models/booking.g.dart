@@ -15,6 +15,8 @@ _$BookingImpl _$$BookingImplFromJson(Map<String, dynamic> json) =>
       startTime: DateTime.parse(json['startTime'] as String),
       endTime: DateTime.parse(json['endTime'] as String),
       status: $enumDecode(_$BookingStatusEnumMap, json['status']),
+      type: $enumDecode(_$BookingTypeEnumMap, json['type']),
+      amount: (json['amount'] as num).toDouble(),
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: json['updatedAt'] == null
@@ -31,6 +33,8 @@ Map<String, dynamic> _$$BookingImplToJson(_$BookingImpl instance) =>
       'startTime': instance.startTime.toIso8601String(),
       'endTime': instance.endTime.toIso8601String(),
       'status': _$BookingStatusEnumMap[instance.status]!,
+      'type': _$BookingTypeEnumMap[instance.type]!,
+      'amount': instance.amount,
       'notes': instance.notes,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
@@ -41,4 +45,12 @@ const _$BookingStatusEnumMap = {
   BookingStatus.confirmed: 'CONFIRMED',
   BookingStatus.cancelled: 'CANCELLED',
   BookingStatus.completed: 'COMPLETED',
+};
+
+const _$BookingTypeEnumMap = {
+  BookingType.photoSession: 'PHOTO_SESSION',
+  BookingType.event: 'EVENT',
+  BookingType.portrait: 'PORTRAIT',
+  BookingType.product: 'PRODUCT',
+  BookingType.other: 'OTHER',
 };
