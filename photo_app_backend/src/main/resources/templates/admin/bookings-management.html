@@ -893,7 +893,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="amount">Montant (€)</label>
+                                <label for="amount">Montant (FCFA)</label>
                                 <input type="number" class="form-control" id="amount" name="amount" step="0.01">
                             </div>
                         </div>
@@ -1000,7 +1000,6 @@
                                 <div class="customer-avatar">${initials}</div>
                                 <div>
                                     <div class="font-weight-bold">${name}</div>
-                                    <small class="text-muted">${row.user?.email || ''}</small>
                                 </div>
                             </div>
                         `;
@@ -1045,7 +1044,7 @@
                 {
                     data: 'amount',
                     render: function(data) {
-                        return data ? data + ' €' : '-';
+                        return data ? data + ' FCFA' : '-';
                     }
                 },
                 {

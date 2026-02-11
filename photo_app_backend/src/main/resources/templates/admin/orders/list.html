@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -91,7 +91,8 @@
             border-left: 3px solid transparent;
         }
 
-        .nav-links a:hover, .nav-links a.active {
+        .nav-links a:hover,
+        .nav-links a.active {
             background: rgba(255, 255, 255, 0.1);
             color: white;
             border-left-color: white;
@@ -249,10 +250,21 @@
             color: white;
         }
 
-        .total-orders .stat-icon { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); }
-        .pending-orders .stat-icon { background: linear-gradient(135deg, var(--warning-color), #e67e22); }
-        .completed-orders .stat-icon { background: linear-gradient(135deg, var(--success-color), #27ae60); }
-        .revenue .stat-icon { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .total-orders .stat-icon {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .pending-orders .stat-icon {
+            background: linear-gradient(135deg, var(--warning-color), #e67e22);
+        }
+
+        .completed-orders .stat-icon {
+            background: linear-gradient(135deg, var(--success-color), #27ae60);
+        }
+
+        .revenue .stat-icon {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        }
 
         .stat-content {
             flex: 1;
@@ -277,8 +289,13 @@
             margin-top: 5px;
         }
 
-        .positive { color: var(--success-color); }
-        .negative { color: var(--danger-color); }
+        .positive {
+            color: var(--success-color);
+        }
+
+        .negative {
+            color: var(--danger-color);
+        }
 
         /* Filter Section */
         .filter-section {
@@ -334,11 +351,13 @@
             box-shadow: var(--shadow);
         }
 
-        .dataTables_length, .dataTables_filter {
+        .dataTables_length,
+        .dataTables_filter {
             padding: 20px 20px 0;
         }
 
-        .dataTables_info, .dataTables_paginate {
+        .dataTables_info,
+        .dataTables_paginate {
             padding: 20px;
         }
 
@@ -500,7 +519,8 @@
                 width: 250px;
             }
 
-            .logo-text, .nav-links span {
+            .logo-text,
+            .nav-links span {
                 opacity: 0;
                 transition: opacity 0.3s ease;
             }
@@ -514,7 +534,7 @@
                 margin-left: 70px;
             }
 
-            .sidebar:hover ~ .main-content {
+            .sidebar:hover~.main-content {
                 margin-left: 250px;
             }
         }
@@ -583,6 +603,7 @@
                 font-size: 24px;
             }
         }
+
         /* Loading Overlay */
         .loading-overlay {
             position: fixed;
@@ -595,7 +616,8 @@
             justify-content: center;
             align-items: center;
             z-index: 9999;
-            display: none; /* Initially hidden */
+            display: none;
+            /* Initially hidden */
         }
 
         .spinner {
@@ -608,315 +630,340 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body>
-<!-- Loading Overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
-</div>
-
-<!-- Sidebar Navigation -->
-<nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
-
-<!-- Main Content -->
-<div class="main-content">
-    <!-- Inclusion du header depuis le fragment -->
-    <div th:insert="~{admin/fragments/header :: mainHeader}"></div>
-
-    <div class="content-wrapper">
-        <!-- Page Header -->
-        <div class="page-header">
-            <h1><i class="fas fa-shopping-basket"></i>Gestion des Commandes</h1>
-            <button class="btn-refresh" onclick="window.location.reload()">
-                <i class="fas fa-sync-alt"></i>Actualiser
-            </button>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="stats-cards">
-            <div class="stat-card total-orders">
-                <div class="stat-icon">
-                    <i class="fas fa-shopping-cart"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="totalOrders" th:text="${orders.size()}">0</div>
-                    <div class="stat-label">Commandes totales</div>
-                    <div class="stat-change positive">
-                        <i class="fas fa-arrow-up mr-1"></i> 15% ce mois
-                    </div>
-                </div>
-            </div>
-            <div class="stat-card pending-orders">
-                <div class="stat-icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="pendingOrders">0</div>
-                    <div class="stat-label">En attente</div>
-                    <div class="stat-change negative">
-                        <i class="fas fa-arrow-down mr-1"></i> 8% ce mois
-                    </div>
-                </div>
-            </div>
-            <div class="stat-card completed-orders">
-                <div class="stat-icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="completedOrders">0</div>
-                    <div class="stat-label">Terminées</div>
-                    <div class="stat-change positive">
-                        <i class="fas fa-arrow-up mr-1"></i> 22% ce mois
-                    </div>
-                </div>
-            </div>
-            <div class="stat-card revenue">
-                <div class="stat-icon">
-                    <i class="fas fa-chart-line"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="totalRevenue">0</div>
-                    <div class="stat-label">Revenu total</div>
-                    <div class="stat-change positive">
-                        <i class="fas fa-arrow-up mr-1"></i> 18% ce mois
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filter Section -->
-        <div class="filter-section">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="filterStatus">Statut</label>
-                    <select id="filterStatus" class="filter-select">
-                        <option value="">Tous les statuts</option>
-                        <option value="PENDING">En attente</option>
-                        <option value="CONFIRMED">Confirmée</option>
-                        <option value="CANCELLED">Annulée</option>
-                        <option value="COMPLETED">Terminée</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterDate">Période</label>
-                    <select id="filterDate" class="filter-select">
-                        <option value="">Toutes les dates</option>
-                        <option value="today">Aujourd'hui</option>
-                        <option value="week">Cette semaine</option>
-                        <option value="month">Ce mois</option>
-                        <option value="year">Cette année</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterPayment">Paiement</label>
-                    <select id="filterPayment" class="filter-select">
-                        <option value="">Tous les types</option>
-                        <option value="Mobile Money">Mobile Money</option>
-                        <option value="Carte Bancaire">Carte Bancaire</option>
-                        <option value="Espèces">Espèces</option>
-                    </select>
-                </div>
-                <div class="filter-group d-flex align-items-end">
-                    <button class="btn btn-primary mr-2" id="applyFilters">
-                        <i class="fas fa-filter mr-2"></i>Filtrer
-                    </button>
-                    <button class="btn btn-outline-secondary" id="resetFilters">
-                        <i class="fas fa-redo mr-2"></i>Réinitialiser
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Orders Table -->
-        <div th:unless="${orders.isEmpty()}" class="dataTables_wrapper">
-            <table id="ordersTable" class="table table-hover" style="width:100%">
-                <thead>
-                <tr>
-                    <th>Client</th>
-                    <th>Date</th>
-                    <th>Montant</th>
-                    <th>Statut</th>
-                    <th>Paiement</th>
-                    <th>Livraison</th>
-                    <th>Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="order : ${orders}">
-                    <td>
-                        <div class="customer-info">
-                            <div class="customer-avatar" th:text="${(order.user?.firstname?.substring(0,1) ?: '') + (order.user?.lastname?.substring(0,1) ?: '')}"></div>
-                            <div>
-                                <div class="font-weight-bold" th:text="${order.user?.firstname + ' ' + order.user?.lastname ?: 'Client anonyme'}"></div>
-                                <small class="text-muted" th:text="${order.user?.email ?: ''}"></small>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="font-weight-bold" th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy')}">29/01/2026</div>
-                        <small class="text-muted" th:text="${#temporals.format(order.createdAt, 'HH:mm')}">10:00</small>
-                    </td>
-                    <td>
-                        <div class="font-weight-bold" th:text="${#numbers.formatDecimal(order.totalAmount, 1, 'POINT', 2, 'COMMA') + ' FCFA'}">1500.00 FCFA</div>
-                        <small class="text-muted" th:text="${order.orderItems?.size() ?: 0} + ' article(s)'"></small>
-                    </td>
-                    <td>
-                        <span class="status-badge" th:classappend="'badge-' + ${#strings.toLowerCase(order.status.name())}" th:text="${order.status.displayName}">En attente</span>
-                    </td>
-                    <td>
-                        <div th:text="${order.paymentMethod}">Mobile Money</div>
-                        <small class="text-muted" th:text="${order.paymentStatus ?: ''}"></small>
-                    </td>
-                    <td>
-                        <div th:text="${order.deliveryType}">Standard</div>
-                        <small class="text-muted" th:text="${order.deliveryAddress ?: ''}"></small>
-                    </td>
-                    <td>
-                        <div class="table-actions">
-                            <a th:href="@{/admin/orders/{id}(id=${order.id})}" class="btn btn-sm btn-outline-info" title="Voir détails">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <a th:if="${order.status.name() == 'PENDING'}" th:href="@{/admin/orders/{id}/confirm(id=${order.id})}" class="btn btn-sm btn-outline-success" title="Confirmer">
-                                <i class="fas fa-check"></i>
-                            </a>
-                            <a th:if="${order.status.name() == 'PROCESSING'}" th:href="@{/admin/orders/{id}/complete(id=${order.id})}" class="btn btn-sm btn-outline-primary" title="Marquer comme terminée">
-                                <i class="fas fa-check-double"></i>
-                            </a>
-                            <a th:if="${order.status.name() != 'CANCELLED'}" th:href="@{/admin/orders/{id}/cancel(id=${order.id})}" class="btn btn-sm btn-outline-warning" title="Annuler">
-                                <i class="fas fa-times"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Empty State (when no orders) -->
-        <div th:if="${orders.isEmpty()}" class="empty-state">
-            <div class="empty-icon">
-                <i class="fas fa-shopping-cart"></i>
-            </div>
-            <h3 class="empty-title">Aucune commande trouvée</h3>
-            <p class="empty-text">Les commandes créées par les utilisateurs apparaîtront ici. Aucune commande n'a encore été passée sur votre plateforme.</p>
-            <a href="/admin/users" class="btn btn-primary">
-                <i class="fas fa-user-friends mr-2"></i>Voir les clients
-            </a>
-        </div>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <p>&copy; 2026 Studio Photo Admin. Tous droits réservés. | Version 2.1.0</p>
-    </footer>
-</div>
+    <!-- Sidebar Navigation -->
+    <nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
 
-<!-- Scripts -->
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://unpkg.com/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script th:inline="javascript">
-    $(document).ready(function() {
-        // Loading overlay
-        function showLoading() {
-            $('#loadingOverlay').fadeIn();
-        }
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Inclusion du header depuis le fragment -->
+        <div th:insert="~{admin/fragments/header :: mainHeader}"></div>
 
-        function hideLoading() {
-            $('#loadingOverlay').fadeOut();
-        }
-        showLoading(); // Show spinner before DataTable initialization
-        // Initialize DataTable
-        var ordersDataTable = $('#ordersTable').DataTable({
-            language: {
-                url: '/i18n/French.json'
-            },
-            pageLength: 25,
-            order: [2, 'desc']
-        });
-        ordersDataTable.on('draw.dt', function() {
-            hideLoading(); // Hide spinner after DataTable redraws (initial load and filters)
-        });
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1><i class="fas fa-shopping-basket"></i>Gestion des Commandes</h1>
+                <button class="btn-refresh" onclick="window.location.reload()">
+                    <i class="fas fa-sync-alt"></i>Actualiser
+                </button>
+            </div>
 
-        // Function to update statistics based on currently displayed (filtered) rows
-        function updateStatsFromDataTable() {
-            const visibleRows = ordersDataTable.rows({ search: 'applied' }).nodes(); // Get all rows that are currently displayed by DataTables
-            const totalOrders = visibleRows.length;
-            const pendingOrders = visibleRows.filter((_, row) => $(row).find('.status-badge.badge-pending').length > 0 || $(row).find('.status-badge.badge-pending_payment').length > 0).length;
-            const completedOrders = visibleRows.filter((_, row) => $(row).find('.status-badge.badge-completed').length > 0).length;
+            <!-- Stats Cards -->
+            <div class="stats-cards">
+                <div class="stat-card total-orders">
+                    <div class="stat-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalOrders" th:text="${orders.size()}">0</div>
+                        <div class="stat-label">Commandes totales</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up mr-1"></i> 15% ce mois
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card pending-orders">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="pendingOrders">0</div>
+                        <div class="stat-label">En attente</div>
+                        <div class="stat-change negative">
+                            <i class="fas fa-arrow-down mr-1"></i> 8% ce mois
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card completed-orders">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="completedOrders">0</div>
+                        <div class="stat-label">Terminées</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up mr-1"></i> 22% ce mois
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card revenue">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalRevenue">0</div>
+                        <div class="stat-label">Revenu total</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up mr-1"></i> 18% ce mois
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            let totalRevenue = 0;
-            Array.from(visibleRows).forEach(function (rowNode) {
-                // Assuming the total amount is the 3rd column in the current table structure (index 2 for 0-based)
-                const amountText = $(rowNode).find('td:nth-child(3) .font-weight-bold').text();
-                const amount = parseFloat(amountText.replace(' FCFA', '').replace(/\s/g, '').replace(',', '.')) || 0;
-                totalRevenue += amount;
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="filterStatus">Statut</label>
+                        <select id="filterStatus" class="filter-select">
+                            <option value="">Tous les statuts</option>
+                            <option value="PENDING">En attente</option>
+                            <option value="CONFIRMED">Confirmée</option>
+                            <option value="CANCELLED">Annulée</option>
+                            <option value="COMPLETED">Terminée</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterDate">Période</label>
+                        <select id="filterDate" class="filter-select">
+                            <option value="">Toutes les dates</option>
+                            <option value="today">Aujourd'hui</option>
+                            <option value="week">Cette semaine</option>
+                            <option value="month">Ce mois</option>
+                            <option value="year">Cette année</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterPayment">Paiement</label>
+                        <select id="filterPayment" class="filter-select">
+                            <option value="">Tous les types</option>
+                            <option value="Mobile Money">Mobile Money</option>
+                            <option value="Carte Bancaire">Carte Bancaire</option>
+                            <option value="Espèces">Espèces</option>
+                        </select>
+                    </div>
+                    <div class="filter-group d-flex align-items-end">
+                        <button class="btn btn-primary mr-2" id="applyFilters">
+                            <i class="fas fa-filter mr-2"></i>Filtrer
+                        </button>
+                        <button class="btn btn-outline-secondary" id="resetFilters">
+                            <i class="fas fa-redo mr-2"></i>Réinitialiser
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Table -->
+            <div th:unless="${orders.isEmpty()}" class="dataTables_wrapper">
+                <table id="ordersTable" class="table table-hover" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Date</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                            <th>Paiement</th>
+                            <th>Livraison</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="order : ${orders}">
+                            <td>
+                                <div class="customer-info">
+                                    <div class="customer-avatar"
+                                        th:text="${(order.user?.firstname?.substring(0,1) ?: '') + (order.user?.lastname?.substring(0,1) ?: '')}">
+                                    </div>
+                                    <div>
+                                        <div class="font-weight-bold"
+                                            th:text="${order.user?.firstname + ' ' + order.user?.lastname ?: 'Client anonyme'}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="font-weight-bold"
+                                    th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy')}">29/01/2026</div>
+                                <small class="text-muted"
+                                    th:text="${#temporals.format(order.createdAt, 'HH:mm')}">10:00</small>
+                            </td>
+                            <td>
+                                <div class="font-weight-bold"
+                                    th:text="${#numbers.formatDecimal(order.totalAmount, 1, 'POINT', 2, 'COMMA') + ' FCFA'}">
+                                    1500.00 FCFA</div>
+                                <small class="text-muted"
+                                    th:text="${order.orderItems?.size() ?: 0} + ' article(s)'"></small>
+                            </td>
+                            <td>
+                                <span class="status-badge"
+                                    th:classappend="'badge-' + ${#strings.toLowerCase(order.status.name())}"
+                                    th:text="${order.status.displayName}">En attente</span>
+                            </td>
+                            <td>
+                                <div th:text="${order.paymentMethod}">Mobile Money</div>
+                                <small class="text-muted" th:text="${order.paymentStatus ?: ''}"></small>
+                            </td>
+                            <td>
+                                <div th:text="${order.deliveryType}">Standard</div>
+                                <small class="text-muted" th:text="${order.deliveryAddress ?: ''}"></small>
+                            </td>
+                            <td>
+                                <div class="table-actions">
+                                    <a th:href="@{/admin/orders/{id}(id=${order.id})}"
+                                        class="btn btn-sm btn-outline-info" title="Voir détails">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a th:if="${order.status.name() == 'PENDING'}"
+                                        th:href="@{/admin/orders/{id}/confirm(id=${order.id})}"
+                                        class="btn btn-sm btn-outline-success" title="Confirmer">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                    <a th:if="${order.status.name() == 'PROCESSING'}"
+                                        th:href="@{/admin/orders/{id}/complete(id=${order.id})}"
+                                        class="btn btn-sm btn-outline-primary" title="Marquer comme terminée">
+                                        <i class="fas fa-check-double"></i>
+                                    </a>
+                                    <a th:if="${order.status.name() != 'CANCELLED'}"
+                                        th:href="@{/admin/orders/{id}/cancel(id=${order.id})}"
+                                        class="btn btn-sm btn-outline-warning" title="Annuler">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State (when no orders) -->
+            <div th:if="${orders.isEmpty()}" class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <h3 class="empty-title">Aucune commande trouvée</h3>
+                <p class="empty-text">Les commandes créées par les utilisateurs apparaîtront ici. Aucune commande n'a
+                    encore été passée sur votre plateforme.</p>
+                <a href="/admin/users" class="btn btn-primary">
+                    <i class="fas fa-user-friends mr-2"></i>Voir les clients
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 Studio Photo Admin. Tous droits réservés. | Version 2.1.0</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://unpkg.com/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script th:inline="javascript">
+        $(document).ready(function () {
+            // Loading overlay
+            function showLoading() {
+                $('#loadingOverlay').fadeIn();
+            }
+
+            function hideLoading() {
+                $('#loadingOverlay').fadeOut();
+            }
+            showLoading(); // Show spinner before DataTable initialization
+            // Initialize DataTable
+            var ordersDataTable = $('#ordersTable').DataTable({
+                language: {
+                    url: '/i18n/French.json'
+                },
+                pageLength: 25,
+                order: [2, 'desc']
             });
-            
-            // Update stats display
-            $('#totalOrders').text(totalOrders);
-            $('#pendingOrders').text(pendingOrders);
-            $('#completedOrders').text(completedOrders);
-            $('#totalRevenue').text(totalRevenue.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' FCFA');
-        }
+            ordersDataTable.on('draw.dt', function () {
+                hideLoading(); // Hide spinner after DataTable redraws (initial load and filters)
+            });
 
-        // Initial stats calculation
-        updateStatsFromDataTable();
+            // Function to update statistics based on currently displayed (filtered) rows
+            function updateStatsFromDataTable() {
+                const visibleRows = ordersDataTable.rows({ search: 'applied' }).nodes(); // Get all rows that are currently displayed by DataTables
+                const totalOrders = visibleRows.length;
+                const pendingOrders = visibleRows.filter((_, row) => $(row).find('.status-badge.badge-pending').length > 0 || $(row).find('.status-badge.badge-pending_payment').length > 0).length;
+                const completedOrders = visibleRows.filter((_, row) => $(row).find('.status-badge.badge-completed').length > 0).length;
 
-        // Filter functionality
-        $('#applyFilters').click(function() {
-            showLoading(); // Show spinner before applying filters
-            const statusFilter = $('#filterStatus').val();
-            const dateFilter = $('#filterDate').val(); // Date filtering is more complex and would ideally be server-side or require a custom DataTables filter function
-            const paymentFilter = $('#filterPayment').val();
+                let totalRevenue = 0;
+                Array.from(visibleRows).forEach(function (rowNode) {
+                    // Assuming the total amount is the 3rd column in the current table structure (index 2 for 0-based)
+                    const amountText = $(rowNode).find('td:nth-child(3) .font-weight-bold').text();
+                    const amount = parseFloat(amountText.replace(' FCFA', '').replace(/\s/g, '').replace(',', '.')) || 0;
+                    totalRevenue += amount;
+                });
 
-            // Apply filters using DataTables API
-            // For status, we search the column that contains the status badge (now the 4th column, index 3)
-            ordersDataTable.column(3).search(statusFilter ? statusFilter : '', true, false).draw();
-            
-            // For payment method, we search the column that contains the payment method (now the 5th column, index 4)
-            ordersDataTable.column(4).search(paymentFilter ? paymentFilter : '', true, false).draw();
+                // Update stats display
+                $('#totalOrders').text(totalOrders);
+                $('#pendingOrders').text(pendingOrders);
+                $('#completedOrders').text(completedOrders);
+                $('#totalRevenue').text(totalRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' FCFA');
+            }
 
-            // Date filtering is not implemented here with DataTables API for simplicity, requires custom plugin or server-side
-            
+            // Initial stats calculation
             updateStatsFromDataTable();
-        });
 
-        $('#resetFilters').click(function() {
-            showLoading(); // Show spinner before resetting filters
-            $('#filterStatus, #filterDate, #filterPayment').val('');
-            ordersDataTable.columns().search('').draw(); // Clear all DataTables filters
-            updateStatsFromDataTable();
-        });
+            // Filter functionality
+            $('#applyFilters').click(function () {
+                showLoading(); // Show spinner before applying filters
+                const statusFilter = $('#filterStatus').val();
+                const dateFilter = $('#filterDate').val(); // Date filtering is more complex and would ideally be server-side or require a custom DataTables filter function
+                const paymentFilter = $('#filterPayment').val();
 
-        // Flash messages
-        var successMessage = /*[[${successMessage}]]*/ null;
-        if (successMessage) {
-            Swal.fire({
-                title: 'Succès!',
-                text: successMessage,
-                icon: 'success',
-                confirmButtonColor: '#4567b7'
+                // Apply filters using DataTables API
+                // For status, we search the column that contains the status badge (now the 4th column, index 3)
+                ordersDataTable.column(3).search(statusFilter ? statusFilter : '', true, false).draw();
+
+                // For payment method, we search the column that contains the payment method (now the 5th column, index 4)
+                ordersDataTable.column(4).search(paymentFilter ? paymentFilter : '', true, false).draw();
+
+                // Date filtering is not implemented here with DataTables API for simplicity, requires custom plugin or server-side
+
+                updateStatsFromDataTable();
             });
-        }
-        var errorMessage = /*[[${errorMessage}]]*/ null;
-        if (errorMessage) {
-            Swal.fire({
-                title: 'Erreur!',
-                text: errorMessage,
-                icon: 'error',
-                confirmButtonColor: '#dc3545'
+
+            $('#resetFilters').click(function () {
+                showLoading(); // Show spinner before resetting filters
+                $('#filterStatus, #filterDate, #filterPayment').val('');
+                ordersDataTable.columns().search('').draw(); // Clear all DataTables filters
+                updateStatsFromDataTable();
             });
-        }
-    });
-</script>
+
+            // Flash messages
+            var successMessage = /*[[${successMessage}]]*/ null;
+            if (successMessage) {
+                Swal.fire({
+                    title: 'Succès!',
+                    text: successMessage,
+                    icon: 'success',
+                    confirmButtonColor: '#4567b7'
+                });
+            }
+            var errorMessage = /*[[${errorMessage}]]*/ null;
+            if (errorMessage) {
+                Swal.fire({
+                    title: 'Erreur!',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonColor: '#dc3545'
+                });
+            }
+        });
+    </script>
 
 </body>
+
 </html>
