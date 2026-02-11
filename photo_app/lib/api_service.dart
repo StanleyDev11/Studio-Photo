@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static const String baseUrl = 'http://109.176.197.158:8080/api';
+  static const String rootUrl = 'http://109.176.197.158:8080';
   static SharedPreferences? _preferences;
 
   // User details

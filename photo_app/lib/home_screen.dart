@@ -25,6 +25,8 @@ import 'package:image_picker/image_picker.dart';
 
 import 'login_screen.dart';
 import 'order_summary_screen.dart';
+import 'package:Picon/models/promotion.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // --- Model Class for Mock Data ---
 class RecentRequest {
@@ -79,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, double>? _prices;
   bool _isLoadingPrices = true;
   bool _isUploading = false;
+  Future<List<Promotion>>? _promotionsFuture;
   // --- End of new state variables ---
 
   // --- Mock Data for History ---
@@ -113,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _currentUserLastName = widget.userLastName;
     _currentUserEmail = widget.userEmail;
     _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
+    _promotionsFuture = ApiService.fetchPromotions();
     _connectivitySubscription =
         _connectivityService.connectivityStream.listen((result) {
       if (result == ConnectivityResult.none) {
@@ -1349,8 +1353,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return _isOffline
         ? buildLocalCarousel(
             "Impossible de charger les promotions. Mode hors-ligne.")
-        : FutureBuilder<List<String>>(
-            future: Future.delayed(const Duration(seconds: 2), () => []),
+        : FutureBuilder<List<Promotion>>(
+            future: _promotionsFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SizedBox(
@@ -1363,11 +1367,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 return buildLocalCarousel(
                     "Impossible de charger les promotions en ligne.");
               }
-              final onlineImages = snapshot.data!;
+              final onlinePromotions = snapshot.data!;
               return CarouselSlider.builder(
-                itemCount: onlineImages.length,
-                itemBuilder: (context, index, realIndex) =>
-                    buildItem(onlineImages[index], false),
+                itemCount: onlinePromotions.length,
+                itemBuilder: (context, index, realIndex) {
+                  final promo = onlinePromotions[index];
+                  // On gère l'URL de l'image (si relative au backend)
+                  final imageUrl = promo.imageUrl.startsWith('http')
+                      ? promo.imageUrl
+                      : '${ApiService.rootUrl}${promo.imageUrl}';
+
+                  return GestureDetector(
+                    onTap: () async {
+                      if (promo.targetUrl != null && promo.targetUrl!.isNotEmpty) {
+                        final uri = Uri.parse(promo.targetUrl!);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        }
+                      }
+                    },
+                    child: buildItem(imageUrl, false),
+                  );
+                },
                 options: CarouselOptions(
                     height: 140.0,
                     autoPlay: true,
