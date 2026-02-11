@@ -14,6 +14,7 @@ import 'package:Picon/profile_page.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/connectivity_service.dart';
 import 'package:Picon/utils/geometric_background.dart';
+import 'package:Picon/utils/realtime_service.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -82,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingPrices = true;
   bool _isUploading = false;
   Future<List<Promotion>>? _promotionsFuture;
+  RealtimeService? _realtimeService;
   // --- End of new state variables ---
 
   // --- Mock Data for History ---
@@ -136,6 +138,30 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     _fetchPrices();
+    _initRealtime();
+  }
+
+  void _initRealtime() {
+    // On utilise l'URL de base de l'API mais avec le protocole ws
+    final wsUrl = ApiService.rootUrl.replaceFirst('http', 'ws') + '/ws';
+    _realtimeService = RealtimeService(
+      wsUrl: wsUrl,
+      onNotification: (type) {
+        if (mounted) {
+          print('Notification reçue: $type');
+          if (type == 'PROMOTIONS_UPDATED') {
+            setState(() {
+              _promotionsFuture = ApiService.fetchPromotions();
+            });
+          } else if (type == 'DIMENSIONS_UPDATED') {
+            _fetchPrices();
+          } else if (type == 'FEATURED_UPDATED') {
+            // Optionnel: ajouter un futur pour le contenu à la une si nécessaire
+          }
+        }
+      },
+    );
+    _realtimeService?.connect();
   }
 
   Future<void> _fetchPrices() async {
@@ -164,6 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _connectivitySubscription.cancel();
+    _realtimeService?.disconnect();
     super.dispose();
   }
 
@@ -437,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
         SliverToBoxAdapter(child: _buildQuickActions()),
         _buildHistorySection(),
         SliverToBoxAdapter(child: _buildAdCarousel()),
-        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        const SliverToBoxAdapter(child: SizedBox(height: 150)),
       ],
     );
   }
@@ -1028,7 +1055,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildQuickActions() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 8.0),
       child: GridView.builder(
         shrinkWrap: true, // Important for nested scroll views
         physics:
@@ -1169,7 +1196,7 @@ class _HomeScreenState extends State<HomeScreen> {
         .toList(); // Get all recent history
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 0.0),
       sliver: SliverToBoxAdapter(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1197,11 +1224,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             if (recentHistory.isEmpty)
               const Center(
                 child: Padding(
-                  padding: EdgeInsets.all(16.0),
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
                     'Aucune activité récente.',
                     style: TextStyle(color: AppColors.textSecondary),
@@ -1212,6 +1239,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
                 itemCount: recentHistory.length,
                 itemBuilder: (context, index) {
                   final item = recentHistory[index];
@@ -1226,7 +1254,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHistoryCard(RecentRequest item, int index) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: ClipRRect(
@@ -1294,13 +1322,12 @@ class _HomeScreenState extends State<HomeScreen> {
     Widget buildItem(String path, bool isAsset) {
       return Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(
-            horizontal: 8.0), // Increased horizontal margin
+        margin: EdgeInsets.zero, // Remove margins for edge-to-edge look
         decoration: BoxDecoration(
           color: AppColors.card.withOpacity(0.4), // Glassmorphic background
           borderRadius: BorderRadius.circular(20), // Increased border radius
           border:
-              Border.all(color: Colors.white.withOpacity(0.2)), // Subtle border
+              Border.all(color: AppColors.primary.withOpacity(0.5), width: 1.0), // Fine blue border
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1), // Add shadow for depth
@@ -1312,14 +1339,15 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ClipRRect(
           borderRadius:
               BorderRadius.circular(20), // Match container's border radius
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Inner blur effect
-            child: isAsset
-                ? Image.asset(path,
-                    fit: BoxFit
-                        .cover) // Use BoxFit.cover for better image display
-                : Image.network(path, fit: BoxFit.cover),
-          ),
+          child: isAsset
+              ? Image.asset(path,
+                  fit: BoxFit.cover, // Ensures the image fills the container
+                  width: double.infinity,
+                  height: double.infinity)
+              : Image.network(path,
+                  fit: BoxFit.cover, // Ensures the image fills the container
+                  width: double.infinity,
+                  height: double.infinity),
         ),
       ).animate().fade(duration: 500.ms).slideX(
           begin: 0.1,
@@ -1334,8 +1362,8 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index, realIndex) =>
                 buildItem(localImages[index], true),
             options: CarouselOptions(
-                height: 140.0,
-                viewportFraction: 0.8,
+                height: 150.0,
+                viewportFraction: 0.92,
                 enlargeCenterPage: false,
                 autoPlay: true,
                 autoPlayInterval: const Duration(seconds: 4)),
@@ -1390,11 +1418,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
                 options: CarouselOptions(
-                    height: 140.0,
+                    height: 150.0,
                     autoPlay: true,
                     autoPlayInterval: const Duration(seconds: 5),
                     enlargeCenterPage: false,
-                    viewportFraction: 0.8),
+                    viewportFraction: 0.92),
               );
             },
           );

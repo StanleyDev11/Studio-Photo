@@ -53,6 +53,7 @@ dependencies:
   google_fonts: ^6.3.2
   feda_flutter: ^0.0.1 
   app_links: ^6.3.0
+  stomp_dart_client: ^2.0.0
 
 dev_dependencies:
   flutter_test:
