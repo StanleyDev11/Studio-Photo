@@ -603,20 +603,65 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: SegmentedButton<CartMode>(
-                  segments: const [
-                    ButtonSegment(
-                        value: CartMode.detail, label: Text('Par détail')),
-                    ButtonSegment(
-                        value: CartMode.batch, label: Text('Par lot')),
+                child: Column(
+                  children: [
+                    SegmentedButton<CartMode>(
+                      style: SegmentedButton.styleFrom(
+                        selectedBackgroundColor: AppColors.primary,
+                        selectedForegroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                      ),
+                      segments: const [
+                        ButtonSegment(
+                            value: CartMode.detail,
+                            label: Text('Par détail'),
+                            icon: Icon(Icons.photo_library_outlined)),
+                        ButtonSegment(
+                            value: CartMode.batch,
+                            label: Text('Par lot'),
+                            icon: Icon(Icons.collections_outlined)),
+                      ],
+                      selected: {_selectedMode},
+                      onSelectionChanged: (Set<CartMode> newSelection) {
+                        setState(() {
+                          _selectedMode = newSelection.first;
+                          _calculateTotal();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Container(
+                        key: ValueKey(_selectedMode),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.info_outline,
+                                size: 16, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              _selectedMode == CartMode.detail
+                                  ? "Une photo pour Une dimension"
+                                  : "Plusieurs photos pour une même dimension",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
-                  selected: {_selectedMode},
-                  onSelectionChanged: (Set<CartMode> newSelection) {
-                    setState(() {
-                      _selectedMode = newSelection.first;
-                      _calculateTotal();
-                    });
-                  },
                 ),
               ),
               Expanded(
@@ -848,19 +893,20 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Align(
             alignment: Alignment.centerRight, // Align to the right
             child: SizedBox(
-              width: 180, // Reduced width
+              width: 220, // Increased width to handle longer dimension labels
               child: DropdownButtonFormField<String>(
                 value: commonSize,
+                isExpanded: true, // Allow dropdown to take full width of container
                 decoration: InputDecoration(
-                  labelText: 'Dimension', // Shorter label for smaller input
-                  labelStyle: const TextStyle(fontSize: 12), // Smaller font size for the label
+                  labelText: 'Dimension', 
+                  labelStyle: const TextStyle(fontSize: 12), 
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12), // Rounded borders
+                    borderRadius: BorderRadius.circular(12), 
                   ),
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Reduced here
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8), 
                   prefixIcon:
-                      const Icon(Icons.straighten, size: 16), // Reduced here
+                      const Icon(Icons.straighten, size: 18), 
                 ),
                 items: _prices!.keys
                     .map((size) =>
