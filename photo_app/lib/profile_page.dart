@@ -125,34 +125,50 @@ class _ProfilePageState extends State<ProfilePage> {
       body: Stack(
         children: [
           GeometricBackground(),
-          SingleChildScrollView(
-            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight, bottom: 20),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 30),
-                    _buildAvatar(),
-                    const SizedBox(height: 20),
-                    Text(
-                      '$_currentName $_currentLastName',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith( // Use headlineMedium for a more prominent name
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+          RefreshIndicator(
+            onRefresh: () async {
+              // Trigger global refresh logic from here
+              final details = await ApiService.getAuthDetails();
+              if (details != null && mounted) {
+                setState(() {
+                  _currentName = details['firstname'] ?? _currentName;
+                  _currentLastName = details['lastname'] ?? _currentLastName;
+                  _currentEmail = details['email'] ?? _currentEmail;
+                });
+                widget.onProfileUpdated(_currentName, _currentLastName, _currentEmail);
+              }
+            },
+            color: AppColors.primary,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight, bottom: 20),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 30),
+                      _buildAvatar(),
+                      const SizedBox(height: 20),
+                      Text(
+                        '$_currentName $_currentLastName',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith( // Use headlineMedium for a more prominent name
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Text(
-                    //   _currentEmail,
-                    //   style: Theme.of(context).textTheme.bodyLarge?.copyWith( // Use bodyLarge for email
-                    //     color: AppColors.textSecondary,
-                    //   ),
-                    // ),
-                    const SizedBox(height: 40),
-                    _buildMenuItems(),
-                  ],
+                      const SizedBox(height: 8),
+                      // Text(
+                      //   _currentEmail,
+                      //   style: Theme.of(context).textTheme.bodyLarge?.copyWith( // Use bodyLarge for email
+                      //     color: AppColors.textSecondary,
+                      //   ),
+                      // ),
+                      const SizedBox(height: 40),
+                      _buildMenuItems(),
+                    ],
+                  ),
                 ),
               ),
             ),

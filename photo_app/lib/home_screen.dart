@@ -155,6 +155,26 @@ class _HomeScreenState extends State<HomeScreen> {
     _realtimeService?.connect();
   }
 
+  Future<void> _handleGlobalRefresh() async {
+    // This reloads everything - like a fake hot reload (global refresh)
+    final List<Future<dynamic>> detailTasks = [
+      _fetchRecentHistory().then((history) => setState(() => _historyFuture = Future.value(history))),
+      ApiService.getAlbumImages(widget.userId).then((images) => setState(() => _albumImagesFuture = Future.value(images))),
+      ApiService.fetchPromotions().then((promos) => setState(() => _promotionsFuture = Future.value(promos))),
+      _fetchPrices(),
+      ApiService.getAuthDetails().then((details) {
+        if (details != null && mounted) {
+          setState(() {
+            _currentUserName = details['firstname'] ?? _currentUserName;
+            _currentUserLastName = details['lastname'] ?? _currentUserLastName;
+            _currentUserEmail = details['email'] ?? _currentUserEmail;
+          });
+        }
+      }),
+    ];
+    await Future.wait(detailTasks);
+  }
+
   Future<List<HistoryItem>> _fetchRecentHistory() async {
     try {
       final results = await Future.wait([
@@ -493,22 +513,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeTab() {
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Column(
-            children: [
-              const SizedBox(height: 2), // 
-              _buildTopCard(),
-            ],
+    return RefreshIndicator(
+      onRefresh: _handleGlobalRefresh,
+      color: AppColors.primary,
+      backgroundColor: Colors.white,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 2), // 
+                _buildTopCard(),
+              ],
+            ),
           ),
-        ),
-        SliverToBoxAdapter(child: _buildQuickActions()),
-        _buildHistorySection(),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)), //padding en bas de la page des actions
-        SliverToBoxAdapter(child: _buildAdCarousel()),
-        const SliverToBoxAdapter(child: SizedBox(height: 140)), //padding en bas de la page des carousels
-      ],
+          SliverToBoxAdapter(child: _buildQuickActions()),
+          _buildHistorySection(),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)), //padding en bas de la page des actions
+          SliverToBoxAdapter(child: _buildAdCarousel()),
+          const SliverToBoxAdapter(child: SizedBox(height: 140)), //padding en bas de la page des carousels
+        ],
+      ),
     );
   }
 
@@ -516,69 +541,87 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       color: AppColors.background,
       padding: const EdgeInsets.only(top: 100),
-      child: FutureBuilder<List<String>>(
-        future: _albumImagesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Erreur: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Aucune image trouvée.'));
-          } else {
-            final images = snapshot.data!;
-            return GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 120),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16.0,
-                crossAxisSpacing: 16.0,
-              ),
-              itemCount: images.length,
-              itemBuilder: (context, index) {
-                final imageUrl = images[index];
-                final isSelected = _selectedImages.contains(imageUrl);
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    if (isSelected) {
-                      _selectedImages.remove(imageUrl);
-                    } else {
-                      _selectedImages.add(imageUrl);
-                    }
-                    _calculateTotal();
-                  }),
-                  child: Stack(
-                    children: [
-                      Card(
-                        clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.0)),
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) =>
-                              progress == null
-                                  ? child
-                                  : const Center(
-                                      child: CircularProgressIndicator()),
-                          errorBuilder: (context, error, stack) =>
-                              const Icon(Icons.broken_image, size: 50),
-                        ),
-                      ),
-                      if (isSelected)
-                        const Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Icon(Icons.check_circle,
-                              color: AppColors.accent, size: 30),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            );
-          }
+      child: RefreshIndicator(
+        onRefresh: () async {
+          setState(() {
+            _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
+          });
+          await _albumImagesFuture;
         },
+        color: AppColors.primary,
+        child: FutureBuilder<List<String>>(
+          future: _albumImagesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Erreur: ${snapshot.error}'));
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Center(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(height: 200),
+                    Center(child: Text('Aucune image trouvée.')),
+                  ],
+                ),
+              );
+            } else {
+              final images = snapshot.data!;
+              return GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 120),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16.0,
+                  crossAxisSpacing: 16.0,
+                ),
+                itemCount: images.length,
+                itemBuilder: (context, index) {
+                  final imageUrl = images[index];
+                  final isSelected = _selectedImages.contains(imageUrl);
+                  return GestureDetector(
+                    onTap: () => setState(() {
+                      if (isSelected) {
+                        _selectedImages.remove(imageUrl);
+                      } else {
+                        _selectedImages.add(imageUrl);
+                      }
+                      _calculateTotal();
+                    }),
+                    child: Stack(
+                      children: [
+                        Card(
+                          clipBehavior: Clip.antiAlias,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0)),
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) =>
+                                progress == null
+                                    ? child
+                                    : const Center(
+                                        child: CircularProgressIndicator()),
+                            errorBuilder: (context, error, stack) =>
+                                const Icon(Icons.broken_image, size: 50),
+                          ),
+                        ),
+                        if (isSelected)
+                          const Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Icon(Icons.check_circle,
+                                color: AppColors.accent, size: 30),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            }
+          },
+        ),
       ),
     );
   }
@@ -673,26 +716,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Expanded(
-                child: _selectedImages.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.shopping_cart_outlined,
-                                size: 80, color: AppColors.textSecondary),
-                            SizedBox(height: 16),
-                            Text(
-                              'Votre panier est vide.\nSélectionnez des photos pour commencer une commande !',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 18, color: AppColors.textSecondary),
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    await _fetchPrices();
+                  },
+                  color: AppColors.primary,
+                  child: _selectedImages.isEmpty
+                      ? ListView(
+                          children: const [
+                            SizedBox(height: 200),
+                            Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.shopping_cart_outlined,
+                                      size: 80, color: AppColors.textSecondary),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Votre panier est vide.\nSélectionnez des photos pour commencer une commande !',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 18, color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
-                        ),
-                      )
-                    : _selectedMode == CartMode.detail
-                        ? _buildDetailCart()
-                        : _buildBatchCart(),
+                        )
+                      : _selectedMode == CartMode.detail
+                          ? _buildDetailCart()
+                          : _buildBatchCart(),
+                ),
               ),
               if (_selectedImages.isNotEmpty)
                 Padding(

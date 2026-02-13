@@ -137,6 +137,30 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>?> getAuthDetails() async {
+    const url = '$baseUrl/auth/me'; // Most backends have a /me or /profile endpoint
+    try {
+      final response = await _safeGet(url);
+      if (response.statusCode == 200) {
+        final details = _handleApiResponse(response);
+        if (details != null) {
+          // Update local cache
+          _userName = details['firstname'];
+          _userLastName = details['lastname'];
+          _userEmail = details['email'];
+          
+          await _preferences?.setString('userName', _userName ?? '');
+          await _preferences?.setString('userLastName', _userLastName ?? '');
+          await _preferences?.setString('userEmail', _userEmail ?? '');
+        }
+        return details;
+      }
+    } catch (e) {
+      print('Error fetching auth details: $e');
+    }
+    return null;
+  }
+
   static Future<Map<String, dynamic>> login({String? email, String? phone, required String password}) async {
     const url = '$baseUrl/auth/authenticate';
     final Map<String, dynamic> body = {'password': password};
@@ -188,21 +212,26 @@ class ApiService {
     final url = '$baseUrl/album/images'; // Backend should infer user from token
     final response = await _safeGet(url);
     final data = _handleApiResponse(response);
+    if (data == null || data['images'] == null) return [];
     return List<String>.from(data['images']);
   }
 
   static Future<List<Promotion>> fetchPromotions() async {
     const url = '$baseUrl/promotions';
     final response = await _safeGet(url);
-    final List<dynamic> responseData = _handleApiResponse(response);
-    return responseData.map((json) => Promotion.fromJson(json)).toList();
+    final responseData = _handleApiResponse(response);
+    if (responseData == null) return [];
+    final List<dynamic> list = responseData as List<dynamic>;
+    return list.map((json) => Promotion.fromJson(json)).toList();
   }
 
     static Future<List<PhotoFormat>> fetchDimensions() async {
     const url = '$baseUrl/public/dimensions';
     final response = await _safeGet(url);
-    final List<dynamic> responseData = _handleApiResponse(response);
-    return responseData.map((json) => PhotoFormat.fromJson(json)).toList();
+    final responseData = _handleApiResponse(response);
+    if (responseData == null) return [];
+    final List<dynamic> list = responseData as List<dynamic>;
+    return list.map((json) => PhotoFormat.fromJson(json)).toList();
   }
 
 
@@ -223,8 +252,10 @@ class ApiService {
   static Future<List<Booking>> fetchUserBookings() async {
     const url = '$baseUrl/bookings';
     final response = await _safeGet(url);
-    final List<dynamic> responseData = _handleApiResponse(response);
-    return responseData.map((json) => Booking.fromJson(json)).toList();
+    final responseData = _handleApiResponse(response);
+    if (responseData == null) return [];
+    final List<dynamic> list = responseData as List<dynamic>;
+    return list.map((json) => Booking.fromJson(json)).toList();
   }
 
   static Future<ContactInfo> fetchContactInfo() async {
@@ -269,8 +300,26 @@ class ApiService {
   static Future<List<Order>> fetchMyOrders() async {
     const url = '$baseUrl/orders/my-orders';
     final response = await _safeGet(url);
-    final List<dynamic> responseData = _handleApiResponse(response);
-    return responseData.map((json) => Order.fromJson(json)).toList();
+    final responseData = _handleApiResponse(response);
+    if (responseData == null) return [];
+    final List<dynamic> list = responseData as List<dynamic>;
+    return list.map((json) => Order.fromJson(json)).toList();
+  }
+
+  static Future<void> cancelOrder(int orderId) async {
+    final url = '$baseUrl/orders/$orderId/cancel';
+    final response = await _safePost(url, {});
+    _handleApiResponse(response);
+  }
+
+  static Future<Order> updateOrder(int orderId, Map<String, dynamic> updates) async {
+    final url = '$baseUrl/orders/$orderId';
+    final response = await http.put(
+      Uri.parse(url),
+      headers: _headers,
+      body: jsonEncode(updates),
+    ).timeout(const Duration(seconds: 15));
+    return Order.fromJson(_handleApiResponse(response));
   }
 
   static Future<List<String>> uploadPhotos(List<dynamic> imageFiles) async {

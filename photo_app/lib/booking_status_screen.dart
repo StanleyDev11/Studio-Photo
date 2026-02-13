@@ -213,23 +213,29 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.event_busy, size: 100, color: AppColors.primary.withOpacity(0.1)),
-          const SizedBox(height: 24),
-          const Text(
-            'Aucune réservation',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.event_busy, size: 100, color: AppColors.primary.withOpacity(0.1)),
+              const SizedBox(height: 24),
+              const Text(
+                'Aucune réservation',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Vous n\'avez pas encore de réservations prévues.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Vous n\'avez pas encore de réservations prévues.',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-        ],
-      ),
+        ),
+      ],
     ).animate().fadeIn();
   }
 

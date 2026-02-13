@@ -23,6 +23,13 @@ class _PricingScreenState extends State<PricingScreen> {
     _pricesFuture = ApiService.fetchDimensions();
   }
 
+  Future<void> _refreshPrices() async {
+    setState(() {
+      _pricesFuture = ApiService.fetchDimensions();
+    });
+    await _pricesFuture;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,24 +55,36 @@ class _PricingScreenState extends State<PricingScreen> {
         children: [
           GeometricBackground(),
           SafeArea(
-            child: FutureBuilder<List<PhotoFormat>>(
-              future: _pricesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                  String errorMessage = snapshot.error.toString();
-                  if (errorMessage.startsWith('Exception: ')) {
-                    errorMessage = errorMessage.substring(11);
+            child: RefreshIndicator(
+              onRefresh: _refreshPrices,
+              color: AppColors.primary,
+              child: FutureBuilder<List<PhotoFormat>>(
+                future: _pricesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
                   }
-                  return Center(child: Text("Impossible de charger les tarifs. $errorMessage"));
-                }
 
-                final prices = snapshot.data!;
-                return _buildGridView(prices);
-              },
+                  if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                    String errorMessage = snapshot.error.toString();
+                    if (errorMessage.startsWith('Exception: ')) {
+                      errorMessage = errorMessage.substring(11);
+                    }
+                    return Center(
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          const SizedBox(height: 200),
+                          Center(child: Text("Impossible de charger les tarifs. $errorMessage")),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final prices = snapshot.data!;
+                  return _buildGridView(prices);
+                },
+              ),
             ),
           ),
         ],
@@ -90,6 +109,7 @@ class _PricingScreenState extends State<PricingScreen> {
         Expanded(
           child: GridView.builder(
             padding: const EdgeInsets.all(16.0),
+            physics: const AlwaysScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 16,

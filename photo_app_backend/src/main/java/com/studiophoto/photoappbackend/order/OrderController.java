@@ -29,8 +29,7 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<Order> createOrder(
             @RequestBody CreateOrderRequest request,
-            @AuthenticationPrincipal User currentUser
-    ) {
+            @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(401).build(); // Non autorisé
         }
@@ -77,16 +76,16 @@ public class OrderController {
                 if (originalFilename == null) {
                     originalFilename = "unnamed-file";
                 }
-                
+
                 // Clean the filename to prevent directory traversal issues
                 String sanitizedFilename = Paths.get(originalFilename).getFileName().toString();
-
 
                 Path destinationFile = userDirectory.resolve(sanitizedFilename).normalize().toAbsolutePath();
 
                 // Double check to prevent saving files outside the intended directory
                 if (!destinationFile.getParent().equals(userDirectory.toAbsolutePath())) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Cannot store file outside the designated directory.");
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body("Cannot store file outside the designated directory.");
                 }
 
                 file.transferTo(destinationFile);
@@ -101,6 +100,24 @@ public class OrderController {
             // Log the exception for debugging purposes
             // logger.error("Failed to upload files for user {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload files.");
+        }
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelOrder(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
+        try {
+            orderService.cancelOrder(id, currentUser);
+            return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Une erreur est survenue lors de l'annulation.");
         }
     }
 }

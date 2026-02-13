@@ -24,7 +24,8 @@ public class OrderService {
 
     @Transactional
     public Order createOrder(CreateOrderRequest request, User user) {
-        // 1. Récupérer tous les prix de la base de données pour éviter de multiples requêtes
+        // 1. Récupérer tous les prix de la base de données pour éviter de multiples
+        // requêtes
         Map<String, BigDecimal> priceMap = dimensionRepository.findAll().stream()
                 .collect(Collectors.toMap(Dimension::getName, Dimension::getPrice));
 
@@ -42,14 +43,17 @@ public class OrderService {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (CreateOrderItemRequest itemRequest : request.getItems()) {
             if (itemRequest.getImageUrl() == null || itemRequest.getImageUrl().isBlank()) {
-                throw new IllegalArgumentException("L'URL de l'image ne peut pas être nulle ou vide pour un article de commande.");
+                throw new IllegalArgumentException(
+                        "L'URL de l'image ne peut pas être nulle ou vide pour un article de commande.");
             }
             if (itemRequest.getSize() == null) {
-                throw new IllegalArgumentException("Le format de photo ne peut pas être nul pour un article de commande.");
+                throw new IllegalArgumentException(
+                        "Le format de photo ne peut pas être nul pour un article de commande.");
             }
             BigDecimal pricePerUnit = priceMap.get(itemRequest.getSize());
             if (pricePerUnit == null) {
-                throw new IllegalArgumentException("Le format de photo '" + itemRequest.getSize() + "' n'est pas valide.");
+                throw new IllegalArgumentException(
+                        "Le format de photo '" + itemRequest.getSize() + "' n'est pas valide.");
             }
 
             OrderItem orderItem = OrderItem.builder()
@@ -80,13 +84,15 @@ public class OrderService {
         // Build the order items from the FedapayInitiateRequest
         List<OrderItem> orderItems = request.getItems().stream().map(itemDto -> {
             if (itemDto.getImageUrl() == null || itemDto.getImageUrl().isBlank()) {
-                throw new IllegalArgumentException("L'URL de l'image ne peut pas être nulle ou vide pour un article de commande.");
+                throw new IllegalArgumentException(
+                        "L'URL de l'image ne peut pas être nulle ou vide pour un article de commande.");
             }
             return OrderItem.builder()
                     .imageUrl(itemDto.getImageUrl())
                     .photoSize(itemDto.getSize())
                     .quantity(itemDto.getQuantity())
-                    .pricePerUnit(itemDto.getPrice()) // Assuming price is passed or calculated in FedapayInitiateRequest.OrderItemDto
+                    .pricePerUnit(itemDto.getPrice()) // Assuming price is passed or calculated in
+                                                      // FedapayInitiateRequest.OrderItemDto
                     .build();
         }).collect(Collectors.toList());
 
@@ -131,5 +137,30 @@ public class OrderService {
 
     public Optional<Order> findById(Long id) {
         return orderRepository.findById(id);
+    }
+
+    @Transactional
+    public void cancelOrder(Long orderId, User user) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Commande non trouvée avec l'ID: " + orderId));
+
+        // Check if the order belongs to the user
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new IllegalStateException("Vous n'êtes pas autorisé à annuler cette commande.");
+        }
+
+        // Check 48h rule
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime createdAt = order.getCreatedAt();
+        if (createdAt.plusHours(48).isBefore(now)) {
+            throw new IllegalStateException("Le délai d'annulation de 48h est dépassé.");
+        }
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new IllegalStateException("La commande est déjà annulée.");
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
     }
 }
