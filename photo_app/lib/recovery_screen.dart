@@ -47,10 +47,14 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
           final resetToken = response['resetToken'];
           _showNewPasswordDialog(resetToken);
         }
-      } catch (e) {
+        } catch (e) {
         if (mounted) {
+          String errorMessage = e.toString();
+          if (errorMessage.startsWith('Exception: ')) {
+            errorMessage = errorMessage.substring(11);
+          }
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
           );
         }
       } finally {

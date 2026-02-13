@@ -34,7 +34,7 @@ public class AuthenticationService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(request.getPhone())
-                .pin(request.getPin()) // Note: PIN should be hashed in a real-world scenario
+                .pin(passwordEncoder.encode(request.getPin())) // PIN is now hashed
                 .role(Role.USER)
                 .status(Status.ACTIVE) // Default to ACTIVE to allow immediate login
                 .build();
@@ -92,11 +92,12 @@ public class AuthenticationService {
     public String verifyPinForPasswordReset(String identifier, String pin) {
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByPhone(identifier))
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'identifiant : " + identifier));
+                .orElseThrow(() -> new RuntimeException(
+                        "Aucun compte n'est associé à cet identifiant (Email ou Téléphone)."));
 
-        // Use password encoder to check PIN for better security
+        // Use password encoder to check hashed PIN
         if (!passwordEncoder.matches(pin, user.getPin())) {
-            throw new RuntimeException("Code PIN incorrect.");
+            throw new RuntimeException("Le code secret saisi est incorrect.");
         }
 
         Map<String, Object> extraClaims = new HashMap<>();
@@ -107,15 +108,16 @@ public class AuthenticationService {
     }
 
     public void resetPassword(String token, String newPassword) {
-        final String username;
+        final String username; // This could be email or phone
         try {
             username = jwtService.extractUsername(token);
         } catch (Exception e) {
-            throw new RuntimeException("Jeton de réinitialisation invalide ou expiré.");
+            throw new RuntimeException("Lien de réinitialisation invalide ou expiré.");
         }
 
         User user = userRepository.findByEmail(username)
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'email : " + username));
+                .or(() -> userRepository.findByPhone(username))
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé."));
 
         final Claims claims = jwtService.extractAllClaims(token);
         final String tokenType = claims.get("type", String.class);
