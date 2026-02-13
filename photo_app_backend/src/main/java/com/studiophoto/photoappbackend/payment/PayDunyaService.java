@@ -64,10 +64,10 @@ public class PayDunyaService {
                 return (String) response.getBody().get("response_text"); // PayDunya returns the payment URL in
                                                                          // 'response_text'
             } else {
-                throw new RuntimeException("PayDunya Error: " + response.getBody());
+                throw new RuntimeException("Erreur PayDunya : " + response.getBody());
             }
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initiate PayDunya payment: " + e.getMessage());
+            throw new RuntimeException("Échec de l'initialisation du paiement PayDunya : " + e.getMessage(), e);
         }
     }
 }

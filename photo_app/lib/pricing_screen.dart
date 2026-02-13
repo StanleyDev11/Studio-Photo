@@ -56,7 +56,11 @@ class _PricingScreenState extends State<PricingScreen> {
                 }
 
                 if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text("Impossible de charger les tarifs. ${snapshot.error ?? ''}"));
+                  String errorMessage = snapshot.error.toString();
+                  if (errorMessage.startsWith('Exception: ')) {
+                    errorMessage = errorMessage.substring(11);
+                  }
+                  return Center(child: Text("Impossible de charger les tarifs. $errorMessage"));
                 }
 
                 final prices = snapshot.data!;

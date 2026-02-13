@@ -51,7 +51,11 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> {
                 }
                 
                 if (snapshot.hasError) {
-                  return _buildErrorState(snapshot.error.toString());
+                  String errorMessage = snapshot.error.toString();
+                  if (errorMessage.startsWith('Exception: ')) {
+                    errorMessage = errorMessage.substring(11);
+                  }
+                  return _buildErrorState(errorMessage);
                 }
 
                 final bookings = snapshot.data ?? [];

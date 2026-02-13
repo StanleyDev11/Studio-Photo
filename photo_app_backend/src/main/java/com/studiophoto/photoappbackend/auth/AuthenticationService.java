@@ -26,7 +26,7 @@ public class AuthenticationService {
 
     public AuthenticationResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalStateException("Email already in use");
+            throw new IllegalStateException("Cet email est déjà utilisé.");
         }
         var user = User.builder()
                 .firstname(request.getFirstname())
@@ -60,19 +60,21 @@ public class AuthenticationService {
                 : request.getPhone();
 
         if (identifier == null || identifier.isEmpty()) {
-            throw new IllegalArgumentException("Email or phone number must be provided for authentication.");
+            throw new IllegalArgumentException("L'email ou le numéro de téléphone doit être fourni.");
         }
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        identifier,
-                        request.getPassword()
-                )
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            identifier,
+                            request.getPassword()));
+        } catch (Exception e) {
+            throw new RuntimeException("Email/Téléphone ou mot de passe incorrect.");
+        }
 
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByPhone(identifier))
-                .orElseThrow(() -> new RuntimeException("User not found with identifier: " + identifier));
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'identifiant : " + identifier));
 
         String jwtToken = jwtService.generateToken(user);
 
@@ -86,7 +88,7 @@ public class AuthenticationService {
                 .role(user.getRole())
                 .build();
     }
-    
+
     public String verifyPinForPasswordReset(String identifier, String pin) {
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByPhone(identifier))
@@ -94,11 +96,11 @@ public class AuthenticationService {
 
         // Use password encoder to check PIN for better security
         if (!passwordEncoder.matches(pin, user.getPin())) {
-            throw new RuntimeException("PIN incorrect.");
+            throw new RuntimeException("Code PIN incorrect.");
         }
 
         Map<String, Object> extraClaims = new HashMap<>();
-        extraClaims.put("type", "password-reset"); 
+        extraClaims.put("type", "password-reset");
 
         // Generate a token with a 15-minute expiration
         return jwtService.generateToken(extraClaims, user, 1000 * 60 * 15);
@@ -114,7 +116,7 @@ public class AuthenticationService {
 
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'email : " + username));
-        
+
         final Claims claims = jwtService.extractAllClaims(token);
         final String tokenType = claims.get("type", String.class);
 

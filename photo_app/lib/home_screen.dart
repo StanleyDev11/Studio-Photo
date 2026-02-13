@@ -212,8 +212,12 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Erreur de chargement des prix: $e")));
+            .showSnackBar(SnackBar(content: Text(errorMessage)));
         setState(() {
           _isLoadingPrices = false;
         });
@@ -296,8 +300,12 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         _onTabTapped(2); // Switch to the Commands tab
       } catch (e) {
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de l\'envoi: ${e.toString()}'), backgroundColor: Colors.red),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       } finally {
         setState(() {
@@ -1456,8 +1464,8 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index, realIndex) =>
                 buildItem(localImages[index], true),
             options: CarouselOptions(
-                height: 150.0,
-                viewportFraction: 0.92,
+                height: 260.0,
+                viewportFraction: 0.92, // Back to standard fraction
                 enlargeCenterPage: false,
                 autoPlay: true,
                 autoPlayInterval: const Duration(seconds: 4)),
@@ -1811,4 +1819,5 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
+  
 }

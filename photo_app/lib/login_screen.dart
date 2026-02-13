@@ -66,10 +66,16 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } catch (e) {
         if (mounted) {
+          String errorMessage = e.toString();
+          if (errorMessage.startsWith('Exception: ')) {
+            errorMessage = errorMessage.substring(11);
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('Erreur de connexion: $e'),
-                backgroundColor: Colors.red),
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } finally {

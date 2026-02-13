@@ -31,28 +31,30 @@ public class FileSystemStorageService implements StorageService {
         try {
             Files.createDirectories(rootLocation);
         } catch (IOException e) {
-            throw new StorageException("Could not initialize storage", e);
+            throw new StorageException("Impossible d'initialiser le stockage des fichiers", e);
         }
     }
 
     @Override
     public String store(MultipartFile file) {
-        String filename = UUID.randomUUID() + "-" + Objects.requireNonNull(file.getOriginalFilename()).replaceAll("\\s+", "_");
+        String filename = UUID.randomUUID() + "-"
+                + Objects.requireNonNull(file.getOriginalFilename()).replaceAll("\\s+", "_");
         try {
             if (file.isEmpty()) {
-                throw new StorageException("Failed to store empty file " + filename);
+                throw new StorageException("Impossible de stocker un fichier vide : " + filename);
             }
-            // Sécurité: Vérifier que le chemin du fichier est dans le répertoire de stockage
+            // Sécurité: Vérifier que le chemin du fichier est dans le répertoire de
+            // stockage
             Path destinationFile = this.rootLocation.resolve(Paths.get(filename)).normalize().toAbsolutePath();
             if (!destinationFile.getParent().equals(this.rootLocation.toAbsolutePath())) {
                 // This is a security check
-                throw new StorageException("Cannot store file outside current directory.");
+                throw new StorageException("Sécurité : tentative de stockage en dehors du répertoire autorisé.");
             }
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
-            throw new StorageException("Failed to store file " + filename, e);
+            throw new StorageException("Échec du stockage du fichier " + filename, e);
         }
         return filename; // Retourne juste le nom du fichier
     }
@@ -64,7 +66,7 @@ public class FileSystemStorageService implements StorageService {
                     .filter(path -> !path.equals(this.rootLocation))
                     .map(this.rootLocation::relativize);
         } catch (IOException e) {
-            throw new StorageException("Failed to read stored files", e);
+            throw new StorageException("Échec de la lecture des fichiers stockés", e);
         }
     }
 
@@ -81,10 +83,10 @@ public class FileSystemStorageService implements StorageService {
             if (resource.exists() || resource.isReadable()) {
                 return resource;
             } else {
-                throw new StorageFileNotFoundException("Could not read file: " + filename);
+                throw new StorageFileNotFoundException("Fichier introuvable ou illisible : " + filename);
             }
         } catch (MalformedURLException e) {
-            throw new StorageFileNotFoundException("Could not read file: " + filename, e);
+            throw new StorageFileNotFoundException("Fichier introuvable ou illisible : " + filename, e);
         }
     }
 
@@ -94,7 +96,7 @@ public class FileSystemStorageService implements StorageService {
         try {
             Files.deleteIfExists(file);
         } catch (IOException e) {
-            throw new StorageException("Failed to delete file " + filename, e);
+            throw new StorageException("Échec de la suppression du fichier " + filename, e);
         }
     }
 
@@ -106,7 +108,8 @@ public class FileSystemStorageService implements StorageService {
     @Override
     public String getFileUrl(String filename) {
         // Pour un environnement de production, l'URL pourrait être différente (ex: CDN)
-        // Ici, on suppose que les fichiers sont servis via un endpoint Spring MVC "/uploads/**"
+        // Ici, on suppose que les fichiers sont servis via un endpoint Spring MVC
+        // "/uploads/**"
         // Le contrôleur devra mapper "/uploads/" à ce répertoire rootLocation
         return "/uploads/" + filename;
     }

@@ -133,8 +133,12 @@ class _BookingScreenState extends State<BookingScreen> {
         final createdBooking = await ApiService.createBooking(newBooking);
         _showSuccessDialog(createdBooking.id.toString());
       } catch (e) {
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     }

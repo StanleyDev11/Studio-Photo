@@ -71,8 +71,12 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Erreur de chargement des prix: $e")));
+            SnackBar(content: Text(errorMessage)));
         setState(() {
           _isLoadingPrices = false;
         });
@@ -169,9 +173,13 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop(); // Pop loader on error
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Erreur lors du traitement du paiement: $e'),
+              content: Text(errorMessage),
               backgroundColor: Colors.red),
         );
       }

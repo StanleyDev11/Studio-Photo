@@ -113,10 +113,16 @@ class ApiService {
     } else {
       try {
         final errorBody = jsonDecode(response.body);
-        final errorMessage = errorBody['message'] ?? 'Erreur inconnue du serveur.';
-        throw Exception('Erreur ${response.statusCode}: $errorMessage');
+        final errorMessage = errorBody['message'];
+        if (errorMessage != null && errorMessage.isNotEmpty) {
+          throw Exception(errorMessage);
+        }
+        throw Exception('Erreur serveur (${response.statusCode})');
       } catch (e) {
-        throw Exception('Erreur serveur. Code: ${response.statusCode}, Message: ${response.reasonPhrase}');
+        if (e is Exception && !e.toString().contains('jsonDecode')) {
+          rethrow;
+        }
+        throw Exception('Erreur serveur. Code: ${response.statusCode}');
       }
     }
   }

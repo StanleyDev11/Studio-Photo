@@ -84,11 +84,14 @@ public class FedapayService {
     public FedapayInitiateResponse initiatePayment(FedapayInitiateRequest request) {
         // 1. Retrieve User
         User user = userRepository.findById(request.getUserId().intValue())
-                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé avec l'ID: " + request.getUserId()));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Utilisateur non trouvé avec l'ID: " + request.getUserId()));
 
         // 2. Create a pending order in our database
-        // The totalAmount is already calculated by the mobile app, so we use it directly.
-        // The items in the request should already have their price per unit if passed from mobile.
+        // The totalAmount is already calculated by the mobile app, so we use it
+        // directly.
+        // The items in the request should already have their price per unit if passed
+        // from mobile.
         Order pendingOrder = orderService.createPendingOrderForFedapay(request, user);
         Long orderId = pendingOrder.getId();
 
@@ -96,20 +99,21 @@ public class FedapayService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        
+
         // Set Authorization header for Fedapay API
         headers.set("Authorization", "Bearer " + secretKey);
 
         Map<String, Object> transactionPayload = new LinkedHashMap<>();
         transactionPayload.put("amount", request.getTotalAmount().intValue());
-        
+
         Map<String, String> currencyPayload = new LinkedHashMap<>();
         currencyPayload.put("iso", "XOF");
         transactionPayload.put("currency", currencyPayload);
 
         // Use orderId in description for webhook to retrieve later
         transactionPayload.put("description", "Payment for Photo Order #" + orderId);
-        transactionPayload.put("callback_url", backendBaseUrl + "/api/payments/fedapay/webhook"); // Our webhook endpoint
+        transactionPayload.put("callback_url", backendBaseUrl + "/api/payments/fedapay/webhook"); // Our webhook
+                                                                                                  // endpoint
         transactionPayload.put("cancel_url", backendBaseUrl + "/payment_cancel"); // TODO: Define a proper cancel URL
 
         // Customer details
@@ -126,7 +130,8 @@ public class FedapayService {
         transactionPayload.put("customer", customerPayload);
 
         try {
-            String transactionPayloadString = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(transactionPayload);
+            String transactionPayloadString = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(transactionPayload);
             headers.setContentLength(transactionPayloadString.getBytes().length);
             log.info("Fedapay transaction payload: {}", transactionPayloadString);
 
@@ -136,8 +141,7 @@ public class FedapayService {
                     fedapayApiBaseUrl + "/transactions",
                     HttpMethod.POST,
                     entity,
-                    Map.class
-            );
+                    Map.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
@@ -150,12 +154,12 @@ public class FedapayService {
                     }
                 }
             }
-            throw new RuntimeException("Fedapay API did not return a valid payment URL.");
+            throw new RuntimeException("L'API Fedapay n'a pas retourné d'URL de paiement valide.");
 
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new RuntimeException("Error converting payload to JSON", e);
+            throw new RuntimeException("Erreur de conversion des données en JSON", e);
         } catch (Exception e) {
-            throw new RuntimeException("Error communicating with Fedapay API: " + e.getMessage(), e);
+            throw new RuntimeException("Erreur lors de la communication avec l'API Fedapay : " + e.getMessage(), e);
         }
     }
 }

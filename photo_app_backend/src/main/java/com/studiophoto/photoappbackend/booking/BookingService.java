@@ -39,7 +39,7 @@ public class BookingService {
 
     public List<Booking> getBookingsByUser(Integer userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé"));
         return bookingRepository.findByUser(user);
     }
 
@@ -47,7 +47,7 @@ public class BookingService {
         // Optionnel: Ajouter des validations métier (ex: chevauchement de rendez-vous)
         // Assurez-vous que l'utilisateur existe
         userRepository.findById(booking.getUser().getId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé"));
 
         // Statut par défaut si non fourni
         if (booking.getStatus() == null) {
@@ -68,7 +68,7 @@ public class BookingService {
                     existingBooking.setUpdatedAt(LocalDateTime.now());
                     return bookingRepository.save(existingBooking);
                 })
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Réservation non trouvée avec l'ID : " + id));
     }
 
     public void deleteBooking(Long id) {
@@ -82,7 +82,7 @@ public class BookingService {
                     booking.setUpdatedAt(LocalDateTime.now());
                     return bookingRepository.save(booking);
                 })
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Réservation non trouvée avec l'ID : " + id));
     }
 
     public void saveBooking(Booking booking) {
