@@ -25,8 +25,15 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
 
     public AuthenticationResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalStateException("Cet email est déjà utilisé.");
+        boolean emailExists = userRepository.existsByEmail(request.getEmail());
+        boolean phoneExists = userRepository.existsByPhone(request.getPhone());
+
+        if (emailExists && phoneExists) {
+            throw new IllegalStateException("L'adresse email et le numéro de téléphone sont déjà utilisés.");
+        } else if (emailExists) {
+            throw new IllegalStateException("Cette adresse email est déjà utilisée.");
+        } else if (phoneExists) {
+            throw new IllegalStateException("Ce numéro de téléphone est déjà utilisé.");
         }
         var user = User.builder()
                 .firstname(request.getFirstname())
@@ -34,7 +41,7 @@ public class AuthenticationService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(request.getPhone())
-                .pin(passwordEncoder.encode(request.getPin())) // PIN is now hashed
+                .pin(request.getPin()) // PIN is no longer hashed
                 .role(Role.USER)
                 .status(Status.ACTIVE) // Default to ACTIVE to allow immediate login
                 .build();
@@ -90,14 +97,25 @@ public class AuthenticationService {
     }
 
     public String verifyPinForPasswordReset(String identifier, String pin) {
-        User user = userRepository.findByEmail(identifier)
-                .or(() -> userRepository.findByPhone(identifier))
-                .orElseThrow(() -> new RuntimeException(
-                        "Aucun compte n'est associé à cet identifiant (Email ou Téléphone)."));
+        Optional<User> userOpt = userRepository.findByEmail(identifier)
+                .or(() -> userRepository.findByPhone(identifier));
 
-        // Use password encoder to check hashed PIN
-        if (!passwordEncoder.matches(pin, user.getPin())) {
-            throw new RuntimeException("Le code secret saisi est incorrect.");
+        if (userOpt.isEmpty()) {
+            if (identifier.contains("@")) {
+                throw new RuntimeException("L'adresse email saisie est incorrecte ou n'existe pas.");
+            } else {
+                throw new RuntimeException("Le numéro de téléphone saisi est incorrect ou n'existe pas.");
+            }
+        }
+
+        User user = userOpt.get();
+
+        // Plain text PIN comparison as requested by the user
+        if (user.getPin() == null || !user.getPin().equals(pin)) {
+            // If the user wants to know if BOTH are wrong, we can only say it here if we
+            // know the ID was right but PIN wrong.
+            // But if they asked "clairement", we say it's the PIN.
+            throw new RuntimeException("Le code secret (PIN) saisi est incorrect.");
         }
 
         Map<String, Object> extraClaims = new HashMap<>();

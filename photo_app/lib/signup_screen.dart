@@ -296,7 +296,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("Déjà un compte ?",
+                      Text("J'ai un compte...",
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
@@ -304,7 +304,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       TextButton(
                         onPressed: () =>
                             Navigator.pushReplacementNamed(context, '/login'),
-                        child: const Text('Connectez-vous',
+                        child: const Text('Acceder',
                             style: TextStyle(color: AppColors.primary)),
                       ),
                     ],
