@@ -38,12 +38,12 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     {
       'name': 'PiconPay',
       'logo': 'assets/logos/pro.png',
-      'description': 'Payez via Fedapay (environnement Sandbox).'
+      'description': 'Paiement sécurisé via Carte Bancaire ou Mobile Money (Togo/Bénin).'
     }, 
     {
       'name': 'PayDunya',
-      'logo': 'assets/logos/pro.png', // Placeholder logo
-      'description': 'Payer avec PayDunya (Orange Money, Wave, CB...)'
+      'logo': 'assets/logos/pro.png', 
+      'description': 'Solution de paiement panafricaine (Orange Money, Wave, Free Money...)'
     },
   ];
 
@@ -250,93 +250,88 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
 
                                           return Padding(
                                             padding: const EdgeInsets.symmetric(
-                                                vertical: 8.0),
+                                                vertical: 10.0),
                                             child: GestureDetector(
                                               onTap: () => _onMethodSelected(
                                                   method['name']!),
                                               child: AnimatedContainer(
-                                                duration: 300.ms,
+                                                duration: 400.ms,
+                                                curve: Curves.easeOutQuart,
+                                                transform: isSelected 
+                                                  ? (Matrix4.identity()..scale(1.02))
+                                                  : Matrix4.identity(),
                                                 decoration: BoxDecoration(
                                                   color: isSelected
-                                                      ? AppColors.primary
-                                                          .withOpacity(0.1)
-                                                      : Colors.transparent,
+                                                      ? Colors.white.withOpacity(0.15)
+                                                      : Colors.white.withOpacity(0.05),
                                                   borderRadius:
-                                                      BorderRadius.circular(12),
+                                                      BorderRadius.circular(20),
+                                                  boxShadow: isSelected ? [
+                                                    BoxShadow(
+                                                      color: AppColors.primary.withOpacity(0.3),
+                                                      blurRadius: 15,
+                                                      spreadRadius: 2,
+                                                    )
+                                                  ] : [],
                                                   border: Border.all(
                                                     color: isSelected
                                                         ? AppColors.primary
                                                         : Colors.white
-                                                            .withOpacity(0.4),
+                                                            .withOpacity(0.2),
                                                     width:
                                                         isSelected ? 2.0 : 1.0,
                                                   ),
                                                 ),
                                                 child: ListTile(
                                                   contentPadding:
-                                                      const EdgeInsets.all(
-                                                          16.0),
-                                                  leading: ClipRRect(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8),
+                                                      const EdgeInsets.symmetric(
+                                                          horizontal: 20, vertical: 12),
+                                                  leading: Container(
+                                                    padding: const EdgeInsets.all(8),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
                                                     child: Image.asset(
                                                       method['logo']!,
-                                                      width: 50,
-                                                      height: 50,
+                                                      width: 40,
+                                                      height: 40,
                                                       fit: BoxFit.contain,
                                                     ),
                                                   ),
                                                   title: Text(
                                                     method['name']!,
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color:
-                                                          AppColors.textPrimary,
+                                                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                                                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                                      letterSpacing: 0.5,
                                                     ),
                                                   ),
-                                                  trailing: AnimatedOpacity(
-                                                    opacity:
-                                                        isSelected ? 1.0 : 0.0,
-                                                    duration: 300.ms,
-                                                    child: const Icon(
-                                                        Icons.check_circle,
-                                                        color:
-                                                            AppColors.primary,
-                                                        size: 30),
-                                                  ),
+                                                  subtitle: isSelected ? Padding(
+                                                    padding: const EdgeInsets.only(top: 8.0),
+                                                    child: Text(
+                                                      method['description']!,
+                                                      style: TextStyle(
+                                                        color: AppColors.textPrimary.withOpacity(0.7),
+                                                        fontSize: 12,
+                                                      ),
+                                                    ).animate().fadeIn(),
+                                                  ) : null,
+                                                  trailing: isSelected 
+                                                    ? Icon(Icons.check_circle, color: AppColors.primary, size: 28)
+                                                    : Icon(Icons.radio_button_off, color: Colors.white.withOpacity(0.4), size: 24),
                                                 ),
                                               ),
                                             ),
                                           )
                                               .animate()
-                                              .fadeIn(delay: (100 * index).ms)
-                                              .slideX(begin: 0.1);
+                                              .fadeIn(delay: (50 * index).ms)
+                                              .slideY(begin: 0.2, curve: Curves.easeOutBack);
                                         },
                                       ),
                                     ),
-                                    AnimatedSwitcher(
-                                      duration: 300.ms,
-                                      transitionBuilder: (child, animation) {
-                                        return FadeTransition(
-                                            opacity: animation, child: child);
-                                      },
-                                      child: Padding(
-                                        key: ValueKey<String>(
-                                            _selectedMethodName ?? ''),
-                                        padding: const EdgeInsets.fromLTRB(
-                                            16, 0, 16, 20),
-                                        child: Text(
-                                          _getDescription(_selectedMethodName),
-                                          style: const TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 14),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    ),
+                                    const SizedBox(height: 10),
                                   ],
                                 ),
                               ),
