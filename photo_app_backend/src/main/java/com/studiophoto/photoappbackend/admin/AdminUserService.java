@@ -12,12 +12,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminUserService {
 
     private final UserRepository userRepository;
@@ -77,18 +79,32 @@ public class AdminUserService {
 
     @Transactional
     public boolean deleteUser(Integer id) {
+        log.info("Tentative de suppression de l'utilisateur ID: {}", id);
         return userRepository.findById(id)
                 .map(user -> {
-                    // 1. Delete all bookings associated with this user
-                    bookingRepository.deleteAll(bookingRepository.findByUser(user));
+                    try {
+                        // 1. Delete all bookings associated with this user
+                        log.debug("Suppression des réservations pour l'utilisateur {}", id);
+                        bookingRepository.deleteAll(bookingRepository.findByUser(user));
 
-                    // 2. Delete all orders associated with this user
-                    orderRepository.deleteAll(orderRepository.findByUserIdOrderByCreatedAtDesc(id));
+                        // 2. Delete all orders associated with this user
+                        log.debug("Suppression des commandes pour l'utilisateur {}", id);
+                        orderRepository.deleteAll(orderRepository.findByUserIdOrderByCreatedAtDesc(id));
 
-                    // 3. Delete the user
-                    userRepository.delete(user);
-                    return true;
-                }).orElse(false);
+                        // 3. Delete the user
+                        log.debug("Suppression de l'utilisateur {} de la base", id);
+                        userRepository.delete(user);
+                        log.info("Utilisateur {} supprimé avec succès", id);
+                        return true;
+                    } catch (Exception e) {
+                        log.error("Erreur lors de la suppression de l'utilisateur {}: {}", id, e.getMessage());
+                        throw new RuntimeException(
+                                "Impossible de supprimer l'utilisateur car il possède des données liées qui ne peuvent pas être effacées.");
+                    }
+                }).orElseGet(() -> {
+                    log.warn("Utilisateur ID {} non trouvé pour suppression", id);
+                    return false;
+                });
     }
 
     public Optional<UserResponse> resetUserPassword(Integer id, String newPassword) {

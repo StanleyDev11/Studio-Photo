@@ -75,26 +75,41 @@ public class AdminUserController {
             @RequestParam int length,
             @RequestParam(name = "search[value]", defaultValue = "") String searchValue,
             @RequestParam(name = "order[0][column]", defaultValue = "0") int orderColumn,
-            @RequestParam(name = "order[0][dir]", defaultValue = "asc") String orderDir) {
+            @RequestParam(name = "order[0][dir]", defaultValue = "asc") String orderDir,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String status) {
+
         List<UserResponse> allUsers = adminUserService.getAllUsers();
 
         // Filter
         List<UserResponse> filteredUsers = allUsers.stream()
-                .filter(user -> searchValue.isEmpty() ||
-                        (user.getFirstname() != null
-                                && user.getFirstname().toLowerCase().contains(searchValue.toLowerCase()))
-                        ||
-                        (user.getLastname() != null
-                                && user.getLastname().toLowerCase().contains(searchValue.toLowerCase()))
-                        ||
-                        (user.getEmail() != null && user.getEmail().toLowerCase().contains(searchValue.toLowerCase()))
-                        ||
-                        (user.getRole() != null
-                                && user.getRole().name().toLowerCase().contains(searchValue.toLowerCase())))
+                .filter(user -> {
+                    // Search term filter
+                    boolean matchesSearch = searchValue.isEmpty() ||
+                            (user.getFirstname() != null
+                                    && user.getFirstname().toLowerCase().contains(searchValue.toLowerCase()))
+                            ||
+                            (user.getLastname() != null
+                                    && user.getLastname().toLowerCase().contains(searchValue.toLowerCase()))
+                            ||
+                            (user.getEmail() != null
+                                    && user.getEmail().toLowerCase().contains(searchValue.toLowerCase()));
+
+                    // Role filter
+                    boolean matchesRole = role == null || role.isEmpty() ||
+                            (user.getRole() != null && user.getRole().name().equals(role));
+
+                    // Status filter
+                    boolean matchesStatus = status == null || status.isEmpty() ||
+                            (user.getStatus() != null && user.getStatus().name().equals(status));
+
+                    return matchesSearch && matchesRole && matchesStatus;
+                })
                 .collect(Collectors.toList());
 
-        // Sort (Simple implementation)
-        // In a real app, this should be done in the DB level
+        // Sort (Simple implementation for standard columns)
+        // In a real app, this would be handled better, but here we keep the stream
+        // approach
 
         // Paging
         int totalFiltered = filteredUsers.size();
