@@ -4,10 +4,13 @@ import com.studiophoto.photoappbackend.admin.dto.UserRequest;
 import com.studiophoto.photoappbackend.admin.dto.UserResponse;
 import com.studiophoto.photoappbackend.model.Status; // Import Status enum
 import com.studiophoto.photoappbackend.model.User;
+import com.studiophoto.photoappbackend.booking.BookingRepository;
+import com.studiophoto.photoappbackend.order.OrderRepository;
 import com.studiophoto.photoappbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +22,8 @@ public class AdminUserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OrderRepository orderRepository;
+    private final BookingRepository bookingRepository;
 
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
@@ -30,7 +35,6 @@ public class AdminUserService {
         return userRepository.findById(id)
                 .map(this::mapToUserResponse);
     }
-
 
     public UserResponse createUser(UserRequest request) {
         // Check if user with the same email already exists
@@ -44,7 +48,8 @@ public class AdminUserService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
-                .status(request.getStatus() != null ? request.getStatus() : Status.PENDING) // Use request status or default
+                .status(request.getStatus() != null ? request.getStatus() : Status.PENDING) // Use request status or
+                                                                                            // default
                 .phone(request.getPhone())
                 .pin(request.getPin())
                 .build();
@@ -70,19 +75,28 @@ public class AdminUserService {
                 });
     }
 
+    @Transactional
     public boolean deleteUser(Integer id) {
-        if (userRepository.existsById(id)) {
-            userRepository.deleteById(id);
-            return true;
-        }
-        return false;
+        return userRepository.findById(id)
+                .map(user -> {
+                    // 1. Delete all bookings associated with this user
+                    bookingRepository.deleteAll(bookingRepository.findByUser(user));
+
+                    // 2. Delete all orders associated with this user
+                    orderRepository.deleteAll(orderRepository.findByUserIdOrderByCreatedAtDesc(id));
+
+                    // 3. Delete the user
+                    userRepository.delete(user);
+                    return true;
+                }).orElse(false);
     }
 
     public Optional<UserResponse> resetUserPassword(Integer id, String newPassword) {
         return userRepository.findById(id)
                 .map(user -> {
                     // Generate a new password if null or empty, otherwise use provided
-                    String passwordToEncode = (newPassword == null || newPassword.isEmpty()) ? generateRandomPassword() : newPassword;
+                    String passwordToEncode = (newPassword == null || newPassword.isEmpty()) ? generateRandomPassword()
+                            : newPassword;
                     user.setPassword(passwordEncoder.encode(passwordToEncode));
                     return mapToUserResponse(userRepository.save(user));
                 });
