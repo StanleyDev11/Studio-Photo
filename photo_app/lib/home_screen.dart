@@ -253,8 +253,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onTabTapped(int index) {
-    if (index == 3) {
-      // Index 3 is for Profile
+    if (index == 2) {
+      // Index 2 is for Profile (previously 3)
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -318,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedImages.addAll(uploadedUrls);
           _calculateTotal();
         });
-        _onTabTapped(2); // Switch to the Commands tab
+        _onTabTapped(1); // Switch to the Commands tab (previously 2)
       } catch (e) {
         String errorMessage = e.toString();
         if (errorMessage.startsWith('Exception: ')) {
@@ -502,7 +502,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBody() {
     final List<Widget> tabs = [
       _buildHomeTab(),
-      _buildPhotosTab(),
       _buildCommandsTab(),
       _buildProfileTab(),
     ];
@@ -1604,8 +1603,6 @@ class _HomeScreenState extends State<HomeScreen> {
             type: BottomNavigationBarType.fixed,
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.photo_album), label: 'Photos'),
               BottomNavigationBarItem(
                   icon: Icon(Icons.shopping_cart), label: 'Commandes'),
               BottomNavigationBarItem(
