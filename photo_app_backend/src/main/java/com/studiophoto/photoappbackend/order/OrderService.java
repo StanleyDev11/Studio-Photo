@@ -9,6 +9,12 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -137,6 +143,52 @@ public class OrderService {
 
     public Optional<Order> findById(Long id) {
         return orderRepository.findById(id);
+    }
+
+    public byte[] createOrderPhotosZip(Long orderId, User currentUser) throws IOException {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Commande non trouvée avec l'ID: " + orderId));
+
+        // Verify that the order belongs to the current user (security check)
+        if (!order.getUser().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Vous n'êtes pas autorisé à télécharger les photos de cette commande.");
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+            int fileCount = 0;
+            for (OrderItem item : order.getOrderItems()) {
+                // Generate a unique filename for each photo in the zip
+                // Using a combination of order item ID, size, and quantity
+                // Plus a counter to handle multiple photos of the same item
+                String originalFileName = item.getImageUrl().substring(item.getImageUrl().lastIndexOf('/') + 1);
+                String entryName = String.format("%s_%s_%dx_%s", 
+                                                order.getOrderNumber(), // Use orderNumber for better identification
+                                                item.getPhotoSize().replace(" ", "_"), 
+                                                item.getQuantity(), 
+                                                originalFileName);
+                
+                // Fetch the image from the URL
+                URL url = new URL(item.getImageUrl());
+                try (InputStream is = url.openStream()) {
+                    zos.putNextEntry(new ZipEntry(entryName));
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = is.read(buffer)) > 0) {
+                        zos.write(buffer, 0, len);
+                    }
+                    zos.closeEntry();
+                    fileCount++;
+                } catch (IOException e) {
+                    // Log the error but continue with other files
+                    System.err.println("Failed to download image from " + item.getImageUrl() + ": " + e.getMessage());
+                }
+            }
+            if (fileCount == 0) {
+                throw new IOException("No photos were successfully added to the zip file.");
+            }
+        }
+        return baos.toByteArray();
     }
 
     @Transactional

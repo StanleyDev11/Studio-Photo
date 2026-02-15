@@ -1,5 +1,7 @@
 package com.studiophoto.photoappbackend.order;
 
+import org.springframework.transaction.annotation.Transactional;
+import org.hibernate.Hibernate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -9,6 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
+import com.studiophoto.photoappbackend.order.OrderItem;
+import java.util.Map;
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin/orders")
@@ -24,11 +30,22 @@ public class AdminOrderController {
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public String viewOrderDetails(@PathVariable("id") Long id, Model model, RedirectAttributes redirectAttributes) {
-        Optional<Order> orderOptional = orderService.findById(id); 
+        Optional<Order> orderOptional = orderService.findById(id);
         if (orderOptional.isPresent()) {
-            model.addAttribute("order", orderOptional.get());
-            return "admin/orders/detail"; 
+            Order order = orderOptional.get();
+            Hibernate.initialize(order.getOrderItems()); // Initialize the collection
+            model.addAttribute("order", order);
+
+            // Pre-process the order items
+            if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+                Map<String, List<OrderItem>> groupedItems = order.getOrderItems().stream()
+                        .collect(Collectors.groupingBy(OrderItem::getPhotoSize));
+                model.addAttribute("groupedItems", groupedItems);
+            }
+
+            return "admin/orders/detail";
         } else {
             redirectAttributes.addFlashAttribute("errorMessage", "Commande non trouvée.");
             return "redirect:/admin/orders";
@@ -68,4 +85,5 @@ public class AdminOrderController {
         return "redirect:/admin/orders";
     }
 }
+
 

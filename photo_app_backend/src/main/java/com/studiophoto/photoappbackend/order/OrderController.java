@@ -3,7 +3,9 @@ package com.studiophoto.photoappbackend.order;
 import com.studiophoto.photoappbackend.model.User;
 import com.studiophoto.photoappbackend.storage.StorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -100,6 +102,29 @@ public class OrderController {
             // Log the exception for debugging purposes
             // logger.error("Failed to upload files for user {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload files.");
+        }
+    }
+
+    @GetMapping("/{orderId}/download-photos")
+    public ResponseEntity<byte[]> downloadOrderPhotos(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            byte[] zipBytes = orderService.createOrderPhotosZip(orderId, currentUser);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "order_" + orderId + "_photos.zip");
+            headers.setContentLength(zipBytes.length);
+
+            return new ResponseEntity<>(zipBytes, headers, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // Order not found or not owned by user
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null); // Error during zip creation
         }
     }
 
