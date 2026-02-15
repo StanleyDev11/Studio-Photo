@@ -219,14 +219,15 @@ class _SignupScreenState extends State<SignupScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _emailController,
-                    decoration: _glassyInputDecoration('Email (facultatif)',
+                    decoration: _glassyInputDecoration('Email',
                         icon: Icons.email_outlined),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
-                      if (value != null &&
-                          value.isNotEmpty &&
-                          !RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-                              .hasMatch(value)) {
+                      if (value == null || value.isEmpty) {
+                        return 'Email requis';
+                      }
+                      if (!RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+                          .hasMatch(value)) {
                         return 'Veuillez entrer un email valide';
                       }
                       return null;
