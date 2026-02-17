@@ -13,12 +13,22 @@ class PaymentSelectionScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
   final double totalAmount;
   final bool isExpress;
+  final String? customerFirstname;
+  final String? customerLastname;
+  final String? customerEmail;
+  final String? customerPhone;
+  final String? customerCountry;
 
   const PaymentSelectionScreen({
     super.key,
     required this.orderDetails,
     required this.totalAmount,
     required this.isExpress,
+    this.customerFirstname,
+    this.customerLastname,
+    this.customerEmail,
+    this.customerPhone,
+    this.customerCountry,
   });
 
   @override
@@ -127,6 +137,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         'items': items,
         'userId': ApiService.userId,
         'totalAmount': widget.totalAmount, // Pass totalAmount
+        'customerFirstname': widget.customerFirstname,
+        'customerLastname': widget.customerLastname,
+        'customerEmail': widget.customerEmail,
+        'customerPhone': widget.customerPhone,
+        'customerCountry': widget.customerCountry,
       };
 
       // --- Payment Integration Logic ---
@@ -213,6 +228,27 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                                 .titleMedium
                                 ?.copyWith(color: AppColors.textPrimary),
                             textAlign: TextAlign.center,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.2)),
+                            ),
+                            child: const Text(
+                              'Le code PIN Mobile Money est saisi sur l’interface de paiement FedaPay.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
                           ),
                         ),
                         Expanded(

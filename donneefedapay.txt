@@ -1,0 +1,19 @@
+
+ID:	406792 
+Date de création:	17 Feb 2026, 19:39:08
+Client:	chaminade adjolou (chaminade.don.adjolou@gmail.com)
+Statut:	En attente
+Montant:	1 500 CFA
+Montant payé par le client:	0 CFA
+Information sur le payeur:
+Il s'agit de celui qui a effectué payé. Il peut être différent de votre client.
+
+(undefined)
+Mode de paiement utilisé:	
+Balance de transfert:	
+Reference operateur:	
+Date de paiement:	 
+Url de retour:	https://piconstudio.duckdns.org/payment/callback?orderId=54
+Description	Payment for Photo Order #54
+Donnees complementaires:	
+orderId : 54

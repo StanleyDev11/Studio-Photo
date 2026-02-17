@@ -116,17 +116,40 @@ public class FedapayService {
 
         // Customer details
         Map<String, Object> customerPayload = new LinkedHashMap<>();
-        if (user.getFirstname() != null) customerPayload.put("firstname", user.getFirstname());
-        if (user.getLastname() != null) customerPayload.put("lastname", user.getLastname());
-        if (user.getEmail() != null) customerPayload.put("email", user.getEmail());
-        String phone = user.getPhone();
+        String firstname = request.getCustomerFirstname() != null && !request.getCustomerFirstname().isBlank()
+                ? request.getCustomerFirstname()
+                : user.getFirstname();
+        String lastname = request.getCustomerLastname() != null && !request.getCustomerLastname().isBlank()
+                ? request.getCustomerLastname()
+                : user.getLastname();
+        String email = request.getCustomerEmail() != null && !request.getCustomerEmail().isBlank()
+                ? request.getCustomerEmail()
+                : user.getEmail();
+        if (firstname != null) customerPayload.put("firstname", firstname);
+        if (lastname != null) customerPayload.put("lastname", lastname);
+        if (email != null) customerPayload.put("email", email);
+
+        String phone = request.getCustomerPhone() != null && !request.getCustomerPhone().isBlank()
+                ? request.getCustomerPhone()
+                : user.getPhone();
         if (phone != null && !phone.isBlank()) {
             if (!phone.startsWith("+")) {
-                phone = "+228" + phone;
+                String country = request.getCustomerCountry();
+                if (country == null || country.isBlank()) {
+                    country = "tg";
+                }
+                if ("tg".equalsIgnoreCase(country)) {
+                    phone = "+228" + phone;
+                } else if ("bj".equalsIgnoreCase(country)) {
+                    phone = "+229" + phone;
+                } else {
+                    phone = "+" + phone;
+                }
             }
             Map<String, String> phonePayload = new LinkedHashMap<>();
             phonePayload.put("number", phone);
-            phonePayload.put("country", "tg");
+            String country = request.getCustomerCountry();
+            phonePayload.put("country", country == null || country.isBlank() ? "tg" : country);
             customerPayload.put("phone_number", phonePayload);
         }
         transactionPayload.put("customer", customerPayload);
