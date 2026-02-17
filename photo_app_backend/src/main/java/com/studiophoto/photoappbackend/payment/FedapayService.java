@@ -150,16 +150,19 @@ public class FedapayService {
                     entity,
                     Map.class);
 
+            if (response.getBody() != null) {
+                log.info("Fedapay response status: {}", response.getStatusCode());
+                log.info("Fedapay response body: {}", response.getBody());
+            }
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
-                if (responseBody.containsKey("transaction")) {
-                    Map<String, Object> transaction = (Map<String, Object>) responseBody.get("transaction");
-                    if (transaction.containsKey("payment_url")) {
-                        return FedapayInitiateResponse.builder()
-                                .paymentUrl(transaction.get("payment_url").toString())
-                                .orderId(orderId)
-                                .build();
-                    }
+                String paymentUrl = extractPaymentUrl(responseBody);
+                if (paymentUrl != null && !paymentUrl.isBlank()) {
+                    return FedapayInitiateResponse.builder()
+                            .paymentUrl(paymentUrl)
+                            .orderId(orderId)
+                            .build();
                 }
             }
             throw new RuntimeException("L'API Fedapay n'a pas retourné d'URL de paiement valide.");
@@ -230,5 +233,29 @@ public class FedapayService {
                 .status(status == null ? "unknown" : status)
                 .orderId(orderId)
                 .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractPaymentUrl(Map<String, Object> responseBody) {
+        // Common shapes: {transaction:{payment_url:..}} OR {data:{transaction:{payment_url:..}}}
+        Object transaction = responseBody.get("transaction");
+        if (transaction instanceof Map) {
+            Object url = ((Map<String, Object>) transaction).get("payment_url");
+            if (url != null) return url.toString();
+        }
+        Object data = responseBody.get("data");
+        if (data instanceof Map) {
+            Object t = ((Map<String, Object>) data).get("transaction");
+            if (t instanceof Map) {
+                Object url = ((Map<String, Object>) t).get("payment_url");
+                if (url != null) return url.toString();
+            }
+        }
+        Object links = responseBody.get("links");
+        if (links instanceof Map) {
+            Object url = ((Map<String, Object>) links).get("payment_url");
+            if (url != null) return url.toString();
+        }
+        return null;
     }
 }
