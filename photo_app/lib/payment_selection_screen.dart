@@ -47,7 +47,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     // _fetchContactInfo(); // Removed: no longer needed
     // Initialize Fedapay
     final feda = FedaFlutter(
-      apiKey: "sk_sandbox_5eglTc3hCd6lTA8agN_O32jz",
+      apiKey: "pk_sandbox_T07_uKrSPDbodUlB0zTbAoGb",
       environment: ApiEnvironment.sandbox,
     );
     feda.initialize();
