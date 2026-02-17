@@ -12,6 +12,7 @@ import 'package:Picon/notifications_screen.dart';
 import 'package:Picon/portfolio_screen.dart';
 import 'package:Picon/pricing_screen.dart';
 import 'package:Picon/profile_page.dart';
+import 'package:Picon/photo_preview_screen.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/connectivity_service.dart';
 import 'package:Picon/utils/geometric_background.dart';
@@ -305,7 +306,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _quickPhotoOrder() async {
     final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage(imageQuality: 50);
+    List<XFile> pickedFiles = [];
+    try {
+      pickedFiles = await picker.pickMultiImage(imageQuality: 50);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                "Impossible d'ouvrir la galerie. Vérifiez les permissions."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
     if (pickedFiles.isNotEmpty) {
       setState(() {
@@ -318,7 +333,22 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedImages.addAll(uploadedUrls);
           _calculateTotal();
         });
-        _onTabTapped(1); // Switch to the Commands tab (previously 2)
+        if (_prices != null && _prices!.isNotEmpty) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PhotoPreviewScreen(
+                images: _selectedImages.toList(),
+                photoDetails: _photoDetails,
+                prices: _prices!,
+              ),
+            ),
+          );
+        }
+        setState(() {
+          _calculateTotal();
+          _currentIndex = 1; // Switch to the Commands tab
+        });
       } catch (e) {
         String errorMessage = e.toString();
         if (errorMessage.startsWith('Exception: ')) {
@@ -331,6 +361,15 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isUploading = false;
         });
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                "Aucune photo sélectionnée ou accès refusé à la galerie."),
+          ),
+        );
       }
     }
   }
@@ -526,6 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          SliverToBoxAdapter(child: _buildOrderNowButton()),
           SliverToBoxAdapter(child: _buildQuickActions()),
           _buildHistorySection(),
           const SliverToBoxAdapter(child: SizedBox(height: 24)), //padding en bas de la page des actions
@@ -751,6 +791,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.all(4.0),
                   child: Column(
                     children: [
+                      TextButton.icon(
+                        onPressed: () async {
+                          if (_prices == null || _prices!.isEmpty) return;
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PhotoPreviewScreen(
+                                images: _selectedImages.toList(),
+                                photoDetails: _photoDetails,
+                                prices: _prices!,
+                              ),
+                            ),
+                          );
+                          setState(() {
+                            _calculateTotal();
+                          });
+                        },
+                        icon: const Icon(Icons.crop, color: AppColors.primary),
+                        label: const Text(
+                          'Prévisualiser / Recadrer',
+                          style: TextStyle(color: AppColors.primary),
+                        ),
+                      ),
                       TextButton.icon(
                         onPressed: _clearCart,
                         icon: const Icon(Icons.delete_outline,
@@ -1196,7 +1259,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildQuickActions() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6.0, 2.0, 16.0, 2.0), //padding en bas de la page des actions
+      padding: const EdgeInsets.fromLTRB(6.0, 2.0, 16.0, 0.0), //padding en bas de la page des actions
       child: GridView.builder(
         shrinkWrap: true, // Important for nested scroll views
         physics:
@@ -1274,6 +1337,64 @@ class _HomeScreenState extends State<HomeScreen> {
               return Container(); // Fallback
           }
         },
+      ),
+    );
+  }
+
+  Widget _buildOrderNowButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 6.0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _quickPhotoOrder,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF2F5BFF),
+                  Color(0xFF4CA3FF),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withOpacity(0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+              border: Border.all(color: Colors.white.withOpacity(0.25)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.add_a_photo, color: Colors.white),
+                SizedBox(width: 10),
+                Text(
+                  'Passer ma Commande',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          )
+              .animate()
+              .fade(duration: 450.ms)
+              .scale(begin: const Offset(0.98, 0.98), duration: 450.ms)
+              .shimmer(
+                duration: 1800.ms,
+                color: Colors.white.withOpacity(0.35),
+              ),
+        ),
       ),
     );
   }
