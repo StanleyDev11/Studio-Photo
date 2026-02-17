@@ -32,6 +32,7 @@ public class SecurityConfig {
                                         .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
                                         // Public access for new public endpoints
                                         .requestMatchers("/api/public/**", "/api/promotions/**").permitAll()
+                                        .requestMatchers("/payment/**").permitAll()
                                         // Public access for authentication and admin login page
                                         .requestMatchers("/api/auth/**").permitAll() // API authentication should be permitted
                                         .requestMatchers("/admin/login").permitAll() // Admin login page

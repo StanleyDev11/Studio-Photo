@@ -112,20 +112,23 @@ public class FedapayService {
 
         // Use orderId in description for webhook to retrieve later
         transactionPayload.put("description", "Payment for Photo Order #" + orderId);
-        transactionPayload.put("callback_url", "picon://payment-callback?status=success&orderId=" + orderId);
-        transactionPayload.put("cancel_url", "picon://payment-callback?status=cancel&orderId=" + orderId);
+        transactionPayload.put("callback_url", backendBaseUrl + "/payment/callback?orderId=" + orderId);
 
         // Customer details
-        Map<String, String> customerPayload = new LinkedHashMap<>();
-        customerPayload.put("firstname", user.getFirstname());
-        customerPayload.put("lastname", user.getLastname());
-        customerPayload.put("email", user.getEmail());
+        Map<String, Object> customerPayload = new LinkedHashMap<>();
+        if (user.getFirstname() != null) customerPayload.put("firstname", user.getFirstname());
+        if (user.getLastname() != null) customerPayload.put("lastname", user.getLastname());
+        if (user.getEmail() != null) customerPayload.put("email", user.getEmail());
         String phone = user.getPhone();
-        if (phone != null && !phone.startsWith("+")) {
-            phone = "+228" + phone;
+        if (phone != null && !phone.isBlank()) {
+            if (!phone.startsWith("+")) {
+                phone = "+228" + phone;
+            }
+            Map<String, String> phonePayload = new LinkedHashMap<>();
+            phonePayload.put("number", phone);
+            phonePayload.put("country", "tg");
+            customerPayload.put("phone_number", phonePayload);
         }
-        customerPayload.put("phone_number", phone);
-        customerPayload.put("country", "TG"); // Assuming Togo, TODO: Make dynamic or configurable
         transactionPayload.put("customer", customerPayload);
 
         // Custom metadata for easier reconciliation
