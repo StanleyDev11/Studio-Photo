@@ -15,22 +15,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentReturnController {
 
     @GetMapping("/callback")
-    public ResponseEntity<Void> handleReturn(
+    public ResponseEntity<String> handleReturn(
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "id", required = false) String transactionId,
             @RequestParam(value = "orderId", required = false) String orderId
     ) {
         String st = status == null ? "pending" : status;
-        StringBuilder redirect = new StringBuilder("picon://payment-callback?status=")
-                .append(st);
+        StringBuilder payload = new StringBuilder("status=").append(st);
         if (transactionId != null && !transactionId.isBlank()) {
-            redirect.append("&id=").append(transactionId);
+            payload.append("&id=").append(transactionId);
         }
         if (orderId != null && !orderId.isBlank()) {
-            redirect.append("&orderId=").append(orderId);
+            payload.append("&orderId=").append(orderId);
         }
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Location", redirect.toString());
-        return new ResponseEntity<>(headers, HttpStatus.FOUND);
+        String body = "<html><head><title>Paiement</title></head>"
+                + "<body style=\"font-family: sans-serif; text-align:center; padding:30px;\">"
+                + "<h3>Paiement en cours</h3>"
+                + "<p>Vous pouvez retourner dans l'application.</p>"
+                + "<p>Détails: " + payload + "</p>"
+                + "</body></html>";
+        return ResponseEntity.ok(body);
     }
 }

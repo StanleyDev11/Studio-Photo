@@ -4,9 +4,9 @@ import 'package:Picon/models/contact_info.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
 import 'package:Picon/widgets/music_wave_loader.dart';
+import 'package:Picon/payment_webview_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:feda_flutter/feda_flutter.dart';
 
 class PaymentSelectionScreen extends StatefulWidget {
@@ -162,18 +162,15 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
 
       if (mounted) Navigator.of(context).pop(); // Pop loader
 
-      if (await canLaunchUrl(Uri.parse(paymentUrl))) {
-        final isFedapay = _selectedMethodName == 'FedaPay';
-        await launchUrl(
-          Uri.parse(paymentUrl),
-          mode: isFedapay ? LaunchMode.inAppWebView : LaunchMode.externalApplication,
-          webViewConfiguration: const WebViewConfiguration(
-            enableJavaScript: true,
-            enableDomStorage: true,
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentWebViewScreen(
+              paymentUrl: paymentUrl,
+            ),
           ),
         );
-      } else {
-        throw 'Impossible de lancer l\'URL de paiement Fedapay : $paymentUrl';
       }
 
       // On attend le deep link de succès/annulation avant d'aller au reçu.

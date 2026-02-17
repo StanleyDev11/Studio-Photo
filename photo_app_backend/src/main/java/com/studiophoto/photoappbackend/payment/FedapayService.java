@@ -113,6 +113,7 @@ public class FedapayService {
         // Use orderId in description for webhook to retrieve later
         transactionPayload.put("description", "Payment for Photo Order #" + orderId);
         transactionPayload.put("callback_url", backendBaseUrl + "/payment/callback?orderId=" + orderId);
+        transactionPayload.put("cancel_url", backendBaseUrl + "/payment/callback?status=cancel&orderId=" + orderId);
 
         // Customer details
         Map<String, Object> customerPayload = new LinkedHashMap<>();
