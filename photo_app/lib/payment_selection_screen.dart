@@ -1,14 +1,12 @@
 import 'dart:ui';
 import 'package:Picon/api_service.dart';
 import 'package:Picon/models/contact_info.dart';
-import 'package:Picon/receipt_screen.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
 import 'package:Picon/widgets/music_wave_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:uuid/uuid.dart';
 import 'package:feda_flutter/feda_flutter.dart';
 
 class PaymentSelectionScreen extends StatefulWidget {
@@ -36,14 +34,9 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
 
   final List<Map<String, String>> _paymentMethods = [
     {
-      'name': 'PiconPay',
+      'name': 'FedaPay',
       'logo': 'assets/logos/pro.png',
-      'description': 'Paiement sécurisé via Carte Bancaire ou Mobile Money (Togo/Bénin).'
-    }, 
-    {
-      'name': 'PayDunya',
-      'logo': 'assets/logos/pro.png', 
-      'description': 'Solution de paiement panafricaine (Orange Money, Wave, Free Money...)'
+      'description': 'Paiement sécurisé via Mobile Money (dans l\'application).'
     },
   ];
 
@@ -124,6 +117,10 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         };
       }).toList();
 
+      if (ApiService.userId == null) {
+        throw "Veuillez vous reconnecter pour continuer le paiement.";
+      }
+
       final orderPayload = {
         'isExpress': widget.isExpress, // Use widget.isExpress
         'paymentMethod': _selectedMethodName!,
@@ -134,10 +131,16 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
 
       // --- Payment Integration Logic ---
       String paymentUrl = "";
-      if (_selectedMethodName == 'PiconPay') {
-         paymentUrl = await ApiService.initiateFedapayPayment(orderPayload);
-      } else if (_selectedMethodName == 'PayDunya') {
-         paymentUrl = await ApiService.initiatePaydunyaPayment(orderPayload);
+      if (_selectedMethodName == 'FedaPay') {
+         final response = await ApiService.initiateFedapayPayment(orderPayload);
+         paymentUrl = response['paymentUrl'] as String;
+         final orderId = response['orderId'] as String;
+         ApiService.setPendingPayment(
+           orderDetails: widget.orderDetails,
+           prices: _prices!,
+           paymentMethod: _selectedMethodName!,
+           orderId: orderId,
+         );
       } else {
         throw "Méthode de paiement non supportée.";
       }
@@ -145,31 +148,20 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
       if (mounted) Navigator.of(context).pop(); // Pop loader
 
       if (await canLaunchUrl(Uri.parse(paymentUrl))) {
-        await launchUrl(Uri.parse(paymentUrl),
-            mode: LaunchMode.externalApplication);
+        final isFedapay = _selectedMethodName == 'FedaPay';
+        await launchUrl(
+          Uri.parse(paymentUrl),
+          mode: isFedapay ? LaunchMode.inAppWebView : LaunchMode.externalApplication,
+          webViewConfiguration: const WebViewConfiguration(
+            enableJavaScript: true,
+            enableDomStorage: true,
+          ),
+        );
       } else {
         throw 'Impossible de lancer l\'URL de paiement Fedapay : $paymentUrl';
       }
 
-      // After launching URL, we expect Fedapay to redirect back.
-      // For now, we'll navigate to a receipt screen, but a real integration
-      // would involve listening for webhooks or deep links.
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ReceiptScreen(
-              orderDetails: widget.orderDetails,
-              paymentMethod: _selectedMethodName!,
-              orderId:
-                  "FEDAPAY_PENDING", // Placeholder, will be updated by webhook
-              prices: _prices!,
-              userName: ApiService.userName ?? "Client passant",
-              userPhone: ApiService.userEmail ?? "+22890000000",
-            ),
-          ),
-        );
-      }
+      // On attend le deep link de succès/annulation avant d'aller au reçu.
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop(); // Pop loader on error

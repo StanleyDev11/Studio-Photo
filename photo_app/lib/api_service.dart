@@ -20,6 +20,11 @@ class ApiService {
   static String? _userName;
   static String? _userLastName;
   static String? _userEmail;
+  // Pending payment data
+  static Map<String, Map<String, dynamic>>? _pendingOrderDetails;
+  static Map<String, double>? _pendingPrices;
+  static String? _pendingPaymentMethod;
+  static String? _pendingOrderId;
 
   static Future<void> init() async {
     _preferences = await SharedPreferences.getInstance();
@@ -36,6 +41,30 @@ class ApiService {
   static String? get userName => _userName;
   static String? get userLastName => _userLastName;
   static String? get userEmail => _userEmail;
+  static Map<String, Map<String, dynamic>>? get pendingOrderDetails =>
+      _pendingOrderDetails;
+  static Map<String, double>? get pendingPrices => _pendingPrices;
+  static String? get pendingPaymentMethod => _pendingPaymentMethod;
+  static String? get pendingOrderId => _pendingOrderId;
+
+  static void setPendingPayment({
+    required Map<String, Map<String, dynamic>> orderDetails,
+    required Map<String, double> prices,
+    required String paymentMethod,
+    required String orderId,
+  }) {
+    _pendingOrderDetails = Map<String, Map<String, dynamic>>.from(orderDetails);
+    _pendingPrices = Map<String, double>.from(prices);
+    _pendingPaymentMethod = paymentMethod;
+    _pendingOrderId = orderId;
+  }
+
+  static void clearPendingPayment() {
+    _pendingOrderDetails = null;
+    _pendingPrices = null;
+    _pendingPaymentMethod = null;
+    _pendingOrderId = null;
+  }
 
   static Future<void> saveAuthDetails(Map<String, dynamic> authData) async {
     _authToken = authData['token'];
@@ -306,6 +335,20 @@ class ApiService {
     return list.map((json) => Order.fromJson(json)).toList();
   }
 
+  static Future<Order?> fetchOrderById(String orderId) async {
+    final url = '$baseUrl/orders/$orderId';
+    try {
+      final response = await _safeGet(url);
+      if (response.statusCode == 200) {
+        final responseData = _handleApiResponse(response);
+        return Order.fromJson(responseData);
+      }
+    } catch (e) {
+      return null;
+    }
+    return null;
+  }
+
   static Future<void> cancelOrder(int orderId) async {
     final url = '$baseUrl/orders/$orderId/cancel';
     final response = await _safePost(url, {});
@@ -366,26 +409,30 @@ class ApiService {
     }
   }
 
-  static Future<String> initiateFedapayPayment(Map<String, dynamic> orderPayload) async {
+  static Future<Map<String, dynamic>> initiateFedapayPayment(Map<String, dynamic> orderPayload) async {
     const url = '$baseUrl/payments/fedapay/initiate';
     final response = await _safePost(url, orderPayload);
     final responseData = _handleApiResponse(response);
     if (responseData != null && responseData.containsKey('paymentUrl')) {
-      return responseData['paymentUrl'];
+      return {
+        'paymentUrl': responseData['paymentUrl'],
+        'orderId': responseData['orderId']?.toString() ?? '',
+      };
     } else {
       throw Exception('Failed to initiate Fedapay payment: Invalid response from server.');
     }
   }
 
-  static Future<String> initiatePaydunyaPayment(Map<String, dynamic> orderPayload) async {
-    const url = '$baseUrl/payments/paydunya/initiate';
-    final response = await _safePost(url, orderPayload);
+  static Future<Map<String, dynamic>> verifyFedapayTransaction(String transactionId) async {
+    final url = '$baseUrl/payments/fedapay/verify?id=$transactionId';
+    final response = await _safeGet(url);
     final responseData = _handleApiResponse(response);
-    if (responseData != null && responseData.containsKey('paymentUrl')) {
-      return responseData['paymentUrl'];
+    if (responseData != null) {
+      return responseData as Map<String, dynamic>;
     } else {
-      throw Exception('Failed to initiate PayDunya payment: Invalid response from server.');
+      throw Exception('Failed to verify Fedapay transaction.');
     }
   }
+
 }
 

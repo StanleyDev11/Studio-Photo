@@ -112,9 +112,8 @@ public class FedapayService {
 
         // Use orderId in description for webhook to retrieve later
         transactionPayload.put("description", "Payment for Photo Order #" + orderId);
-        transactionPayload.put("callback_url", backendBaseUrl + "/api/payments/fedapay/webhook"); // Our webhook
-                                                                                                  // endpoint
-        transactionPayload.put("cancel_url", backendBaseUrl + "/payment_cancel"); // TODO: Define a proper cancel URL
+        transactionPayload.put("callback_url", "picon://payment-callback?status=success&orderId=" + orderId);
+        transactionPayload.put("cancel_url", "picon://payment-callback?status=cancel&orderId=" + orderId);
 
         // Customer details
         Map<String, String> customerPayload = new LinkedHashMap<>();
@@ -128,6 +127,11 @@ public class FedapayService {
         customerPayload.put("phone_number", phone);
         customerPayload.put("country", "TG"); // Assuming Togo, TODO: Make dynamic or configurable
         transactionPayload.put("customer", customerPayload);
+
+        // Custom metadata for easier reconciliation
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("orderId", orderId);
+        transactionPayload.put("custom_metadata", metadata);
 
         try {
             String transactionPayloadString = new com.fasterxml.jackson.databind.ObjectMapper()
@@ -150,6 +154,7 @@ public class FedapayService {
                     if (transaction.containsKey("payment_url")) {
                         return FedapayInitiateResponse.builder()
                                 .paymentUrl(transaction.get("payment_url").toString())
+                                .orderId(orderId)
                                 .build();
                     }
                 }
@@ -161,5 +166,66 @@ public class FedapayService {
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de la communication avec l'API Fedapay : " + e.getMessage(), e);
         }
+    }
+
+    public FedapayVerifyResponse verifyTransaction(String transactionId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        headers.set("Authorization", "Bearer " + secretKey);
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                fedapayApiBaseUrl + "/transactions/" + transactionId,
+                HttpMethod.GET,
+                entity,
+                Map.class);
+
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            throw new RuntimeException("Impossible de vérifier la transaction Fedapay.");
+        }
+
+        Map<String, Object> responseBody = response.getBody();
+        Map<String, Object> transaction = (Map<String, Object>) responseBody.get("transaction");
+        if (transaction == null) {
+            throw new RuntimeException("Réponse Fedapay invalide.");
+        }
+
+        String status = (String) transaction.get("status");
+        String description = (String) transaction.get("description");
+        Long orderId = null;
+
+        if (description != null && description.startsWith("Payment for Photo Order #")) {
+            try {
+                orderId = Long.parseLong(description.substring("Payment for Photo Order #".length()));
+            } catch (NumberFormatException e) {
+                orderId = null;
+            }
+        }
+
+        if (orderId != null) {
+            OrderStatus newOrderStatus;
+            String paymentMethod = "Fedapay";
+            switch (status) {
+                case "approved":
+                    newOrderStatus = OrderStatus.PROCESSING;
+                    break;
+                case "pending":
+                    newOrderStatus = OrderStatus.PENDING_PAYMENT;
+                    break;
+                case "canceled":
+                case "failed":
+                    newOrderStatus = OrderStatus.CANCELLED;
+                    break;
+                default:
+                    newOrderStatus = OrderStatus.PENDING_PAYMENT;
+            }
+            orderService.updateOrderStatusAndPaymentMethod(orderId, newOrderStatus, paymentMethod);
+        }
+
+        return FedapayVerifyResponse.builder()
+                .status(status == null ? "unknown" : status)
+                .orderId(orderId)
+                .build();
     }
 }

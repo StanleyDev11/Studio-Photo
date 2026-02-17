@@ -2,6 +2,8 @@ package com.studiophoto.photoappbackend.payment;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentController {
 
     private final FedapayService fedapayService;
-    private final PayDunyaService payDunyaService;
 
     @PostMapping("/fedapay/initiate")
     public ResponseEntity<FedapayInitiateResponse> initiateFedapayPayment(@RequestBody FedapayInitiateRequest request) {
@@ -21,9 +22,9 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/paydunya/initiate")
-    public ResponseEntity<java.util.Map<String, String>> initiatePaydunyaPayment(@RequestBody java.util.Map<String, Object> request) {
-        String paymentUrl = payDunyaService.initiatePayment(request);
-        return ResponseEntity.ok(java.util.Map.of("paymentUrl", paymentUrl));
+    @GetMapping("/fedapay/verify")
+    public ResponseEntity<FedapayVerifyResponse> verifyFedapayPayment(@RequestParam("id") String transactionId) {
+        FedapayVerifyResponse response = fedapayService.verifyTransaction(transactionId);
+        return ResponseEntity.ok(response);
     }
 }

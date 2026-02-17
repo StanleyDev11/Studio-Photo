@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FedapayInitiateResponse {
-    private String paymentUrl;
+public class FedapayVerifyResponse {
+    private String status;
     private Long orderId;
 }

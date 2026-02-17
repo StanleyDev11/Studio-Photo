@@ -48,6 +48,19 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Order> getOrderById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return orderService.findById(id)
+                .filter(order -> order.getUser().getId().equals(currentUser.getId()))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping("/upload")
     public ResponseEntity<?> uploadPhotos(
             @RequestParam("files") List<MultipartFile> files,

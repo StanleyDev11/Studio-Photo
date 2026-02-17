@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 
 import 'package:app_links/app_links.dart';
 import 'package:Picon/receipt_screen.dart'; // Import ReceiptScreen
+import 'package:Picon/payment_pending_screen.dart';
+import 'package:Picon/payment_success_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,9 +40,9 @@ class _MyAppState extends State<MyApp> {
     _appLinks = AppLinks();
 
     // Check initial link if app was closed
-    // _appLinks.getInitialLink().then((uri) { // getInitialLink returns Future<Uri?>
-    //   if (uri != null) _handleDeepLink(uri);
-    // });
+    _appLinks.getInitialLink().then((uri) {
+      if (uri != null) _handleDeepLink(uri);
+    });
 
     // Listen to link stream
     _appLinks.uriLinkStream.listen((uri) {
@@ -48,30 +50,109 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  void _handleDeepLink(Uri uri) {
+  Future<void> _handleDeepLink(Uri uri) async {
     if (uri.scheme == 'picon' && uri.host == 'payment-callback') {
       final status = uri.queryParameters['status'];
-      if (status == 'success') {
-         // Navigate to ReceiptScreen
-         // Note: In a real app we would fetch order details from backend using an orderID passed in params
-         // Here we show a generic success for demonstration
-         _navigatorKey.currentState?.push(
-           MaterialPageRoute(
-             builder: (context) => ReceiptScreen(
-               orderDetails: {}, // Empty for demo check 
-               paymentMethod: "PayDunya",
-               orderId: "CMD-${DateTime.now().millisecondsSinceEpoch}", 
-               prices: {},
-               userName: ApiService.userName ?? "Client",
-               userPhone: ApiService.userEmail ?? "",
-             )
-           )
-         );
-      } else if (status == 'cancel') {
-         // Show error or just stay
-         ScaffoldMessenger.of(_navigatorKey.currentContext!).showSnackBar(
-           const SnackBar(content: Text("Paiement annulé."), backgroundColor: Colors.red),
-         );
+      final transactionId =
+          uri.queryParameters['id'] ?? uri.queryParameters['transaction_id'];
+      final orderIdParam = uri.queryParameters['orderId'];
+
+      if (status == 'cancel') {
+        ApiService.clearPendingPayment();
+        if (_navigatorKey.currentContext != null) {
+          ScaffoldMessenger.of(_navigatorKey.currentContext!).showSnackBar(
+            const SnackBar(
+                content: Text("Paiement annulé."),
+                backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      if (transactionId == null || transactionId.isEmpty) {
+        if (orderIdParam != null && orderIdParam.isNotEmpty) {
+          final order = await ApiService.fetchOrderById(orderIdParam);
+          if (order != null && order.status == 'PROCESSING') {
+            if (ApiService.pendingOrderDetails != null &&
+                ApiService.pendingPrices != null &&
+                ApiService.pendingPaymentMethod != null) {
+              _navigatorKey.currentState?.push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      PaymentSuccessScreen(orderId: orderIdParam),
+                ),
+              );
+            }
+            ApiService.clearPendingPayment();
+            return;
+          }
+        }
+        _navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => PaymentPendingScreen(
+              transactionId: null,
+              orderId: orderIdParam,
+            ),
+          ),
+        );
+        return;
+      }
+
+      try {
+        final verify = await ApiService.verifyFedapayTransaction(transactionId);
+        final verifiedStatus = (verify['status'] ?? '').toString();
+        final orderId = (verify['orderId'] ??
+                orderIdParam ??
+                ApiService.pendingOrderId ??
+                '')
+            .toString();
+
+        if (verifiedStatus == 'approved') {
+          if (ApiService.pendingOrderDetails != null &&
+              ApiService.pendingPrices != null &&
+              ApiService.pendingPaymentMethod != null) {
+            _navigatorKey.currentState?.push(
+              MaterialPageRoute(
+                builder: (context) => PaymentSuccessScreen(orderId: orderId),
+              ),
+            );
+          } else {
+            if (_navigatorKey.currentContext != null) {
+              ScaffoldMessenger.of(_navigatorKey.currentContext!).showSnackBar(
+                const SnackBar(
+                    content: Text(
+                        "Paiement confirmé. Consultez Mes commandes.")),
+              );
+            }
+          }
+          ApiService.clearPendingPayment();
+        } else if (verifiedStatus == 'pending') {
+          _navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) => PaymentPendingScreen(
+                transactionId: transactionId,
+                orderId: orderId,
+              ),
+            ),
+          );
+        } else {
+          ApiService.clearPendingPayment();
+          if (_navigatorKey.currentContext != null) {
+            ScaffoldMessenger.of(_navigatorKey.currentContext!).showSnackBar(
+              const SnackBar(
+                  content: Text("Paiement échoué ou annulé."),
+                  backgroundColor: Colors.red),
+            );
+          }
+        }
+      } catch (e) {
+        if (_navigatorKey.currentContext != null) {
+          ScaffoldMessenger.of(_navigatorKey.currentContext!).showSnackBar(
+            SnackBar(
+                content: Text("Erreur de vérification: $e"),
+                backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
