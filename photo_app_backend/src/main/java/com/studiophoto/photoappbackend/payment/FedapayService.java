@@ -251,6 +251,22 @@ public class FedapayService {
                 if (url != null) return url.toString();
             }
         }
+        // Some responses use a "v1/transaction" key
+        Object v1Transaction = responseBody.get("v1/transaction");
+        if (v1Transaction instanceof Map) {
+            Object url = ((Map<String, Object>) v1Transaction).get("payment_url");
+            if (url != null) return url.toString();
+        }
+        // Fallback: scan any key that contains "transaction"
+        for (Map.Entry<String, Object> entry : responseBody.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().contains("transaction")) {
+                Object val = entry.getValue();
+                if (val instanceof Map) {
+                    Object url = ((Map<String, Object>) val).get("payment_url");
+                    if (url != null) return url.toString();
+                }
+            }
+        }
         Object links = responseBody.get("links");
         if (links instanceof Map) {
             Object url = ((Map<String, Object>) links).get("payment_url");
