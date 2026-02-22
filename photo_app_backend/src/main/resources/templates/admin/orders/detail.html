@@ -800,12 +800,12 @@
                 <a href="/admin/orders" class="btn-action btn-outline-action">
                     <i class="fas fa-arrow-left"></i> Retour
                 </a>
-                <a th:href="@{/api/orders/{id}/download-photos(id=${order.id})}" class="btn-action btn-primary-action">
+                <a th:href="@{/admin/orders/{id}/download-photos(id=${order.id})}" class="btn-action btn-primary-action">
                     <i class="fas fa-file-archive"></i> Télécharger ZIP
                 </a>
-                <a th:href="@{/admin/orders/{id}/download-pdf(id=${order.id})}" class="btn-action btn-primary-action">
-                    <i class="fas fa-download"></i> Télécharger PDF
-                </a>
+<!--                <a th:href="@{/admin/orders/{id}/download-pdf(id=${order.id})}" class="btn-action btn-primary-action">-->
+<!--                    <i class="fas fa-download"></i> Télécharger PDF-->
+<!--                </a>-->
             </div>
         </div>
 

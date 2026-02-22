@@ -191,6 +191,44 @@ public class OrderService {
         return baos.toByteArray();
     }
 
+    public byte[] createOrderPhotosZipForAdmin(Long orderId) throws IOException {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Commande non trouvée avec l'ID: " + orderId));
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+            int fileCount = 0;
+            for (OrderItem item : order.getOrderItems()) {
+                String originalFileName = item.getImageUrl().substring(item.getImageUrl().lastIndexOf('/') + 1);
+                String entryName = String.format("%s_%s_%dx_%s",
+                        order.getOrderNumber(), // Use orderNumber for better identification
+                        item.getPhotoSize().replace(" ", "_"),
+                        item.getQuantity(),
+                        originalFileName);
+
+                // Fetch the image from the URL
+                URL url = new URL(item.getImageUrl());
+                try (InputStream is = url.openStream()) {
+                    zos.putNextEntry(new ZipEntry(entryName));
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = is.read(buffer)) > 0) {
+                        zos.write(buffer, 0, len);
+                    }
+                    zos.closeEntry();
+                    fileCount++;
+                } catch (IOException e) {
+                    // Log the error but continue with other files
+                    System.err.println("Failed to download image from " + item.getImageUrl() + ": " + e.getMessage());
+                }
+            }
+            if (fileCount == 0) {
+                throw new IOException("No photos were successfully added to the zip file.");
+            }
+        }
+        return baos.toByteArray();
+    }
+
     @Transactional
     public void cancelOrder(Long orderId, User user) {
         Order order = orderRepository.findById(orderId)

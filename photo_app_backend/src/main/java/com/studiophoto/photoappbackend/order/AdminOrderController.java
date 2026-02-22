@@ -9,6 +9,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ResponseBody;
+import java.io.IOException;
 
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -83,6 +88,28 @@ public class AdminOrderController {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/orders";
+    }
+
+    @GetMapping("/{id}/download-photos")
+    @ResponseBody
+    public ResponseEntity<byte[]> downloadOrderPhotos(@PathVariable("id") Long id) {
+        try {
+            byte[] zipBytes = orderService.createOrderPhotosZipForAdmin(id);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "order_" + id + "_photos.zip");
+            headers.setContentLength(zipBytes.length);
+
+            return new ResponseEntity<>(zipBytes, headers, org.springframework.http.HttpStatus.OK);
+
+        } catch (IOException e) {
+            // Log error
+            return new ResponseEntity<>(null, org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (IllegalArgumentException e) {
+            // Order not found
+            return new ResponseEntity<>(null, org.springframework.http.HttpStatus.NOT_FOUND);
+        }
     }
 }
 
