@@ -19,6 +19,11 @@ public class FedapayInitiateRequest {
     private String deliveryAddress; // Added delivery address field
     private BigDecimal totalAmount; // Added totalAmount from mobile app
     private List<OrderItemDto> items;
+    private String customerFirstname;
+    private String customerLastname;
+    private String customerEmail;
+    private String customerPhone;
+    private String customerCountry;
 
     @Data
     @Builder

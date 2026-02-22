@@ -4,21 +4,31 @@ import 'package:Picon/models/contact_info.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
 import 'package:Picon/widgets/music_wave_loader.dart';
+import 'package:Picon/payment_webview_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:feda_flutter/feda_flutter.dart';
 
 class PaymentSelectionScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
   final double totalAmount;
   final bool isExpress;
+  final String? customerFirstname;
+  final String? customerLastname;
+  final String? customerEmail;
+  final String? customerPhone;
+  final String? customerCountry;
 
   const PaymentSelectionScreen({
     super.key,
     required this.orderDetails,
     required this.totalAmount,
     required this.isExpress,
+    this.customerFirstname,
+    this.customerLastname,
+    this.customerEmail,
+    this.customerPhone,
+    this.customerCountry,
   });
 
   @override
@@ -127,6 +137,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         'items': items,
         'userId': ApiService.userId,
         'totalAmount': widget.totalAmount, // Pass totalAmount
+        'customerFirstname': widget.customerFirstname,
+        'customerLastname': widget.customerLastname,
+        'customerEmail': widget.customerEmail,
+        'customerPhone': widget.customerPhone,
+        'customerCountry': widget.customerCountry,
       };
 
       // --- Payment Integration Logic ---
@@ -147,18 +162,15 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
 
       if (mounted) Navigator.of(context).pop(); // Pop loader
 
-      if (await canLaunchUrl(Uri.parse(paymentUrl))) {
-        final isFedapay = _selectedMethodName == 'FedaPay';
-        await launchUrl(
-          Uri.parse(paymentUrl),
-          mode: isFedapay ? LaunchMode.inAppWebView : LaunchMode.externalApplication,
-          webViewConfiguration: const WebViewConfiguration(
-            enableJavaScript: true,
-            enableDomStorage: true,
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentWebViewScreen(
+              paymentUrl: paymentUrl,
+            ),
           ),
         );
-      } else {
-        throw 'Impossible de lancer l\'URL de paiement Fedapay : $paymentUrl';
       }
 
       // On attend le deep link de succès/annulation avant d'aller au reçu.
@@ -213,6 +225,27 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                                 .titleMedium
                                 ?.copyWith(color: AppColors.textPrimary),
                             textAlign: TextAlign.center,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.2)),
+                            ),
+                            child: const Text(
+                              'Le code PIN Mobile Money est saisi sur l’interface de paiement FedaPay.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
                           ),
                         ),
                         Expanded(

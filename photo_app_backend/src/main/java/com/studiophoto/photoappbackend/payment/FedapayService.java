@@ -113,20 +113,44 @@ public class FedapayService {
         // Use orderId in description for webhook to retrieve later
         transactionPayload.put("description", "Payment for Photo Order #" + orderId);
         transactionPayload.put("callback_url", backendBaseUrl + "/payment/callback?orderId=" + orderId);
+        transactionPayload.put("cancel_url", backendBaseUrl + "/payment/callback?status=cancel&orderId=" + orderId);
 
         // Customer details
         Map<String, Object> customerPayload = new LinkedHashMap<>();
-        if (user.getFirstname() != null) customerPayload.put("firstname", user.getFirstname());
-        if (user.getLastname() != null) customerPayload.put("lastname", user.getLastname());
-        if (user.getEmail() != null) customerPayload.put("email", user.getEmail());
-        String phone = user.getPhone();
+        String firstname = request.getCustomerFirstname() != null && !request.getCustomerFirstname().isBlank()
+                ? request.getCustomerFirstname()
+                : user.getFirstname();
+        String lastname = request.getCustomerLastname() != null && !request.getCustomerLastname().isBlank()
+                ? request.getCustomerLastname()
+                : user.getLastname();
+        String email = request.getCustomerEmail() != null && !request.getCustomerEmail().isBlank()
+                ? request.getCustomerEmail()
+                : user.getEmail();
+        if (firstname != null) customerPayload.put("firstname", firstname);
+        if (lastname != null) customerPayload.put("lastname", lastname);
+        if (email != null) customerPayload.put("email", email);
+
+        String phone = request.getCustomerPhone() != null && !request.getCustomerPhone().isBlank()
+                ? request.getCustomerPhone()
+                : user.getPhone();
         if (phone != null && !phone.isBlank()) {
             if (!phone.startsWith("+")) {
-                phone = "+228" + phone;
+                String country = request.getCustomerCountry();
+                if (country == null || country.isBlank()) {
+                    country = "tg";
+                }
+                if ("tg".equalsIgnoreCase(country)) {
+                    phone = "+228" + phone;
+                } else if ("bj".equalsIgnoreCase(country)) {
+                    phone = "+229" + phone;
+                } else {
+                    phone = "+" + phone;
+                }
             }
             Map<String, String> phonePayload = new LinkedHashMap<>();
             phonePayload.put("number", phone);
-            phonePayload.put("country", "tg");
+            String country = request.getCustomerCountry();
+            phonePayload.put("country", country == null || country.isBlank() ? "tg" : country);
             customerPayload.put("phone_number", phonePayload);
         }
         transactionPayload.put("customer", customerPayload);
@@ -150,16 +174,19 @@ public class FedapayService {
                     entity,
                     Map.class);
 
+            if (response.getBody() != null) {
+                log.info("Fedapay response status: {}", response.getStatusCode());
+                log.info("Fedapay response body: {}", response.getBody());
+            }
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
-                if (responseBody.containsKey("transaction")) {
-                    Map<String, Object> transaction = (Map<String, Object>) responseBody.get("transaction");
-                    if (transaction.containsKey("payment_url")) {
-                        return FedapayInitiateResponse.builder()
-                                .paymentUrl(transaction.get("payment_url").toString())
-                                .orderId(orderId)
-                                .build();
-                    }
+                String paymentUrl = extractPaymentUrl(responseBody);
+                if (paymentUrl != null && !paymentUrl.isBlank()) {
+                    return FedapayInitiateResponse.builder()
+                            .paymentUrl(paymentUrl)
+                            .orderId(orderId)
+                            .build();
                 }
             }
             throw new RuntimeException("L'API Fedapay n'a pas retourné d'URL de paiement valide.");
@@ -230,5 +257,45 @@ public class FedapayService {
                 .status(status == null ? "unknown" : status)
                 .orderId(orderId)
                 .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractPaymentUrl(Map<String, Object> responseBody) {
+        // Common shapes: {transaction:{payment_url:..}} OR {data:{transaction:{payment_url:..}}}
+        Object transaction = responseBody.get("transaction");
+        if (transaction instanceof Map) {
+            Object url = ((Map<String, Object>) transaction).get("payment_url");
+            if (url != null) return url.toString();
+        }
+        Object data = responseBody.get("data");
+        if (data instanceof Map) {
+            Object t = ((Map<String, Object>) data).get("transaction");
+            if (t instanceof Map) {
+                Object url = ((Map<String, Object>) t).get("payment_url");
+                if (url != null) return url.toString();
+            }
+        }
+        // Some responses use a "v1/transaction" key
+        Object v1Transaction = responseBody.get("v1/transaction");
+        if (v1Transaction instanceof Map) {
+            Object url = ((Map<String, Object>) v1Transaction).get("payment_url");
+            if (url != null) return url.toString();
+        }
+        // Fallback: scan any key that contains "transaction"
+        for (Map.Entry<String, Object> entry : responseBody.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().contains("transaction")) {
+                Object val = entry.getValue();
+                if (val instanceof Map) {
+                    Object url = ((Map<String, Object>) val).get("payment_url");
+                    if (url != null) return url.toString();
+                }
+            }
+        }
+        Object links = responseBody.get("links");
+        if (links instanceof Map) {
+            Object url = ((Map<String, Object>) links).get("payment_url");
+            if (url != null) return url.toString();
+        }
+        return null;
     }
 }
