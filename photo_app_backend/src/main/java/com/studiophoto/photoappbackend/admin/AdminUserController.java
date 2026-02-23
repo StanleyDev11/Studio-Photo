@@ -162,6 +162,13 @@ public class AdminUserController {
         return ResponseEntity.notFound().build();
     }
 
+    @PostMapping("/api/bulk-delete")
+    @ResponseBody
+    public ResponseEntity<Void> bulkDeleteUsers(@RequestBody List<Integer> ids) {
+        ids.forEach(adminUserService::deleteUser);
+        return ResponseEntity.noContent().build();
+    }
+
     // New API endpoints for user actions
 
     // Endpoint for user statistics for stat cards

@@ -14,13 +14,15 @@ import java.util.Optional; // NEW
 
 @Controller
 @RequestMapping("/admin/featured-content")
-//@RequiredArgsConstructor // Removed because we will manually create constructor
+// @RequiredArgsConstructor // Removed because we will manually create
+// constructor
 public class AdminFeaturedContentController {
 
     private final FeaturedContentService featuredContentService;
     private final StorageService storageService; // NEW
 
-    public AdminFeaturedContentController(FeaturedContentService featuredContentService, StorageService storageService) {
+    public AdminFeaturedContentController(FeaturedContentService featuredContentService,
+            StorageService storageService) {
         this.featuredContentService = featuredContentService;
         this.storageService = storageService;
     }
@@ -35,7 +37,9 @@ public class AdminFeaturedContentController {
     // Endpoint pour afficher le formulaire d'ajout/édition
     @GetMapping("/form")
     public String showFeaturedContentForm(@RequestParam(value = "id", required = false) Long id, Model model) {
-        FeaturedContent featuredContent = id != null ? featuredContentService.getFeaturedContentById(id).orElse(new FeaturedContent()) : new FeaturedContent();
+        FeaturedContent featuredContent = id != null
+                ? featuredContentService.getFeaturedContentById(id).orElse(new FeaturedContent())
+                : new FeaturedContent();
         model.addAttribute("featuredContent", featuredContent);
         return "admin/featured-content-form";
     }
@@ -43,13 +47,15 @@ public class AdminFeaturedContentController {
     // Endpoint pour sauvegarder un contenu
     @PostMapping("/save")
     public String saveFeaturedContent(@ModelAttribute FeaturedContent featuredContent,
-                                @RequestParam(value = "file", required = false) MultipartFile file, // NEW
-                                RedirectAttributes redirectAttributes) { // NEW
+            @RequestParam(value = "file", required = false) MultipartFile file, // NEW
+            RedirectAttributes redirectAttributes) { // NEW
 
         if (file != null && !file.isEmpty()) {
             // Supprimer l'ancienne image si elle existe et si on la remplace
-            if (featuredContent.getId() != null && featuredContent.getImageUrl() != null && !featuredContent.getImageUrl().isEmpty()) {
-                String oldFilename = featuredContent.getImageUrl().substring(featuredContent.getImageUrl().lastIndexOf('/') + 1);
+            if (featuredContent.getId() != null && featuredContent.getImageUrl() != null
+                    && !featuredContent.getImageUrl().isEmpty()) {
+                String oldFilename = featuredContent.getImageUrl()
+                        .substring(featuredContent.getImageUrl().lastIndexOf('/') + 1);
                 storageService.delete(oldFilename);
             }
             // Stocker la nouvelle image
@@ -57,11 +63,13 @@ public class AdminFeaturedContentController {
             featuredContent.setImageUrl(storageService.getFileUrl(filename)); // Sauvegarde l'URL publique
         } else if (featuredContent.getId() != null) {
             // Si c'est une mise à jour et pas de nouvelle image, conservez l'ancienne URL
-            Optional<FeaturedContent> existingContent = featuredContentService.getFeaturedContentById(featuredContent.getId());
+            Optional<FeaturedContent> existingContent = featuredContentService
+                    .getFeaturedContentById(featuredContent.getId());
             existingContent.ifPresent(p -> featuredContent.setImageUrl(p.getImageUrl()));
         } else {
             // Si c'est un nouveau contenu sans image
-            redirectAttributes.addFlashAttribute("errorMessage", "Veuillez sélectionner une image pour le contenu mis en avant.");
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Veuillez sélectionner une image pour le contenu mis en avant.");
             return "redirect:/admin/featured-content/form"; // Ou affichez une erreur sur le formulaire
         }
 
@@ -73,8 +81,16 @@ public class AdminFeaturedContentController {
     // Endpoint pour supprimer un contenu
     @PostMapping("/delete/{id}") // Ou @DeleteMapping, mais le GET est plus simple pour un lien direct
     public String deleteFeaturedContent(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        featuredContentService.deleteFeaturedContent(id); // La méthode deleteFeaturedContent dans le service gérera la suppression du fichier
+        featuredContentService.deleteFeaturedContent(id); // La méthode deleteFeaturedContent dans le service gérera la
+                                                          // suppression du fichier
         redirectAttributes.addFlashAttribute("successMessage", "Contenu mis en avant supprimé avec succès !");
         return "redirect:/admin/featured-content";
+    }
+
+    @PostMapping("/bulk-delete")
+    @ResponseBody
+    public ResponseEntity<Void> bulkDelete(@RequestBody List<Long> ids) {
+        ids.forEach(featuredContentService::deleteFeaturedContent);
+        return ResponseEntity.noContent().build();
     }
 }

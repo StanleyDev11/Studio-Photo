@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -99,6 +101,18 @@ public class AdminOrderController {
             redirectAttributes.addFlashAttribute("successMessage", "Commande #" + id + " supprimée avec succès.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Erreur lors de la suppression : " + e.getMessage());
+        }
+        return "redirect:/admin/orders";
+    }
+
+    @PostMapping("/bulk-delete")
+    public String bulkDelete(@RequestBody List<Long> ids, RedirectAttributes redirectAttributes) {
+        try {
+            orderService.deleteAllByIdIn(ids);
+            redirectAttributes.addFlashAttribute("successMessage", ids.size() + " commandes supprimées avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Erreur lors de la suppression en masse : " + e.getMessage());
         }
         return "redirect:/admin/orders";
     }

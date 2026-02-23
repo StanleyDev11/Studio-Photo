@@ -27,7 +27,8 @@ public class AdminBookingApiController {
     public ResponseEntity<Booking> createBooking(@RequestBody AdminBookingRequest bookingRequest) {
         Booking newBooking = new Booking();
         User user = userRepository.findById(bookingRequest.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + bookingRequest.getUserId()));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("User not found with ID: " + bookingRequest.getUserId()));
         newBooking.setUser(user);
         newBooking.setTitle(bookingRequest.getTitle());
         newBooking.setStartTime(bookingRequest.getStartTime());
@@ -40,13 +41,15 @@ public class AdminBookingApiController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Booking> updateBooking(@PathVariable Long id, @RequestBody AdminBookingRequest bookingRequest) {
+    public ResponseEntity<Booking> updateBooking(@PathVariable Long id,
+            @RequestBody AdminBookingRequest bookingRequest) {
         User user = userRepository.findById(bookingRequest.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + bookingRequest.getUserId()));
-        
+                .orElseThrow(
+                        () -> new IllegalArgumentException("User not found with ID: " + bookingRequest.getUserId()));
+
         Booking booking = bookingService.getBookingById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found with ID: " + id));
-        
+
         booking.setUser(user);
         booking.setTitle(bookingRequest.getTitle());
         booking.setStartTime(bookingRequest.getStartTime());
@@ -55,7 +58,7 @@ public class AdminBookingApiController {
         booking.setStatus(bookingRequest.getStatus());
         booking.setAmount(bookingRequest.getAmount());
         booking.setNotes(bookingRequest.getNotes());
-        
+
         return ResponseEntity.ok(bookingService.updateBooking(id, booking));
     }
 
@@ -102,8 +105,7 @@ public class AdminBookingApiController {
             @RequestParam(required = false) Long userId) {
 
         Map<String, Object> dataTableResponse = bookingService.getBookingDataTable(
-                draw, start, length, searchValue, orderColumn, orderDir, status, dateRange, userId
-        );
+                draw, start, length, searchValue, orderColumn, orderDir, status, dateRange, userId);
         return ResponseEntity.ok(dataTableResponse);
     }
 
@@ -119,7 +121,8 @@ public class AdminBookingApiController {
         List<CalendarEvent> events = bookings.stream()
                 .map(booking -> CalendarEvent.builder()
                         .id(booking.getId())
-                        .title(booking.getTitle() + " (" + booking.getUser().getFirstname() + " " + booking.getUser().getLastname() + ")")
+                        .title(booking.getTitle() + " (" + booking.getUser().getFirstname() + " "
+                                + booking.getUser().getLastname() + ")")
                         .start(booking.getStartTime())
                         .end(booking.getEndTime())
                         .color(booking.getStatus().getColor())
@@ -128,5 +131,10 @@ public class AdminBookingApiController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(events);
     }
-}
 
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<Void> bulkDelete(@RequestBody List<Long> ids) {
+        ids.forEach(bookingService::deleteBooking);
+        return ResponseEntity.noContent().build();
+    }
+}

@@ -152,6 +152,11 @@ public class OrderService {
         orderRepository.deleteById(id);
     }
 
+    @Transactional
+    public void deleteAllByIdIn(List<Long> ids) {
+        orderRepository.deleteAllById(ids);
+    }
+
     public Optional<Order> findById(Long id) {
         return orderRepository.findById(id);
     }
