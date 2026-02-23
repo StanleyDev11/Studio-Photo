@@ -13,6 +13,7 @@ class Order with _$Order {
     required double totalAmount,
     required String paymentMethod,
     required String deliveryType,
+    String? deliveryAddress,
     required DateTime createdAt,
   }) = _Order;
 

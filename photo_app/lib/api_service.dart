@@ -420,6 +420,7 @@ class ApiService {
       return {
         'paymentUrl': responseData['paymentUrl'],
         'orderId': responseData['orderId']?.toString() ?? '',
+        'deliveryAddress': orderPayload['deliveryAddress'],
       };
     } else {
       throw Exception('Failed to initiate Fedapay payment: Invalid response from server.');

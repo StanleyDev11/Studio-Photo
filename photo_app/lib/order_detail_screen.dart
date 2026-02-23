@@ -77,6 +77,8 @@ class OrderDetailScreen extends StatelessWidget {
             _buildSummaryRow('Montant Total', '${order.totalAmount.toStringAsFixed(0)} FCFA'),
             _buildSummaryRow('Paiement', order.paymentMethod),
             _buildSummaryRow('Type de livraison', order.deliveryType),
+            if (order.deliveryAddress != null && order.deliveryAddress!.isNotEmpty)
+              _buildSummaryRow('Adresse', order.deliveryAddress!),
           ],
         ),
       ),

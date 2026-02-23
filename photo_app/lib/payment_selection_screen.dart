@@ -18,6 +18,7 @@ class PaymentSelectionScreen extends StatefulWidget {
   final String? customerEmail;
   final String? customerPhone;
   final String? customerCountry;
+  final String? deliveryAddress;
 
   const PaymentSelectionScreen({
     super.key,
@@ -29,6 +30,7 @@ class PaymentSelectionScreen extends StatefulWidget {
     this.customerEmail,
     this.customerPhone,
     this.customerCountry,
+    this.deliveryAddress,
   });
 
   @override
@@ -142,6 +144,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         'customerEmail': widget.customerEmail,
         'customerPhone': widget.customerPhone,
         'customerCountry': widget.customerCountry,
+        'deliveryAddress': widget.deliveryAddress,
       };
 
       // --- Payment Integration Logic ---

@@ -30,6 +30,7 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
   late TextEditingController _lastName;
   late TextEditingController _email;
   late TextEditingController _phone;
+  late TextEditingController _address;
   String _country = 'TG';
 
   @override
@@ -43,6 +44,7 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
         text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
     _email = TextEditingController(text: ApiService.userEmail ?? '');
     _phone = TextEditingController(text: '');
+    _address = TextEditingController(text: '');
   }
 
   @override
@@ -51,6 +53,7 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
     _lastName.dispose();
     _email.dispose();
     _phone.dispose();
+    _address.dispose();
     super.dispose();
   }
 
@@ -68,6 +71,7 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
           customerEmail: _email.text.trim(),
           customerPhone: _normalizePhone(_phone.text),
           customerCountry: _country,
+          deliveryAddress: _address.text.trim(),
         ),
       ),
     );
@@ -127,6 +131,13 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
                           label: 'Email',
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
+                          validator: (v) =>
+                              v == null || v.trim().isEmpty ? 'Requis' : null,
+                        ),
+                        _buildField(
+                          label: 'Adresse de livraison complète',
+                          controller: _address,
+                          hint: 'Quartier, Rue, Maison...',
                           validator: (v) =>
                               v == null || v.trim().isEmpty ? 'Requis' : null,
                         ),

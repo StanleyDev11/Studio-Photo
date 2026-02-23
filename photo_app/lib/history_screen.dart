@@ -243,6 +243,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   _infoDetailRow(Icons.payments_outlined, 'Paiement', order.paymentMethod.replaceAll('_', ' ')),
                   const SizedBox(height: 8),
                   _infoDetailRow(Icons.local_shipping_outlined, 'Livraison', order.deliveryType.replaceAll('_', ' ')),
+                  if (order.deliveryAddress != null && order.deliveryAddress!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _infoDetailRow(Icons.location_on_outlined, 'Adresse', order.deliveryAddress!),
+                  ],
                   const SizedBox(height: 16),
                   _statusLargeView(order.status),
                 ],
@@ -464,6 +468,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
             const Divider(),
+            if (order.deliveryAddress != null && order.deliveryAddress!.isNotEmpty) ...[
+               Text('Adresse de livraison', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+               Text(order.deliveryAddress!, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+               const SizedBox(height: 16),
+            ],
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Row(

@@ -26,6 +26,7 @@ mixin _$Order {
   double get totalAmount => throw _privateConstructorUsedError;
   String get paymentMethod => throw _privateConstructorUsedError;
   String get deliveryType => throw _privateConstructorUsedError;
+  String? get deliveryAddress => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
 
   /// Serializes this Order to a JSON map.
@@ -49,6 +50,7 @@ abstract class $OrderCopyWith<$Res> {
       double totalAmount,
       String paymentMethod,
       String deliveryType,
+      String? deliveryAddress,
       DateTime createdAt});
 }
 
@@ -73,6 +75,7 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
     Object? totalAmount = null,
     Object? paymentMethod = null,
     Object? deliveryType = null,
+    Object? deliveryAddress = freezed,
     Object? createdAt = null,
   }) {
     return _then(_value.copyWith(
@@ -100,6 +103,10 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
           ? _value.deliveryType
           : deliveryType // ignore: cast_nullable_to_non_nullable
               as String,
+      deliveryAddress: freezed == deliveryAddress
+          ? _value.deliveryAddress
+          : deliveryAddress // ignore: cast_nullable_to_non_nullable
+              as String?,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -122,6 +129,7 @@ abstract class _$$OrderImplCopyWith<$Res> implements $OrderCopyWith<$Res> {
       double totalAmount,
       String paymentMethod,
       String deliveryType,
+      String? deliveryAddress,
       DateTime createdAt});
 }
 
@@ -144,6 +152,7 @@ class __$$OrderImplCopyWithImpl<$Res>
     Object? totalAmount = null,
     Object? paymentMethod = null,
     Object? deliveryType = null,
+    Object? deliveryAddress = freezed,
     Object? createdAt = null,
   }) {
     return _then(_$OrderImpl(
@@ -171,6 +180,10 @@ class __$$OrderImplCopyWithImpl<$Res>
           ? _value.deliveryType
           : deliveryType // ignore: cast_nullable_to_non_nullable
               as String,
+      deliveryAddress: freezed == deliveryAddress
+          ? _value.deliveryAddress
+          : deliveryAddress // ignore: cast_nullable_to_non_nullable
+              as String?,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -189,6 +202,7 @@ class _$OrderImpl implements _Order {
       required this.totalAmount,
       required this.paymentMethod,
       required this.deliveryType,
+      this.deliveryAddress,
       required this.createdAt})
       : _orderItems = orderItems;
 
@@ -214,11 +228,13 @@ class _$OrderImpl implements _Order {
   @override
   final String deliveryType;
   @override
+  final String? deliveryAddress;
+  @override
   final DateTime createdAt;
 
   @override
   String toString() {
-    return 'Order(id: $id, orderItems: $orderItems, status: $status, totalAmount: $totalAmount, paymentMethod: $paymentMethod, deliveryType: $deliveryType, createdAt: $createdAt)';
+    return 'Order(id: $id, orderItems: $orderItems, status: $status, totalAmount: $totalAmount, paymentMethod: $paymentMethod, deliveryType: $deliveryType, deliveryAddress: $deliveryAddress, createdAt: $createdAt)';
   }
 
   @override
@@ -236,6 +252,8 @@ class _$OrderImpl implements _Order {
                 other.paymentMethod == paymentMethod) &&
             (identical(other.deliveryType, deliveryType) ||
                 other.deliveryType == deliveryType) &&
+            (identical(other.deliveryAddress, deliveryAddress) ||
+                other.deliveryAddress == deliveryAddress) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt));
   }
@@ -250,6 +268,7 @@ class _$OrderImpl implements _Order {
       totalAmount,
       paymentMethod,
       deliveryType,
+      deliveryAddress,
       createdAt);
 
   /// Create a copy of Order
@@ -276,6 +295,7 @@ abstract class _Order implements Order {
       required final double totalAmount,
       required final String paymentMethod,
       required final String deliveryType,
+      final String? deliveryAddress,
       required final DateTime createdAt}) = _$OrderImpl;
 
   factory _Order.fromJson(Map<String, dynamic> json) = _$OrderImpl.fromJson;
@@ -292,6 +312,8 @@ abstract class _Order implements Order {
   String get paymentMethod;
   @override
   String get deliveryType;
+  @override
+  String? get deliveryAddress;
   @override
   DateTime get createdAt;
 
