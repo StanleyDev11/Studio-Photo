@@ -8,13 +8,13 @@ part of 'order.dart';
 
 _$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
       id: (json['id'] as num).toInt(),
-      orderItems: (json['orderItems'] as List<dynamic>)
+      orderItems: ((json['orderItems'] as List<dynamic>?) ?? [])
           .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
           .toList(),
       status: json['status'] as String,
       totalAmount: (json['totalAmount'] as num).toDouble(),
-      paymentMethod: json['paymentMethod'] as String,
-      deliveryType: json['deliveryType'] as String,
+      paymentMethod: (json['paymentMethod'] as String?) ?? 'Non défini',
+      deliveryType: (json['deliveryType'] as String?) ?? 'Standard',
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
 

@@ -413,10 +413,22 @@
             border: 1px solid rgba(231, 76, 60, 0.2);
         }
 
+        .badge-pending_payment {
+            background-color: rgba(243, 156, 18, 0.15);
+            color: #d35400;
+            border: 1px solid rgba(243, 156, 18, 0.3);
+        }
+
+        .badge-processing {
+            background-color: rgba(52, 152, 219, 0.15);
+            color: #2980b9;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
         .badge-completed {
-            background-color: rgba(149, 165, 166, 0.1);
-            color: #95a5a6;
-            border: 1px solid rgba(149, 165, 166, 0.2);
+            background-color: rgba(46, 204, 113, 0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(46, 204, 113, 0.2);
         }
 
         /* Customer Info */
@@ -723,10 +735,11 @@
                         <label for="filterStatus">Statut</label>
                         <select id="filterStatus" class="filter-select">
                             <option value="">Tous les statuts</option>
-                            <option value="PENDING">En attente</option>
-                            <option value="CONFIRMED">Confirmée</option>
-                            <option value="CANCELLED">Annulée</option>
+                            <option value="PENDING">En attente (Global)</option>
+                            <option value="PENDING_PAYMENT">En attente de paiement</option>
+                            <option value="PROCESSING">Payé / En traitement</option>
                             <option value="COMPLETED">Terminée</option>
+                            <option value="CANCELLED">Annulée</option>
                         </select>
                     </div>
                     <div class="filter-group">
@@ -740,12 +753,11 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label for="filterPayment">Paiement</label>
-                        <select id="filterPayment" class="filter-select">
+                        <label for="filterDelivery">Livraison</label>
+                        <select id="filterDelivery" class="filter-select">
                             <option value="">Tous les types</option>
-                            <option value="Mobile Money">Mobile Money</option>
-                            <option value="Carte Bancaire">Carte Bancaire</option>
-                            <option value="Espèces">Espèces</option>
+                            <option value="Xpress">Express (Xpress)</option>
+                            <option value="Standard">Standard</option>
                         </select>
                     </div>
                     <div class="filter-group d-flex align-items-end">
@@ -787,7 +799,7 @@
                                     </div>
                                 </div>
                             </td>
-                            <td>
+                            <td th:data-order="${order.createdAt}">
                                 <div class="font-weight-bold"
                                     th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy')}">29/01/2026</div>
                                 <small class="text-muted"
@@ -800,8 +812,10 @@
                                 <small class="text-muted"
                                     th:text="${order.orderItems?.size() ?: 0} + ' article(s)'"></small>
                             </td>
-                            <td>
-                                <span class="status-badge"
+                            <td th:data-filter="${order.status.name()}">
+                                <span th:if="${order.status.name() == 'PROCESSING'}"
+                                    class="status-badge badge-processing">Payé</span>
+                                <span th:unless="${order.status.name() == 'PROCESSING'}" class="status-badge"
                                     th:classappend="'badge-' + ${#strings.toLowerCase(order.status.name())}"
                                     th:text="${order.status.displayName}">En attente</span>
                             </td>
@@ -824,16 +838,21 @@
                                         class="btn btn-sm btn-outline-success" title="Confirmer">
                                         <i class="fas fa-check"></i>
                                     </a>
-                                    <a th:if="${order.status.name() == 'PROCESSING'}"
-                                        th:href="@{/admin/orders/{id}/complete(id=${order.id})}"
-                                        class="btn btn-sm btn-outline-primary" title="Marquer comme terminée">
+                                    <button
+                                        th:if="${order.status.name() == 'PROCESSING' || order.status.name() == 'PENDING'}"
+                                        class="btn btn-sm btn-outline-primary btn-complete" th:data-id="${order.id}"
+                                        title="Marquer comme terminée">
                                         <i class="fas fa-check-double"></i>
-                                    </a>
+                                    </button>
                                     <a th:if="${order.status.name() != 'CANCELLED'}"
                                         th:href="@{/admin/orders/{id}/cancel(id=${order.id})}"
                                         class="btn btn-sm btn-outline-warning" title="Annuler">
                                         <i class="fas fa-times"></i>
                                     </a>
+                                    <button class="btn btn-sm btn-outline-danger btn-delete" th:data-id="${order.id}"
+                                        th:data-number="${order.orderNumber}" title="Supprimer définitivement">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -885,7 +904,7 @@
                     url: '/i18n/French.json'
                 },
                 pageLength: 25,
-                order: [2, 'desc']
+                order: [1, 'desc'] // Tri par date (index 1) descendant par défaut
             });
             ordersDataTable.on('draw.dt', function () {
                 hideLoading(); // Hide spinner after DataTable redraws (initial load and filters)
@@ -896,6 +915,7 @@
                 const visibleRows = ordersDataTable.rows({ search: 'applied' }).nodes(); // Get all rows that are currently displayed by DataTables
                 const totalOrders = visibleRows.length;
                 const pendingOrders = visibleRows.filter((_, row) => $(row).find('.status-badge.badge-pending').length > 0 || $(row).find('.status-badge.badge-pending_payment').length > 0).length;
+                const processingOrders = visibleRows.filter((_, row) => $(row).find('.status-badge.badge-processing').length > 0).length;
                 const completedOrders = visibleRows.filter((_, row) => $(row).find('.status-badge.badge-completed').length > 0).length;
 
                 let totalRevenue = 0;
@@ -918,28 +938,92 @@
 
             // Filter functionality
             $('#applyFilters').click(function () {
-                showLoading(); // Show spinner before applying filters
+                showLoading();
                 const statusFilter = $('#filterStatus').val();
-                const dateFilter = $('#filterDate').val(); // Date filtering is more complex and would ideally be server-side or require a custom DataTables filter function
-                const paymentFilter = $('#filterPayment').val();
+                const dateFilter = $('#filterDate').val();
+                const deliveryFilter = $('#filterDelivery').val();
 
-                // Apply filters using DataTables API
-                // For status, we search the column that contains the status badge (now the 4th column, index 3)
-                ordersDataTable.column(3).search(statusFilter ? statusFilter : '', true, false).draw();
+                // Filtrage Status (Colonne 3)
+                ordersDataTable.column(3).search(statusFilter ? statusFilter : '', true, false);
 
-                // For payment method, we search the column that contains the payment method (now the 5th column, index 4)
-                ordersDataTable.column(4).search(paymentFilter ? paymentFilter : '', true, false).draw();
+                // Filtrage Livraison (Colonne 5)
+                ordersDataTable.column(5).search(deliveryFilter ? deliveryFilter : '', true, false);
 
-                // Date filtering is not implemented here with DataTables API for simplicity, requires custom plugin or server-side
+                // Filtrage Date (Logique personnalisée DataTables)
+                $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                    if (!dateFilter) return true;
+
+                    const dateStr = data[1]; // Colonne Date (index 1)
+                    const parts = dateStr.split(' ')[0].split('/'); // dd/mm/yyyy
+                    if (parts.length < 3) return true;
+                    const orderDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    if (dateFilter === 'today') {
+                        return orderDate.getTime() === today.getTime();
+                    } else if (dateFilter === 'week') {
+                        const lastWeek = new Date(today);
+                        lastWeek.setDate(today.getDate() - 7);
+                        return orderDate >= lastWeek;
+                    } else if (dateFilter === 'month') {
+                        return orderDate.getMonth() === today.getMonth() && orderDate.getFullYear() === today.getFullYear();
+                    }
+                    return true;
+                });
+
+                ordersDataTable.draw();
+                $.fn.dataTable.ext.search.pop(); // Retirer le filtre après le dessin pour ne pas accumuler
 
                 updateStatsFromDataTable();
             });
 
             $('#resetFilters').click(function () {
-                showLoading(); // Show spinner before resetting filters
-                $('#filterStatus, #filterDate, #filterPayment').val('');
-                ordersDataTable.columns().search('').draw(); // Clear all DataTables filters
+                showLoading();
+                $('#filterStatus, #filterDate, #filterDelivery').val('');
+                ordersDataTable.columns().search('').draw();
                 updateStatsFromDataTable();
+            });
+
+            // Complete confirmation
+            $(document).on('click', '.btn-complete', function () {
+                const id = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Marquer comme terminée ?',
+                    text: "Voulez-vous confirmer que la commande #" + id + " est terminée et prête ?",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#2ecc71',
+                    cancelButtonColor: '#95a5a6',
+                    confirmButtonText: 'Oui, terminer',
+                    cancelButtonText: 'Annuler'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = '/admin/orders/' + id + '/complete';
+                    }
+                });
+            });
+
+            // Delete confirmation
+            $(document).on('click', '.btn-delete', function () {
+                const id = $(this).data('id');
+                const number = $(this).data('number');
+
+                Swal.fire({
+                    title: 'Êtes-vous sûr ?',
+                    text: "Voulez-vous vraiment supprimer la commande #" + id + " ? Cette action est irréversible.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#e74c3c',
+                    cancelButtonColor: '#95a5a6',
+                    confirmButtonText: 'Oui, supprimer',
+                    cancelButtonText: 'Annuler'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = '/admin/orders/' + id + '/delete';
+                    }
+                });
             });
 
             // Flash messages

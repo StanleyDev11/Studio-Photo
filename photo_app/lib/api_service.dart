@@ -25,6 +25,8 @@ class ApiService {
   static Map<String, double>? _pendingPrices;
   static String? _pendingPaymentMethod;
   static String? _pendingOrderId;
+  // Flag pour demander la réinitialisation du panier dans HomeScreen
+  static bool shouldClearCart = false;
 
   static Future<void> init() async {
     _preferences = await SharedPreferences.getInstance();
@@ -64,6 +66,7 @@ class ApiService {
     _pendingPrices = null;
     _pendingPaymentMethod = null;
     _pendingOrderId = null;
+    shouldClearCart = true; // Signale à HomeScreen de vider le panier
   }
 
   static Future<void> saveAuthDetails(Map<String, dynamic> authData) async {

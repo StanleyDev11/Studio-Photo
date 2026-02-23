@@ -56,7 +56,8 @@ public class AdminOrderController {
     public String confirmOrder(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
         try {
             orderService.updateOrderStatusAndPaymentMethod(id, OrderStatus.PROCESSING, null);
-            redirectAttributes.addFlashAttribute("successMessage", "Commande #" + id + " a été confirmée et est en cours de traitement.");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Commande #" + id + " a été confirmée et est en cours de traitement.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
@@ -78,12 +79,22 @@ public class AdminOrderController {
     public String completeOrder(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
         try {
             orderService.updateOrderStatusAndPaymentMethod(id, OrderStatus.COMPLETED, null);
-            redirectAttributes.addFlashAttribute("successMessage", "Commande #" + id + " a été marquée comme terminée.");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Commande #" + id + " a été marquée comme terminée.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/orders";
     }
+
+    @GetMapping("/{id}/delete")
+    public String deleteOrder(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
+        try {
+            orderService.deleteById(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Commande #" + id + " supprimée avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Erreur lors de la suppression : " + e.getMessage());
+        }
+        return "redirect:/admin/orders";
+    }
 }
-
-

@@ -127,6 +127,12 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Commande non trouvée avec l'ID: " + orderId));
         order.setStatus(status);
+
+        // If the order becomes PROCESSING, it means payment is confirmed
+        if (status == OrderStatus.PROCESSING) {
+            order.setPaymentStatus("PAID");
+        }
+
         if (paymentMethod != null) {
             order.setPaymentMethod(paymentMethod);
         }
@@ -138,7 +144,12 @@ public class OrderService {
     }
 
     public List<Order> findAll() {
-        return orderRepository.findAll();
+        return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Transactional
+    public void deleteById(Long id) {
+        orderRepository.deleteById(id);
     }
 
     public Optional<Order> findById(Long id) {
@@ -162,12 +173,12 @@ public class OrderService {
                 // Using a combination of order item ID, size, and quantity
                 // Plus a counter to handle multiple photos of the same item
                 String originalFileName = item.getImageUrl().substring(item.getImageUrl().lastIndexOf('/') + 1);
-                String entryName = String.format("%s_%s_%dx_%s", 
-                                                order.getOrderNumber(), // Use orderNumber for better identification
-                                                item.getPhotoSize().replace(" ", "_"), 
-                                                item.getQuantity(), 
-                                                originalFileName);
-                
+                String entryName = String.format("%s_%s_%dx_%s",
+                        order.getOrderNumber(), // Use orderNumber for better identification
+                        item.getPhotoSize().replace(" ", "_"),
+                        item.getQuantity(),
+                        originalFileName);
+
                 // Fetch the image from the URL
                 URL url = new URL(item.getImageUrl());
                 try (InputStream is = url.openStream()) {

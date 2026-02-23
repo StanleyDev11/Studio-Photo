@@ -95,7 +95,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildOrderStats() {
-    final pending = _allOrders.where((o) => o.status == 'PENDING' || o.status == 'PROCESSING').length;
+    final ongoing = _allOrders.where((o) => 
+      o.status == 'PENDING' || 
+      o.status == 'PENDING_PAYMENT' || 
+      o.status == 'PROCESSING'
+    ).length;
     final completed = _allOrders.where((o) => o.status == 'COMPLETED').length;
 
     return Container(
@@ -104,7 +108,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         children: [
           _statItem('Total', _allOrders.length.toString(), Icons.receipt_outlined, AppColors.primary),
           const SizedBox(width: 12),
-          _statItem('En cours', pending.toString(), Icons.sync, Colors.orange),
+          _statItem('Actives', ongoing.toString(), Icons.sync, Colors.orange),
           const SizedBox(width: 12),
           _statItem('Terminées', completed.toString(), Icons.check_circle_outline, Colors.green),
         ],
@@ -144,9 +148,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
             const SizedBox(width: 8),
             _filterChip('PENDING', 'En attente'),
             const SizedBox(width: 8),
-            _filterChip('COMPLETED', 'Terminée'),
+            _filterChip('PENDING_PAYMENT', 'Paiement en attente'),
             const SizedBox(width: 8),
-            _filterChip('CANCELLED', 'Annulée'),
+            _filterChip('PROCESSING', 'Payées'),
+            const SizedBox(width: 8),
+            _filterChip('COMPLETED', 'Terminées'),
+            const SizedBox(width: 8),
+            _filterChip('CANCELLED', 'Annulées'),
           ],
         ),
       ),
@@ -391,11 +399,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Map<String, dynamic> _getStatusInfo(String status) {
-    switch (status) {
+    switch (status.toUpperCase()) {
       case 'COMPLETED':
       case 'CONFIRMED':
-        return {'text': 'Confirmée', 'color': Colors.green.shade700, 'icon': Icons.check_circle};
+        return {'text': 'Terminée', 'color': Colors.green.shade700, 'icon': Icons.check_circle};
       case 'PROCESSING':
+        return {'text': 'Payé', 'color': Colors.blue.shade700, 'icon': Icons.payment};
+      case 'PENDING_PAYMENT':
+        return {'text': 'Paiement en attente', 'color': Colors.orange.shade800, 'icon': Icons.lock_clock};
       case 'PENDING':
         return {'text': 'En attente', 'color': Colors.orange.shade700, 'icon': Icons.hourglass_top};
       case 'CANCELLED':

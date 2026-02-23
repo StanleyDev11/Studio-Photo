@@ -10,4 +10,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     // Find all orders for a specific user, ordered by creation date descending
     List<Order> findByUserIdOrderByCreatedAtDesc(Integer userId);
+
+    // Find all orders ordered by creation date descending
+    List<Order> findAllByOrderByCreatedAtDesc();
 }

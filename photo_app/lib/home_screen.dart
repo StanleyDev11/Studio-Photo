@@ -73,7 +73,7 @@ class HomeScreen extends StatefulWidget {
 
 enum CartMode { detail, batch }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final Set<String> _selectedImages = {};
   Future<List<String>>? _albumImagesFuture;
@@ -131,6 +131,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     _fetchPrices();
     _initRealtime();
+    WidgetsBinding.instance.addObserver(this);
+
+    // Si un paiement vient d'être validé, on vide le panier après le premier rendu
+    if (ApiService.shouldClearCart) {
+      ApiService.shouldClearCart = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _clearCart());
+    }
   }
 
   void _initRealtime() {
@@ -247,7 +254,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && ApiService.shouldClearCart) {
+      ApiService.shouldClearCart = false;
+      _clearCart();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _connectivitySubscription.cancel();
     _realtimeService?.disconnect();
     super.dispose();
