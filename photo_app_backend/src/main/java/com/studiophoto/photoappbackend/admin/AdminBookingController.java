@@ -27,11 +27,4 @@ public class AdminBookingController {
                                                                // formulaires
         return "admin/bookings-management";
     }
-
-    @PostMapping("/api/bulk-delete")
-    @ResponseBody
-    public org.springframework.http.ResponseEntity<Void> bulkDelete(@RequestBody List<Long> ids) {
-        ids.forEach(bookingService::deleteBooking);
-        return org.springframework.http.ResponseEntity.noContent().build();
-    }
 }

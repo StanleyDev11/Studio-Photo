@@ -3,6 +3,7 @@ package com.studiophoto.photoappbackend.admin;
 import com.studiophoto.photoappbackend.promotion.Promotion;
 import com.studiophoto.photoappbackend.promotion.PromotionService;
 import com.studiophoto.photoappbackend.storage.StorageService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
