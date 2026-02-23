@@ -92,7 +92,6 @@ public class AdminOrderController {
         return "redirect:/admin/orders";
     }
 
-<<<<<<< HEAD
     @GetMapping("/{id}/delete")
     public String deleteOrder(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
         try {
@@ -102,7 +101,8 @@ public class AdminOrderController {
             redirectAttributes.addFlashAttribute("errorMessage", "Erreur lors de la suppression : " + e.getMessage());
         }
         return "redirect:/admin/orders";
-=======
+    }
+
     @GetMapping("/{id}/download-photos")
     @ResponseBody
     public ResponseEntity<byte[]> downloadOrderPhotos(@PathVariable("id") Long id) {
@@ -123,6 +123,5 @@ public class AdminOrderController {
             // Order not found
             return new ResponseEntity<>(null, org.springframework.http.HttpStatus.NOT_FOUND);
         }
->>>>>>> 13c0867e5e4fad9169bcb9b9eaad78c7f821be97
     }
 }

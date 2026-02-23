@@ -15,10 +15,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Find all orders for a specific user, ordered by creation date descending
     List<Order> findByUserIdOrderByCreatedAtDesc(Integer userId);
 
-<<<<<<< HEAD
     // Find all orders ordered by creation date descending
     List<Order> findAllByOrderByCreatedAtDesc();
-=======
+
     long countByStatus(OrderStatus status);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
@@ -28,9 +27,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("statuses") List<OrderStatus> statuses,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
-            
+
     List<Order> findTop5ByOrderByCreatedAtDesc();
 
     List<Order> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime start, LocalDateTime end);
->>>>>>> 13c0867e5e4fad9169bcb9b9eaad78c7f821be97
 }
