@@ -150,6 +150,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<List<Promotion>>? _promotionsFuture;
   Future<List<HistoryItem>>? _historyFuture;
   RealtimeService? _realtimeService;
+  List<dynamic> _featuredContents = []; // FeaturedContent depuis la BDD
   // --- End of new state variables ---
 
 
@@ -162,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
     _promotionsFuture = ApiService.fetchPromotions();
     _historyFuture = _fetchRecentHistory();
+    _loadFeaturedContents();
     _connectivitySubscription =
         _connectivityService.connectivityStream.listen((result) {
       if (result == ConnectivityResult.none) {
@@ -1881,35 +1883,186 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Container(); // This tab is no longer shown, replaced by ProfilePage
   }
 
+  Future<void> _loadFeaturedContents() async {
+    try {
+      final contents = await ApiService.fetchActiveFeaturedContents();
+      if (mounted) setState(() => _featuredContents = contents);
+    } catch (_) {}
+  }
+
   Widget _buildTopCard() {
+    // Si des contenus mis en avant sont disponibles depuis la BDD
+    if (_featuredContents.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 8,
+          child: Column(
+            children: [
+              // Diaporama automatique des images de la BDD
+              CarouselSlider.builder(
+                itemCount: _featuredContents.length,
+                options: CarouselOptions(
+                  height: 200,
+                  autoPlay: true,
+                  autoPlayInterval: const Duration(milliseconds: 3500),
+                  autoPlayAnimationDuration: const Duration(milliseconds: 700),
+                  autoPlayCurve: Curves.easeInOut,
+                  viewportFraction: 1.0,
+                  enlargeCenterPage: false,
+                  enableInfiniteScroll: _featuredContents.length > 1,
+                ),
+                itemBuilder: (ctx, i, _) {
+                  final fc = _featuredContents[i];
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        fc.imageUrl.startsWith('/') 
+                            ? '${ApiService.rootUrl}${fc.imageUrl}' 
+                            : fc.imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, __, ___) => Image.asset(
+                          'assets/carousel/mxx.jpeg',
+                          fit: BoxFit.cover,
+                        ),
+                        loadingBuilder: (_, child, progress) => progress == null
+                            ? child
+                            : Container(
+                                color: AppColors.primary.withOpacity(0.05),
+                                child: const Center(
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                      ),
+                      // Gradient + titre en bas
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.7),
+                                Colors.transparent
+                              ],
+                            ),
+                          ),
+                          child: (fc.title as String).isNotEmpty
+                              ? Text(
+                                  fc.title as String,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                      // Petit bouton d'action avec flèche en bas à droite
+                      Positioned(
+                        bottom: 12,
+                        right: 12,
+                        child: GestureDetector(
+                          onTap: () async {
+                            final action = fc.buttonAction as String;
+                            if (action.isNotEmpty) {
+                              final url = Uri.parse(action);
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              }
+                            }
+                          },
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.black,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.help_outline, size: 24),
+                      label: const Text("Comment ça marche ?",
+                          style: TextStyle(fontSize: 16)),
+                      onPressed: () => _showHowItWorksDialog(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        elevation: 4,
+                      ),
+                    )
+                        .animate()
+                        .fade(duration: 800.ms, delay: 200.ms)
+                        .slideY(begin: 0.2, curve: Curves.easeOut),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        )
+            .animate()
+            .fade(duration: 500.ms)
+            .slideY(begin: 0.1, curve: Curves.easeOut),
+      );
+    }
+
+    // Fallback : image locale si pas de contenu depuis la BDD
     return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 16.0, vertical: 8.0), // Consistent padding
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Card(
-        clipBehavior: Clip.antiAlias, // Ensures content respects card borders
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        elevation: 8, // Slightly more prominent shadow
+        elevation: 8,
         child: Column(
           children: [
             AspectRatio(
-              aspectRatio: 16 / 9, // Common aspect ratio for images
+              aspectRatio: 16 / 9,
               child: Image.asset(
                 'assets/carousel/mxx.jpeg',
-                fit: BoxFit.cover, // Fill the space, crop if necessary
+                fit: BoxFit.cover,
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(10.0),
               child: Column(
                 children: [
-                  // Text(
-                  //   'Immortalisez vos moments précieux en un clic !',
-                  //   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  //     fontWeight: FontWeight.bold,
-                  //     color: AppColors.textPrimary,
-                  //   ),
-                  //   textAlign: TextAlign.center,
-                  // ),
                   const SizedBox(height: 8),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.help_outline, size: 24),
@@ -1917,12 +2070,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         style: TextStyle(fontSize: 16)),
                     onPressed: () => _showHowItWorksDialog(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          AppColors.primary, // Primary color for the button
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(12)), // Rounded corners
+                          borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 12),
                       elevation: 4,

@@ -311,6 +311,19 @@ class ApiService {
     return list.map((json) => Booking.fromRawJson(json as Map<String, dynamic>)).toList();
   }
 
+  static Future<List<FeaturedContent>> fetchActiveFeaturedContents() async {
+    const url = '$baseUrl/featured-content';
+    final response = await _safeGet(url);
+    final dynamic data = _handleApiResponse(response);
+    if (data == null) return [];
+    final list = data as List<dynamic>;
+    return list
+        .map((e) => FeaturedContent.fromJson(e as Map<String, Object?>))
+        .where((fc) => fc.active)
+        .toList()
+      ..sort((a, b) => a.priority.compareTo(b.priority));
+  }
+
   static Future<ContactInfo> fetchContactInfo() async {
     const url = '$baseUrl/public/contact-info'; // Endpoint to fetch contact info
     final response = await _safeGet(url);
