@@ -64,14 +64,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false, // Pas de bouton retour automatique
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            // Retour sécurisé: pop si possible, sinon pas d'action
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          },
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppColors.primary, size: 20),
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          ),
         ),
         actions: [
           IconButton(
