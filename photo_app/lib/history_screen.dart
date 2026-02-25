@@ -23,6 +23,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _fetchDataFuture = _fetchAllHistory();
+    // Rafraîchissement automatique toutes les 30 secondes
+    _startAutoRefresh();
+  }
+
+  void _startAutoRefresh() {
+    Future.delayed(const Duration(seconds: 30), () {
+      if (mounted) {
+        _fetchAllHistory();
+        _startAutoRefresh();
+      }
+    });
   }
 
   Future<void> _fetchAllHistory() async {
@@ -52,6 +63,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
         elevation: 0,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: false, // Pas de bouton retour automatique
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            // Retour sécurisé: pop si possible, sinon pas d'action
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+          },
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() {
+              _fetchDataFuture = _fetchAllHistory();
+            }),
+            tooltip: 'Actualiser',
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -210,7 +240,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
           subtitle: Text(
-            DateFormat('dd MMM yyyy').format(order.createdAt),
+            order.createdAt != null
+                ? DateFormat('dd MMM yyyy').format(order.createdAt!)
+                : '—',
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           trailing: Column(
@@ -240,9 +272,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   const SizedBox(height: 16),
                   const Divider(),
                   const SizedBox(height: 12),
-                  _infoDetailRow(Icons.payments_outlined, 'Paiement', order.paymentMethod.replaceAll('_', ' ')),
+                  _infoDetailRow(Icons.payments_outlined, 'Paiement', order.paymentMethod?.replaceAll('_', ' ') ?? 'Non renseigné'),
                   const SizedBox(height: 8),
-                  _infoDetailRow(Icons.local_shipping_outlined, 'Livraison', order.deliveryType.replaceAll('_', ' ')),
+                  _infoDetailRow(Icons.local_shipping_outlined, 'Livraison', order.deliveryType?.replaceAll('_', ' ') ?? 'Non renseigné'),
                   if (order.deliveryAddress != null && order.deliveryAddress!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     _infoDetailRow(Icons.location_on_outlined, 'Adresse', order.deliveryAddress!),
@@ -266,7 +298,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              item.imageUrl,
+              item.imageUrl ?? '',
               width: 50,
               height: 50,
               fit: BoxFit.cover,
@@ -279,7 +311,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Format: ${item.photoSize}',
+                  'Format: ${item.photoSize ?? '—'}',
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
                 Text(
@@ -290,7 +322,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ),
           Text(
-            '${(item.pricePerUnit * item.quantity).toStringAsFixed(0)} FCFA',
+            '${((item.pricePerUnit ?? 0) * item.quantity).toStringAsFixed(0)} FCFA',
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
         ],

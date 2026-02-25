@@ -289,7 +289,7 @@ class ApiService {
     };
     final response = await _safePost(url, body);
     final Map<String, dynamic> responseData = _handleApiResponse(response);
-    return Booking.fromJson(responseData);
+    return Booking.fromRawJson(responseData);
   }
 
   static String _bookingTypeToJson(BookingType type) {
@@ -308,7 +308,7 @@ class ApiService {
     final responseData = _handleApiResponse(response);
     if (responseData == null) return [];
     final List<dynamic> list = responseData as List<dynamic>;
-    return list.map((json) => Booking.fromJson(json)).toList();
+    return list.map((json) => Booking.fromRawJson(json as Map<String, dynamic>)).toList();
   }
 
   static Future<ContactInfo> fetchContactInfo() async {

@@ -1,4 +1,4 @@
-// ignore_for_file: unused_import
+﻿// ignore_for_file: unused_import
 
 import 'dart:async';
 import 'dart:ui';
@@ -142,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // --- New state variables for cart ---
   CartMode _selectedMode = CartMode.detail;
   bool _isExpress = false;
+  bool _isSuggesting = false;
   double _totalPrice = 0.0;
   Map<String, double>? _prices;
   bool _isLoadingPrices = true;
@@ -709,14 +710,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   final imageUrl = images[index];
                   final isSelected = _selectedImages.contains(imageUrl);
                   return GestureDetector(
-                    onTap: () => setState(() {
+                    onTap: () async {
                       if (isSelected) {
-                        _selectedImages.remove(imageUrl);
+                        setState(() {
+                          _selectedImages.remove(imageUrl);
+                          _calculateTotal();
+                        });
                       } else {
-                        _selectedImages.add(imageUrl);
+                        // Vérifier si la photo est incompatible avec tous les formats
+                        if (_prices != null && _prices!.isNotEmpty) {
+                          final size = await _loadImageSizeLocal(imageUrl);
+                          double bestKeep = 0;
+                          for (final dim in _prices!.keys) {
+                            final k = _computeKeepFraction(size, _parseDimensionAspect(dim));
+                            if (k > bestKeep) bestKeep = k;
+                          }
+                          if (_computePrintQuality(bestKeep) == PrintQuality.unsuitable && mounted) {
+                            final continueAnyway = await _showNoCompatibleFormatDialog();
+                            if (!continueAnyway) return;
+                          }
+                        }
+                        setState(() {
+                          _selectedImages.add(imageUrl);
+                          _calculateTotal();
+                        });
                       }
-                      _calculateTotal();
-                    }),
+                    },
                     child: Stack(
                       children: [
                         Card(
@@ -919,7 +938,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
-                        onPressed: _showValidationPopup,
+                        onPressed: _validateWithUnsuitableCheck,
                         icon: const Icon(Icons.check_circle_outline),
                         label: const Text('Valider'),
                         style: ElevatedButton.styleFrom(
@@ -1135,35 +1154,68 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Column(
       children: [
-        // ── Sélecteur dimension globale ──
+        // ── Sélecteur dimension globale + Suggestion ──
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: DropdownButtonFormField<String>(
-            value: commonSize,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: 'Dimension pour toutes les photos',
-              labelStyle: const TextStyle(fontSize: 13),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              prefixIcon: const Icon(Icons.straighten, size: 18),
-            ),
-            items: _prices!.keys
-                .map((size) =>
-                    DropdownMenuItem(value: size, child: Text(size)))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() {
-                  for (final key in _photoDetails.keys) {
-                    _photoDetails[key]!['size'] = value;
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Dropdown compact
+              DropdownButtonFormField<String>(
+                value: commonSize,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: 'Format pour toutes les photos',
+                  labelStyle: const TextStyle(fontSize: 12),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  prefixIcon: const Icon(Icons.straighten, size: 16),
+                  isDense: true,
+                ),
+                items: _prices!.keys
+                    .map((size) =>
+                        DropdownMenuItem(value: size, child: Text(size, style: const TextStyle(fontSize: 13))))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      for (final key in _photoDetails.keys) {
+                        _photoDetails[key]!['size'] = value;
+                      }
+                      _calculateTotal();
+                    });
                   }
-                  _calculateTotal();
-                });
-              }
-            },
+                },
+              ),
+              const SizedBox(height: 8),
+              // Bouton Suggérer bien visible
+              ElevatedButton.icon(
+                onPressed: _isSuggesting ? null : _suggestBestDimension,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                icon: _isSuggesting
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.auto_awesome, size: 18),
+                label: Text(
+                  _isSuggesting
+                      ? 'Analyse en cours...'
+                      : 'Suggérer la meilleure dimension',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+            ],
           ),
         ),
 
@@ -1313,6 +1365,425 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return completer.future;
   }
 
+
+  // ── Suggestion automatique de la meilleure dimension ──────────────────
+  Future<void> _suggestBestDimension() async {
+    if (_prices == null || _prices!.isEmpty || _selectedImages.isEmpty) return;
+    setState(() => _isSuggesting = true);
+
+    final images = _selectedImages.toList();
+    final sizes = await Future.wait(images.map(_loadImageSizeLocal));
+
+    // Scorer chaque dimension disponible
+    String? bestDimension;
+    double bestScore = -1;
+    int bestRec = -1;
+
+    for (final dim in _prices!.keys) {
+      final aspect = _parseDimensionAspect(dim);
+      double score = 0;
+      int rec = 0;
+      for (final size in sizes) {
+        final keep = _computeKeepFraction(size, aspect);
+        final q = _computePrintQuality(keep);
+        if (q == PrintQuality.recommended) { score += 1.0; rec++; }
+        else if (q == PrintQuality.acceptable) { score += 0.6; }
+      }
+      if (score > bestScore || (score == bestScore && rec > bestRec)) {
+        bestScore = score;
+        bestRec = rec;
+        bestDimension = dim;
+      }
+    }
+
+    if (bestDimension == null || !mounted) {
+      setState(() => _isSuggesting = false);
+      return;
+    }
+
+    // Appliquer la meilleure dimension globale
+    setState(() {
+      for (final key in _photoDetails.keys) {
+        _photoDetails[key]!['size'] = bestDimension;
+      }
+      _calculateTotal();
+      _isSuggesting = false;
+    });
+
+    // Calculer les photos encore déconseillées + leur meilleure dimension individuelle
+    final chosenAspect = _parseDimensionAspect(bestDimension!);
+    final List<Map<String, dynamic>> unsuitablePhotos = [];
+
+    for (int i = 0; i < images.length; i++) {
+      final url = images[i];
+      final size = sizes[i];
+      final keep = _computeKeepFraction(size, chosenAspect);
+      if (_computePrintQuality(keep) == PrintQuality.unsuitable) {
+        // Trouver la meilleure dimension individuelle pour cette photo
+        String? bestIndivDim;
+        double bestIndivScore = -1;
+        for (final dim in _prices!.keys) {
+          final k = _computeKeepFraction(size, _parseDimensionAspect(dim));
+          if (k > bestIndivScore) {
+            bestIndivScore = k;
+            bestIndivDim = dim;
+          }
+        }
+        unsuitablePhotos.add({
+          'url': url,
+          'bestDim': bestIndivDim ?? bestDimension,
+          'keepFraction': bestIndivScore,
+        });
+      }
+    }
+
+    if (!mounted) return;
+
+    if (unsuitablePhotos.isEmpty) {
+      // Toutes les photos sont ok
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.white, size: 16),
+          const SizedBox(width: 8),
+          Expanded(child: Text('Meilleure dimension : $bestDimension — Toutes les photos sont compatibles !')),
+        ]),
+        backgroundColor: const Color(0xFF2E7D32),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ));
+    } else {
+      // Certaines photos restent déconseillées
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(SnackBar(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Ligne titre
+            Row(children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('Format partiellement incompatible',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+              // Bouton X
+              GestureDetector(
+                onTap: () => messenger.hideCurrentSnackBar(),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 18),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            // Message
+            Text(
+              'Dimension : $bestDimension — ${unsuitablePhotos.length} photo(s) restent déconseillées.',
+              style: const TextStyle(fontSize: 13, color: Colors.white),
+            ),
+            const SizedBox(height: 12),
+            // Bouton Adapter
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  messenger.hideCurrentSnackBar();
+                  _showUnsuitableAdaptDialog(unsuitablePhotos, bestDimension!);
+                },
+                icon: const Icon(Icons.tune, size: 16),
+                label: const Text('Adapter les photos déconseillées',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFFE65100),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFFE65100),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        duration: const Duration(seconds: 10),
+      ));
+    }
+  }
+
+  /// Bottom sheet : photos déconseillées avec leur meilleure dimension individuelle
+  void _showUnsuitableAdaptDialog(
+      List<Map<String, dynamic>> unsuitablePhotos, String globalDim) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (_, scrollCtrl) => Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // Handle
+                Container(
+                  width: 40, height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Titre
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(children: [
+                        Icon(Icons.tune, color: AppColors.primary, size: 20),
+                        SizedBox(width: 8),
+                        Text('Dimensions recommandées',
+                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Ces ${unsuitablePhotos.length} photo(s) sont incompatibles avec "$globalDim". '
+                        'Voici la meilleure dimension pour chacune.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                // Liste des photos déconseillées
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollCtrl,
+                    itemCount: unsuitablePhotos.length,
+                    itemBuilder: (_, i) {
+                      final photo = unsuitablePhotos[i];
+                      final url = photo['url'] as String;
+                      final bestDim = photo['bestDim'] as String;
+                      final keep = ((photo['keepFraction'] as double) * 100).toInt();
+                      final q = _computePrintQuality(photo['keepFraction'] as double);
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: url.startsWith('http')
+                              ? Image.network(url, width: 56, height: 56, fit: BoxFit.cover)
+                              : Image.file(File(url), width: 56, height: 56, fit: BoxFit.cover),
+                        ),
+                        title: Row(children: [
+                          Icon(_qualityIcon(q), size: 14, color: _qualityColor(q)),
+                          const SizedBox(width: 6),
+                          Text(bestDim,
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ]),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Conservation : $keep%',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                            if (q == PrintQuality.unsuitable)
+                              const Text(
+                                'Aucun format pleinement compatible — moins mauvaise option',
+                                style: TextStyle(fontSize: 10, color: Color(0xFFC62828)),
+                              ),
+                          ],
+                        ),
+                        trailing: Chip(
+                          label: Text(_qualityLabel(q),
+                              style: TextStyle(fontSize: 11, color: _qualityColor(q))),
+                          backgroundColor: _qualityColor(q).withOpacity(0.1),
+                          side: BorderSide(color: _qualityColor(q).withOpacity(0.3)),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // Bouton Appliquer
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      16, 8, 16, MediaQuery.of(context).padding.bottom + 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        setState(() {
+                          // Appliquer la dimension optimale à chaque photo déconseillée
+                          for (final p in unsuitablePhotos) {
+                            final url = p['url'] as String;
+                            final bestDim = p['bestDim'] as String;
+                            if (_photoDetails.containsKey(url)) {
+                              _photoDetails[url]!['size'] = bestDim;
+                            }
+                          }
+                          // Passer en mode Détail car les photos ont maintenant des tailles différentes
+                          _selectedMode = CartMode.detail;
+                          _calculateTotal();
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: const Text('Dimensions appliquées — passage en mode Détail'),
+                          backgroundColor: AppColors.primary,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ));
+                      },
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Appliquer & passer en mode Détail'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+    // ── Vérifier si des photos sont déconseillées avant de valider ─────────
+  Future<void> _validateWithUnsuitableCheck() async {
+    if (_selectedMode == CartMode.batch && _selectedImages.isNotEmpty) {
+      final commonSizeSet = _photoDetails.values.map((d) => d['size'] as String).toSet();
+      if (commonSizeSet.length == 1) {
+        final dim = commonSizeSet.first;
+        final aspect = _parseDimensionAspect(dim);
+        final images = _selectedImages.toList();
+        final sizes = await Future.wait(images.map(_loadImageSizeLocal));
+        final hasUnsuitable = sizes.any((size) {
+          final keep = _computeKeepFraction(size, aspect);
+          return _computePrintQuality(keep) == PrintQuality.unsuitable;
+        });
+        if (hasUnsuitable && mounted) {
+          final proceed = await _showUnsuitableWarningDialog();
+          if (!proceed) return;
+        }
+      }
+    }
+    _showValidationPopup();
+  }
+
+
+  // ── Dialog : aucun format compatible pour cette photo ─────────────────
+  Future<bool> _showNoCompatibleFormatDialog() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: Row(children: const [
+              Icon(Icons.photo_camera_back_outlined, color: Color(0xFFC62828), size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text('Photo peu adaptée à l\'impression',
+                    style: TextStyle(fontSize: 16)),
+              ),
+            ]),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Cette photo n\'a aucun format d\'impression compatible.\n\n'
+                  'Sa résolution ou ses proportions sont trop éloignées de nos formats disponibles, '
+                  'ce qui entraînerait une qualité d\'impression très dégradée pour tous les formats.',
+                  style: TextStyle(fontSize: 13),
+                ),
+                SizedBox(height: 12),
+                Row(children: [
+                  Icon(Icons.lightbulb_outline, size: 14, color: Color(0xFFE65100)),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Conseil : utilisez une photo avec une résolution plus élevée ou des proportions plus standard.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFFE65100)),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Ne pas ajouter',
+                    style: TextStyle(color: AppColors.textSecondary)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC62828),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Ajouter quand même'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+  Future<bool> _showUnsuitableWarningDialog() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(children: const [
+              Icon(Icons.warning_amber_rounded, color: Color(0xFFC62828), size: 28),
+              SizedBox(width: 8),
+              Text('Format déconseillé', style: TextStyle(fontSize: 17)),
+            ]),
+            content: const Text(
+              'Une ou plusieurs photos seront fortement recadrées avec ce format.\n\n'
+              'La qualité d\'impression sera très dégradée.\n\n'
+              'Voulez-vous quand même continuer, ou choisir un autre format ?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Changer le format',
+                    style: TextStyle(color: AppColors.primary)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC62828),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Continuer quand même'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
   void _showValidationPopup() {
     // Use a local variable for the state of the switch inside the dialog
     bool isExpressDelivery = _isExpress;
@@ -1919,8 +2390,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildFloatingBottomNavBar() {
-    return Container(
-      margin: const EdgeInsets.all(20),
+    return SizedBox(
+      height: 83,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.primary, width: 2),
@@ -1937,6 +2410,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             unselectedItemColor: AppColors.textPrimary.withOpacity(0.6),
             elevation: 0,
             type: BottomNavigationBarType.fixed,
+            selectedFontSize: 11,
+            unselectedFontSize: 10,
+            iconSize: 22,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
               BottomNavigationBarItem(
@@ -1946,6 +2424,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ],
           ),
         ),
+      ),
       ),
     );
   }

@@ -45,20 +45,21 @@ class Booking with _$Booking {
     DateTime? updatedAt,
   }) = _Booking;
 
-  factory Booking.fromJson(Map<String, dynamic> json) {
-    // Si le backend renvoie un objet 'user', on extrait son id pour 'userId'
-    if (json['userId'] == null && json['user'] != null) {
-      if (json['user'] is Map) {
-        json['userId'] = json['user']['id'];
-      } else if (json['user'] is num) {
-        json['userId'] = json['user'];
+  factory Booking.fromJson(Map<String, Object?> json) => _$BookingFromJson(json);
+
+  /// Utilise cette méthode quand la réponse du backend peut contenir
+  /// un objet 'user' imbriqué ou un 'amount' nul.
+  static Booking fromRawJson(Map<String, dynamic> json) {
+    final processed = Map<String, dynamic>.from(json);
+    if (processed['userId'] == null && processed['user'] != null) {
+      if (processed['user'] is Map) {
+        processed['userId'] = (processed['user'] as Map)['id'];
+      } else if (processed['user'] is num) {
+        processed['userId'] = processed['user'];
       }
     }
-    // Gestion du cas où le montant pourrait être nul par erreur du backend
-    if (json['amount'] == null) {
-      json['amount'] = 0.0;
-    }
-    return _$BookingFromJson(json);
+    processed['amount'] ??= 0.0;
+    return _$BookingFromJson(processed);
   }
 
   factory Booking.fromId({ // Factory pour créer une réservation sans ID

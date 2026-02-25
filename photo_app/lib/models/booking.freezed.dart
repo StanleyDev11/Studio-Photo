@@ -14,6 +14,10 @@ T _$identity<T>(T value) => value;
 final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
+Booking _$BookingFromJson(Map<String, dynamic> json) {
+  return _Booking.fromJson(json);
+}
+
 /// @nodoc
 mixin _$Booking {
   int get id => throw _privateConstructorUsedError;
@@ -30,6 +34,9 @@ mixin _$Booking {
   String? get notes => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
+
+  /// Serializes this Booking to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
   /// Create a copy of Booking
   /// with the given fields replaced by the non-null parameter values.
@@ -240,7 +247,7 @@ class __$$BookingImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-
+@JsonSerializable()
 class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
   const _$BookingImpl(
       {required this.id,
@@ -255,6 +262,9 @@ class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
       this.notes,
       required this.createdAt,
       this.updatedAt});
+
+  factory _$BookingImpl.fromJson(Map<String, dynamic> json) =>
+      _$$BookingImplFromJson(json);
 
   @override
   final int id;
@@ -331,6 +341,7 @@ class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
                 other.updatedAt == updatedAt));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, title, description, userId,
       startTime, endTime, status, type, amount, notes, createdAt, updatedAt);
@@ -342,6 +353,13 @@ class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
   @pragma('vm:prefer-inline')
   _$$BookingImplCopyWith<_$BookingImpl> get copyWith =>
       __$$BookingImplCopyWithImpl<_$BookingImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$BookingImplToJson(
+      this,
+    );
+  }
 }
 
 abstract class _Booking implements Booking {
@@ -358,6 +376,8 @@ abstract class _Booking implements Booking {
       final String? notes,
       required final DateTime createdAt,
       final DateTime? updatedAt}) = _$BookingImpl;
+
+  factory _Booking.fromJson(Map<String, dynamic> json) = _$BookingImpl.fromJson;
 
   @override
   int get id;

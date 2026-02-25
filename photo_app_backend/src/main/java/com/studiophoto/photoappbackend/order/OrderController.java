@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -40,16 +41,19 @@ public class OrderController {
     }
 
     @GetMapping("/my-orders")
-    public ResponseEntity<List<Order>> getMyOrders(@AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<List<OrderResponseDTO>> getMyOrders(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(401).build();
         }
-        List<Order> orders = orderService.findOrdersByUser(currentUser.getId());
+        List<OrderResponseDTO> orders = orderService.findOrdersByUser(currentUser.getId())
+                .stream()
+                .map(OrderResponseDTO::from)
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(orders);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(
+    public ResponseEntity<OrderResponseDTO> getOrderById(
             @PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
@@ -57,7 +61,7 @@ public class OrderController {
         }
         return orderService.findById(id)
                 .filter(order -> order.getUser().getId().equals(currentUser.getId()))
-                .map(ResponseEntity::ok)
+                .map(order -> ResponseEntity.ok(OrderResponseDTO.from(order)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
