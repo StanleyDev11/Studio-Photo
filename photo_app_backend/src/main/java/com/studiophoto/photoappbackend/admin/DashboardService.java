@@ -46,11 +46,48 @@ public class DashboardService {
             totalRevenue = BigDecimal.ZERO;
         }
 
+        // Average Order Value
+        BigDecimal totalLifetimeRevenue = orderRepository.sumTotalRevenue(revenueStatuses);
+        long completedOrdersCount = orderRepository.countCompletedOrders(revenueStatuses);
+        BigDecimal averageOrderValue = BigDecimal.ZERO;
+        if (completedOrdersCount > 0 && totalLifetimeRevenue != null) {
+            averageOrderValue = totalLifetimeRevenue.divide(BigDecimal.valueOf(completedOrdersCount), 2, java.math.RoundingMode.HALF_UP);
+        }
+
         return DashboardStatsDTO.builder()
                 .totalUsers(totalUsers)
                 .totalPhotos(totalPhotos)
                 .totalPendingOrders(totalPendingOrders)
                 .totalRevenue(totalRevenue)
+                .averageOrderValue(averageOrderValue)
+                .build();
+    }
+
+    public List<com.studiophoto.photoappbackend.admin.dto.ClientRevenueDTO> getTopClientsByRevenue() {
+        List<OrderStatus> revenueStatuses = Arrays.asList(OrderStatus.COMPLETED, OrderStatus.PROCESSING);
+        return orderRepository.findTopClientsByRevenue(revenueStatuses, org.springframework.data.domain.PageRequest.of(0, 5));
+    }
+
+    public com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO getYearlyRevenueChart() {
+        List<String> labels = new java.util.ArrayList<>();
+        List<BigDecimal> data = new java.util.ArrayList<>();
+        List<OrderStatus> revenueStatuses = Arrays.asList(OrderStatus.COMPLETED, OrderStatus.PROCESSING);
+
+        YearMonth currentMonth = YearMonth.now();
+        for (int i = 5; i >= 0; i--) {
+            YearMonth month = currentMonth.minusMonths(i);
+            labels.add(month.getMonth().name());
+            
+            LocalDateTime start = month.atDay(1).atStartOfDay();
+            LocalDateTime end = month.atEndOfMonth().atTime(23, 59, 59);
+            
+            BigDecimal monthlyRev = orderRepository.sumTotalAmountByStatusInAndCreatedAtBetween(revenueStatuses, start, end);
+            data.add(monthlyRev != null ? monthlyRev : BigDecimal.ZERO);
+        }
+
+        return com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO.builder()
+                .labels(labels)
+                .data(data)
                 .build();
     }
 

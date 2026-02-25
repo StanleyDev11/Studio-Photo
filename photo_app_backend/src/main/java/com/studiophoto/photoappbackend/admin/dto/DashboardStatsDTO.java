@@ -12,4 +12,5 @@ public class DashboardStatsDTO {
     private long totalPhotos;
     private long totalPendingOrders;
     private BigDecimal totalRevenue;
+    private BigDecimal averageOrderValue;
 }

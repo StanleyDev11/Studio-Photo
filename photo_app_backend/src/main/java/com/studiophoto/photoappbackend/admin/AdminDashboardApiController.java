@@ -48,4 +48,14 @@ public class AdminDashboardApiController {
     public ResponseEntity<BookingsPerDayChartDTO> getBookingsPerDayChart() {
         return ResponseEntity.ok(dashboardService.getBookingsPerDayChartData());
     }
+
+    @GetMapping("/top-clients")
+    public ResponseEntity<java.util.List<com.studiophoto.photoappbackend.admin.dto.ClientRevenueDTO>> getTopClients() {
+        return ResponseEntity.ok(dashboardService.getTopClientsByRevenue());
+    }
+
+    @GetMapping("/chart/revenue")
+    public ResponseEntity<com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO> getRevenueChart() {
+        return ResponseEntity.ok(dashboardService.getYearlyRevenueChart());
+    }
 }
