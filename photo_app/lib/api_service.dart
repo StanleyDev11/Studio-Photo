@@ -302,6 +302,8 @@ class ApiService {
     }
   }
 
+
+// fetch user bookings
   static Future<List<Booking>> fetchUserBookings() async {
     const url = '$baseUrl/bookings';
     final response = await _safeGet(url);
@@ -311,6 +313,7 @@ class ApiService {
     return list.map((json) => Booking.fromRawJson(json as Map<String, dynamic>)).toList();
   }
 
+  // fetch active featured contents
   static Future<List<FeaturedContent>> fetchActiveFeaturedContents() async {
     const url = '$baseUrl/featured-content';
     final response = await _safeGet(url);
@@ -324,6 +327,8 @@ class ApiService {
       ..sort((a, b) => a.priority.compareTo(b.priority));
   }
 
+
+// fetch contact info
   static Future<ContactInfo> fetchContactInfo() async {
     const url = '$baseUrl/public/contact-info'; // Endpoint to fetch contact info
     final response = await _safeGet(url);
@@ -331,6 +336,8 @@ class ApiService {
     return ContactInfo.fromJson(responseData);
   }
 
+
+// verify pin for password reset  
   static Future<Map<String, dynamic>> verifyPinForPasswordReset({String? email, String? phone, required String pin}) async {
     const url = '$baseUrl/auth/verify-pin';
     final Map<String, dynamic> body = {'pin': pin};
@@ -347,6 +354,7 @@ class ApiService {
     return _handleApiResponse(response); // Expects { "resetToken": "..." }
   }
 
+  // reset password with token  
   static Future<void> resetPasswordWithToken({required String token, required String newPassword}) async {
     const url = '$baseUrl/auth/reset-password';
     final body = {
@@ -357,12 +365,14 @@ class ApiService {
     _handleApiResponse(response); // Expects no content on success
   }
 
+  // create order
   static Future<Order> createOrder(Map<String, dynamic> orderDetails) async {
     const url = '$baseUrl/orders';
     final response = await _safePost(url, orderDetails);
     return Order.fromJson(_handleApiResponse(response));
   }
 
+  // fetch my orders
   static Future<List<Order>> fetchMyOrders() async {
     const url = '$baseUrl/orders/my-orders';
     final response = await _safeGet(url);
@@ -372,6 +382,7 @@ class ApiService {
     return list.map((json) => Order.fromJson(json)).toList();
   }
 
+  // fetch order by id
   static Future<Order?> fetchOrderById(String orderId) async {
     final url = '$baseUrl/orders/$orderId';
     try {
@@ -386,12 +397,14 @@ class ApiService {
     return null;
   }
 
+  // cancel order
   static Future<void> cancelOrder(int orderId) async {
     final url = '$baseUrl/orders/$orderId/cancel';
     final response = await _safePost(url, {});
     _handleApiResponse(response);
   }
 
+  // update order
   static Future<Order> updateOrder(int orderId, Map<String, dynamic> updates) async {
     final url = '$baseUrl/orders/$orderId';
     final response = await http.put(
