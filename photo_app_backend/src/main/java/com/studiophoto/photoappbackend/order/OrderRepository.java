@@ -28,6 +28,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 
+    @Query("SELECT new com.studiophoto.photoappbackend.admin.dto.ClientRevenueDTO(CONCAT(o.user.firstname, ' ', o.user.lastname), SUM(o.totalAmount)) " +
+            "FROM Order o " +
+            "WHERE o.status IN :statuses " +
+            "GROUP BY o.user.id " +
+            "ORDER BY SUM(o.totalAmount) DESC")
+    List<com.studiophoto.photoappbackend.admin.dto.ClientRevenueDTO> findTopClientsByRevenue(@Param("statuses") List<OrderStatus> statuses, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status IN :statuses")
+    BigDecimal sumTotalRevenue(@Param("statuses") List<OrderStatus> statuses);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.status IN :statuses")
+    long countCompletedOrders(@Param("statuses") List<OrderStatus> statuses);
+
     List<Order> findTop5ByOrderByCreatedAtDesc();
 
     List<Order> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime start, LocalDateTime end);

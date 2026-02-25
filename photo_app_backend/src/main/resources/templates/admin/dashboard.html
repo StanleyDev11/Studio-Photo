@@ -641,6 +641,13 @@
                     <div class="stat-value" id="totalRevenue">0 FCFA</div>
                     <div class="stat-label">Revenu Ce Mois</div>
                 </div>
+                <div class="stat-card orders">
+                    <div class="stat-icon" style="background-color: #9b59b6;">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                    <div class="stat-value" id="averageOrderValue">0 FCFA</div>
+                    <div class="stat-label">Panier Moyen</div>
+                </div>
             </div>
 
             <!-- Quick Actions -->
@@ -685,13 +692,30 @@
                         <div class="action-title">Planifier RDV</div>
                         <div class="action-desc">Organiser une séance photo</div>
                     </a>
-                    <a href="#" class="action-card">
-                        <div class="action-icon">
-                            <i class="fas fa-cog"></i>
+                </div>
+
+                <!-- Client Focus Charts moved here -->
+                <div class="row mt-4">
+                    <div class="col-lg-6">
+                        <div class="dashboard-section">
+                            <div class="section-header">
+                                <h2 class="section-title">Top 5 Clients (Revenus cumulés)</h2>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="topClientsChart"></canvas>
+                            </div>
                         </div>
-                        <div class="action-title">Paramètres</div>
-                        <div class="action-desc">Configurer l'application</div>
-                    </a>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="dashboard-section">
+                            <div class="section-header">
+                                <h2 class="section-title">Évolution des Revenus (6 derniers mois)</h2>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="revenueEvolutionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -820,7 +844,8 @@
                     document.getElementById('totalUsers').innerText = formatNumber(data.totalUsers);
                     document.getElementById('totalPhotos').innerText = formatNumber(data.totalPhotos);
                     document.getElementById('totalPendingOrders').innerText = formatNumber(data.totalPendingOrders);
-                    document.getElementById('totalRevenue').innerText = formatCurrency(data.totalRevenue || 0);
+                    document.getElementById('totalRevenue').innerText = formatCurrency(data.totalRevenue || 0) + ' FCFA';
+                    document.getElementById('averageOrderValue').innerText = formatCurrency(data.averageOrderValue || 0) + ' FCFA';
                 })
                 .catch(error => {
                     console.error('Error fetching dashboard stats:', error);
@@ -844,6 +869,8 @@
             initializeOrderStatusChart();
             initializeBookingStatusChart();
             initializeBookingsPerDayChart();
+            initializeTopClientsChart();
+            initializeRevenueEvolutionChart();
 
             // Responsive sidebar pour mobile
             if (window.innerWidth <= 768) {
@@ -1109,6 +1136,65 @@
                 })
                 .catch(error => {
                     console.error('Error fetching bookings per day chart data:', error);
+                });
+        }
+
+        function initializeTopClientsChart() {
+            fetch('/admin/api/top-clients')
+                .then(response => response.json())
+                .then(data => {
+                    const ctx = document.getElementById('topClientsChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.map(c => c.clientName),
+                            datasets: [{
+                                label: 'Revenus Cumulés (FCFA)',
+                                data: data.map(c => c.totalSpent),
+                                backgroundColor: 'rgba(69, 103, 183, 0.7)',
+                                borderColor: 'rgba(69, 103, 183, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    });
+                });
+        }
+
+        function initializeRevenueEvolutionChart() {
+            fetch('/admin/api/chart/revenue')
+                .then(response => response.json())
+                .then(chartData => {
+                    const ctx = document.getElementById('revenueEvolutionChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: chartData.labels,
+                            datasets: [{
+                                label: 'Revenu Mensuel (FCFA)',
+                                data: chartData.data,
+                                borderColor: '#2ecc71',
+                                backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true }
+                            }
+                        }
+                    });
                 });
         }
         /*]]>*/

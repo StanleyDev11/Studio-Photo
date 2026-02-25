@@ -836,10 +836,40 @@
                 </div>
             </div>
 
+            <!-- Tab Navigation for Roles -->
+            <ul class="nav nav-tabs mb-4" id="userRoleTabs" role="tablist" style="border-bottom: 2px solid var(--gray-light);">
+                <li class="nav-item">
+                    <a class="nav-link active font-weight-bold" id="all-users-tab" data-toggle="tab" href="#all" role="tab" data-role="" style="padding: 12px 25px; border: none; color: #7f8c8d;">
+                        <i class="fas fa-users mr-2"></i>Tous les comptes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link font-weight-bold" id="admin-users-tab" data-toggle="tab" href="#admins" role="tab" data-role="ADMIN" style="padding: 12px 25px; border: none; color: #7f8c8d;">
+                        <i class="fas fa-user-shield mr-2"></i>Administrateurs
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link font-weight-bold" id="simple-users-tab" data-toggle="tab" href="#users" role="tab" data-role="USER" style="padding: 12px 25px; border: none; color: #7f8c8d;">
+                        <i class="fas fa-user mr-2"></i>Utilisateurs simples
+                    </a>
+                </li>
+            </ul>
+
+            <style>
+                .nav-tabs .nav-link.active {
+                    color: var(--primary-color) !important;
+                    background-color: transparent !important;
+                    border-bottom: 3px solid var(--primary-color) !important;
+                }
+                .nav-tabs .nav-link:hover {
+                    border-bottom: 3px solid var(--gray-light);
+                }
+            </style>
+
             <!-- Filter Section -->
             <div class="filter-section">
                 <div class="filter-row">
-                    <div class="filter-group">
+                    <div class="filter-group d-none"> <!-- Hidden as we use tabs now -->
                         <label for="filterRole">Filtrer par rôle</label>
                         <select id="filterRole" class="form-control select2">
                             <option value="">Tous les rôles</option>
@@ -1052,6 +1082,13 @@
                     $('#password').removeAttr('required').val('');
                     $('#confirmPassword').removeAttr('required').val('');
                 }
+            });
+
+            // Handle Tab Clicks
+            $('#userRoleTabs a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const selectedRole = $(e.target).data('role');
+                $('#filterRole').val(selectedRole).trigger('change');
+                table.ajax.reload();
             });
 
 
