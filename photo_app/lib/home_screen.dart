@@ -73,6 +73,56 @@ class HomeScreen extends StatefulWidget {
 
 enum CartMode { detail, batch }
 
+// ── Utilitaires qualité d'impression ──────────────────────
+enum PrintQuality { recommended, acceptable, unsuitable }
+
+double _parseDimensionAspect(String dimension) {
+  final matches = RegExp(r'(\d+([.,]\d+)?)').allMatches(dimension).toList();
+  if (matches.length >= 2) {
+    final w = double.tryParse(matches[0].group(1)!.replaceAll(',', '.')) ?? 1;
+    final h = double.tryParse(matches[1].group(1)!.replaceAll(',', '.')) ?? 1;
+    return h == 0 ? 1 : w / h;
+  }
+  return 1;
+}
+
+double _computeKeepFraction(Size imageSize, double targetAspect) {
+  final imageAspect = imageSize.width / imageSize.height;
+  if (imageAspect > targetAspect) return targetAspect / imageAspect;
+  return imageAspect / targetAspect;
+}
+
+PrintQuality _computePrintQuality(double keepFraction) {
+  if (keepFraction >= 0.90) return PrintQuality.recommended;
+  if (keepFraction >= 0.75) return PrintQuality.acceptable;
+  return PrintQuality.unsuitable;
+}
+
+IconData _qualityIcon(PrintQuality q) {
+  switch (q) {
+    case PrintQuality.recommended: return Icons.check_circle;
+    case PrintQuality.acceptable:  return Icons.warning_amber_rounded;
+    case PrintQuality.unsuitable:  return Icons.cancel;
+  }
+}
+
+Color _qualityColor(PrintQuality q) {
+  switch (q) {
+    case PrintQuality.recommended: return const Color(0xFF2E7D32);
+    case PrintQuality.acceptable:  return const Color(0xFFE65100);
+    case PrintQuality.unsuitable:  return const Color(0xFFC62828);
+  }
+}
+
+String _qualityLabel(PrintQuality q) {
+  switch (q) {
+    case PrintQuality.recommended: return 'Recommandé';
+    case PrintQuality.acceptable:  return 'Acceptable';
+    case PrintQuality.unsuitable:  return 'Déconseillé';
+  }
+}
+// ──────────────────────────────────────────────────────────
+
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final Set<String> _selectedImages = {};
@@ -147,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       wsUrl: wsUrl,
       onNotification: (type) {
         if (mounted) {
-          print('Notification reçue: $type');
+      // ignore: avoid_print — notification realtimée: $type
           if (type == 'PROMOTIONS_UPDATED') {
             setState(() {
               _promotionsFuture = ApiService.fetchPromotions();
@@ -221,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // Limit to 5
       return items.take(5).toList();
     } catch (e) {
-      print("Error fetching history: $e");
+      // ignore: avoid_print — erreur récupération historique
       return [];
     }
   }
@@ -267,6 +317,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _connectivitySubscription.cancel();
     _realtimeService?.disconnect();
     super.dispose();
+  }
+
+  /// Vide le panier après un paiement réussi.
+  void _clearCart() {
+    if (!mounted) return;
+    setState(() {
+      _selectedImages.clear();
+      _photoDetails.clear();
+      _totalPrice = 0.0;
+      _isExpress = false;
+    });
   }
 
   void _onTabTapped(int index) {
@@ -345,38 +406,50 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       try {
         final uploadedUrls = await ApiService.uploadPhotos(pickedFiles);
-        setState(() {
-          _selectedImages.addAll(uploadedUrls);
-          _calculateTotal();
-        });
+
         if (_prices != null && _prices!.isNotEmpty) {
-          await Navigator.push(
+          // Copies temporaires : n'affectent le panier QUE si l'utilisateur confirme
+          final tempImages = uploadedUrls.toList();
+          final tempDetails = <String, Map<String, dynamic>>{};
+
+          final confirmed = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
               builder: (context) => PhotoPreviewScreen(
-                images: _selectedImages.toList(),
-                photoDetails: _photoDetails,
+                images: tempImages,
+                photoDetails: tempDetails,
                 prices: _prices!,
               ),
             ),
           );
+
+          if (confirmed == true && mounted) {
+            setState(() {
+              _selectedImages.addAll(tempImages);
+              for (final e in tempDetails.entries) {
+                _photoDetails[e.key] = e.value;
+              }
+              _calculateTotal();
+              _currentIndex = 1; // Onglet Commandes
+            });
+          }
         }
-        setState(() {
-          _calculateTotal();
-          _currentIndex = 1; // Switch to the Commands tab
-        });
       } catch (e) {
         String errorMessage = e.toString();
         if (errorMessage.startsWith('Exception: ')) {
           errorMessage = errorMessage.substring(11);
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+          );
+        }
       } finally {
-        setState(() {
-          _isUploading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isUploading = false;
+          });
+        }
       }
     } else {
       if (mounted) {
@@ -681,13 +754,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _clearCart() {
-    setState(() {
-      _selectedImages.clear();
-      _photoDetails.clear();
-      _calculateTotal(); // Recalculate total to 0
-    });
-  }
 
   Widget _buildCommandsTab() {
     if (_isLoadingPrices) {
@@ -810,19 +876,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       TextButton.icon(
                         onPressed: () async {
                           if (_prices == null || _prices!.isEmpty) return;
-                          await Navigator.push(
+                          // Copie des détails pour la preview — ne s'applique que si confirmé
+                          final tempImages = _selectedImages.toList();
+                          final tempDetails = <String, Map<String, dynamic>>{
+                            for (final e in _photoDetails.entries)
+                              e.key: Map<String, dynamic>.from(e.value),
+                          };
+                          final confirmed = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
                               builder: (context) => PhotoPreviewScreen(
-                                images: _selectedImages.toList(),
-                                photoDetails: _photoDetails,
+                                images: tempImages,
+                                photoDetails: tempDetails,
                                 prices: _prices!,
                               ),
                             ),
                           );
-                          setState(() {
-                            _calculateTotal();
-                          });
+                          if (confirmed == true && mounted) {
+                            setState(() {
+                              // Applique les modifications de formats/quantités validées
+                              for (final e in tempDetails.entries) {
+                                if (_photoDetails.containsKey(e.key)) {
+                                  _photoDetails[e.key] = e.value;
+                                }
+                              }
+                              _calculateTotal();
+                            });
+                          }
                         },
                         icon: const Icon(Icons.crop, color: AppColors.primary),
                         label: const Text(
@@ -957,21 +1037,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Taille :'),
-                        DropdownButton<String>(
-                          value: photoDetails['size'],
-                          items: _prices!.keys
-                              .map((size) => DropdownMenuItem(
-                                  value: size, child: Text(size)))
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _photoDetails[imageUrl]!['size'] = value;
-                                _calculateTotal();
-                              });
-                            }
-                          },
+                        const Text('Format :',
+                            style: TextStyle(fontWeight: FontWeight.w500)),
+                        // Format en lecture seule — modifiable via Prévisualiser
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: AppColors.primary.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.straighten,
+                                  size: 14, color: AppColors.primary),
+                              const SizedBox(width: 6),
+                              Text(
+                                photoDetails['size'] as String? ?? '—',
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1007,6 +1100,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ],
                 ),
               ),
+              // Hint discret : comment modifier le format
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Row(
+                  children: const [
+                    Icon(Icons.info_outline,
+                        size: 12, color: AppColors.textSecondary),
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Pour changer le format, utilisez "Prévisualiser / Recadrer"',
+                        style: TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         );
@@ -1015,103 +1126,191 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildBatchCart() {
-    // For batch mode, we need a way to set dimensions for all photos
     String? commonSize;
     if (_photoDetails.isNotEmpty) {
       final sizes =
           _photoDetails.values.map((d) => d['size'] as String).toSet();
-      if (sizes.length == 1) {
-        commonSize = sizes.first;
-      }
+      if (sizes.length == 1) commonSize = sizes.first;
     }
 
     return Column(
       children: [
+        // ── Sélecteur dimension globale ──
         Padding(
-          padding: const EdgeInsets.all(5.0),
-          child: Align(
-            alignment: Alignment.centerRight, // Align to the right
-            child: SizedBox(
-              width: 220, // Increased width to handle longer dimension labels
-              child: DropdownButtonFormField<String>(
-                value: commonSize,
-                isExpanded: true, // Allow dropdown to take full width of container
-                decoration: InputDecoration(
-                  labelText: 'Dimension', 
-                  labelStyle: const TextStyle(fontSize: 12), 
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12), 
-                  ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8), 
-                  prefixIcon:
-                      const Icon(Icons.straighten, size: 18), 
-                ),
-                items: _prices!.keys
-                    .map((size) =>
-                        DropdownMenuItem(value: size, child: Text(size)))
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      for (final key in _photoDetails.keys) {
-                        _photoDetails[key]!['size'] = value;
-                      }
-                      _calculateTotal();
-                    });
-                  }
-                },
-              ),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: DropdownButtonFormField<String>(
+            value: commonSize,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Dimension pour toutes les photos',
+              labelStyle: const TextStyle(fontSize: 13),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              prefixIcon: const Icon(Icons.straighten, size: 18),
             ),
+            items: _prices!.keys
+                .map((size) =>
+                    DropdownMenuItem(value: size, child: Text(size)))
+                .toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  for (final key in _photoDetails.keys) {
+                    _photoDetails[key]!['size'] = value;
+                  }
+                  _calculateTotal();
+                });
+              }
+            },
           ),
         ),
+
+        // ── Bannière synthèse qualité ──
+        if (commonSize != null)
+          _buildQualitySummaryBanner(commonSize!),
+
+        // ── Grille de photos ──
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: _selectedImages.length,
-            itemBuilder: (context, index) {
-              final imageUrl = _selectedImages.elementAt(index);
-              return Stack(
-                children: [
-                  (imageUrl.startsWith('http'))
-                      ? Image.network(imageUrl, fit: BoxFit.cover)
-                      : Image.file(File(imageUrl), fit: BoxFit.cover),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () {
+          child: commonSize == null
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Text(
+                      'Choisissez une dimension pour voir la compatibilité avec vos photos.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: _selectedImages.length,
+                  itemBuilder: (context, index) {
+                    final imageUrl = _selectedImages.elementAt(index);
+                    return _BatchPhotoTile(
+                      imageUrl: imageUrl,
+                      dimension: commonSize!,
+                      onRemove: () {
                         setState(() {
                           _selectedImages.remove(imageUrl);
                           _photoDetails.remove(imageUrl);
                           _calculateTotal();
                         });
                       },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color.fromARGB(
-                              255, 238, 33, 6), // Blue background
-                          borderRadius:
-                              BorderRadius.circular(10), // Keep rounded corners
-                        ),
-                        padding: const EdgeInsets.all(4),
-                        child: const Icon(Icons.close,
-                            size: 12, color: Colors.white), // White icon
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                    );
+                  },
+                ),
         ),
       ],
     );
+  }
+
+  /// Bannière de synthèse : combien de photos sont recommandées/acceptables/déconseillées
+  Widget _buildQualitySummaryBanner(String dimension) {
+    final targetAspect = _parseDimensionAspect(dimension);
+    final images = _selectedImages.toList();
+
+    return FutureBuilder<List<PrintQuality>>(
+      future: Future.wait(images.map((url) async {
+        final size = await _loadImageSizeLocal(url);
+        final keep = _computeKeepFraction(size, targetAspect);
+        return _computePrintQuality(keep);
+      })),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6),
+            child: LinearProgressIndicator(minHeight: 2),
+          );
+        }
+        final qualities = snap.data!;
+        final nbRec = qualities.where((q) => q == PrintQuality.recommended).length;
+        final nbAcc = qualities.where((q) => q == PrintQuality.acceptable).length;
+        final nbUns = qualities.where((q) => q == PrintQuality.unsuitable).length;
+        final hasIssues = nbUns > 0 || nbAcc > 0;
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: hasIssues
+                ? const Color(0xFFFFF8E1)
+                : const Color(0xFFE8F5E9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasIssues
+                  ? const Color(0xFFFFB300).withOpacity(0.5)
+                  : const Color(0xFF2E7D32).withOpacity(0.4),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              if (nbRec > 0)
+                _SummaryChip(
+                    count: nbRec,
+                    quality: PrintQuality.recommended),
+              if (nbAcc > 0)
+                _SummaryChip(
+                    count: nbAcc,
+                    quality: PrintQuality.acceptable),
+              if (nbUns > 0)
+                _SummaryChip(
+                    count: nbUns,
+                    quality: PrintQuality.unsuitable),
+              if (!hasIssues)
+                Row(children: const [
+                  Icon(Icons.check_circle,
+                      size: 15, color: Color(0xFF2E7D32)),
+                  SizedBox(width: 4),
+                  Text('Toutes les photos sont compatibles !',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.bold)),
+                ]),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Charge la taille d'une image localement (cache simple)
+  final Map<String, Size> _batchSizeCache = {};
+  Future<Size> _loadImageSizeLocal(String imageUrl) async {
+    if (_batchSizeCache.containsKey(imageUrl)) {
+      return _batchSizeCache[imageUrl]!;
+    }
+    final completer = Completer<Size>();
+    final ImageProvider provider = imageUrl.startsWith('http')
+        ? NetworkImage(imageUrl)
+        : FileImage(File(imageUrl)) as ImageProvider;
+    final stream = provider.resolve(const ImageConfiguration());
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (info, _) {
+        final size = Size(
+            info.image.width.toDouble(), info.image.height.toDouble());
+        _batchSizeCache[imageUrl] = size;
+        if (!completer.isCompleted) completer.complete(size);
+        stream.removeListener(listener);
+      },
+      onError: (_, __) {
+        if (!completer.isCompleted) completer.complete(const Size(1, 1));
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
+    return completer.future;
   }
 
   void _showValidationPopup() {
@@ -2007,4 +2206,123 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
   
+}
+
+// ── Miniature photo avec indicateur de qualité (mode lot) ──────────────
+class _BatchPhotoTile extends StatelessWidget {
+  final String imageUrl;
+  final String dimension;
+  final VoidCallback onRemove;
+
+  const _BatchPhotoTile({
+    required this.imageUrl,
+    required this.dimension,
+    required this.onRemove,
+  });
+
+  Future<PrintQuality> _computeQuality() async {
+    final completer = Completer<Size>();
+    final ImageProvider provider = imageUrl.startsWith('http')
+        ? NetworkImage(imageUrl)
+        : FileImage(File(imageUrl)) as ImageProvider;
+    final stream = provider.resolve(const ImageConfiguration());
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (info, _) {
+        final size = Size(info.image.width.toDouble(), info.image.height.toDouble());
+        if (!completer.isCompleted) completer.complete(size);
+        stream.removeListener(listener);
+      },
+      onError: (_, __) {
+        if (!completer.isCompleted) completer.complete(const Size(1, 1));
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
+    final size = await completer.future;
+    final aspect = _parseDimensionAspect(dimension);
+    final keep = _computeKeepFraction(size, aspect);
+    return _computePrintQuality(keep);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          imageUrl.startsWith('http')
+              ? Image.network(imageUrl, fit: BoxFit.cover)
+              : Image.file(File(imageUrl), fit: BoxFit.cover),
+          Positioned(
+            left: 0, right: 0, bottom: 0,
+            child: Container(
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 4, left: 4,
+            child: FutureBuilder<PrintQuality>(
+              future: _computeQuality(),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const SizedBox(
+                    width: 14, height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white),
+                  );
+                }
+                final q = snap.data!;
+                return Tooltip(
+                  message: _qualityLabel(q),
+                  child: Icon(_qualityIcon(q), size: 18, color: _qualityColor(q),
+                      shadows: const [Shadow(color: Colors.black45, blurRadius: 4)]),
+                );
+              },
+            ),
+          ),
+          Positioned(
+            top: 4, right: 4,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                decoration: BoxDecoration(color: const Color(0xFFEE2106), borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.all(4),
+                child: const Icon(Icons.close, size: 12, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Chip de synthèse qualité ───────────────────────────────
+class _SummaryChip extends StatelessWidget {
+  final int count;
+  final PrintQuality quality;
+
+  const _SummaryChip({required this.count, required this.quality});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _qualityColor(quality);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(_qualityIcon(quality), size: 15, color: color),
+        const SizedBox(width: 4),
+        Text('$count ${_qualityLabel(quality)}',
+            style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
 }

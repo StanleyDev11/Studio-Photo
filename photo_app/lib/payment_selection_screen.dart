@@ -57,10 +57,21 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     super.initState();
     _fetchPrices();
     // _fetchContactInfo(); // Removed: no longer needed
-    // Initialize Fedapay
+    // Clé FedaPay : injectée au build via --dart-define=FEDAPAY_API_KEY=pk_live_xxx
+    // En dev sans dart-define, bascule automatiquement sur la clé sandbox.
+    const fedaApiKey = String.fromEnvironment(
+      'FEDAPAY_API_KEY',
+      defaultValue: 'pk_sandbox_T07_uKrSPDbodUlB0zTbAoGb',
+    );
+    const fedaEnv = String.fromEnvironment(
+      'FEDAPAY_ENV',
+      defaultValue: 'sandbox',
+    );
     final feda = FedaFlutter(
-      apiKey: "pk_sandbox_T07_uKrSPDbodUlB0zTbAoGb",
-      environment: ApiEnvironment.sandbox,
+      apiKey: fedaApiKey,
+      environment: fedaEnv == 'live'
+          ? ApiEnvironment.live
+          : ApiEnvironment.sandbox,
     );
     feda.initialize();
   }
@@ -207,7 +218,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Choisir le mode de paiement'),
+        title: const Text('Paiement'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
       ),
@@ -219,10 +230,56 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                     GeometricBackground(),
                     Column(
                       children: [
+                        // ── Badge montant total ──
                         Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [AppColors.primary, AppColors.accent],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withOpacity(0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total à payer',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  '${widget.totalAmount.toStringAsFixed(0)} FCFA',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                           child: Text(
-                            'Veuillez choisir votre mode de paiement :',
+                            _paymentMethods.length == 1
+                                ? 'Confirmez le paiement via ${_paymentMethods.first['name']} :'
+                                : 'Choisissez votre mode de paiement :',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium

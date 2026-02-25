@@ -116,7 +116,59 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
                                 letterSpacing: 0.5),
                           ),
                         ),
-                        const SizedBox(height: 42),
+                        const SizedBox(height: 16),
+                        // ── Carte résumé montant ──
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 20),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1A237E), Color(0xFF283593)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF1A237E).withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Total à payer',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 12),
+                                  ),
+                                  Text(
+                                    '${widget.orderDetails.length} photo${widget.orderDetails.length > 1 ? 's' : ''}',
+                                    style: TextStyle(
+                                        color: Colors.white.withOpacity(0.6),
+                                        fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                '${widget.totalAmount.toStringAsFixed(0)} FCFA',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 26),
                         _buildField(
                           label: 'Prénom',
                           controller: _firstName,

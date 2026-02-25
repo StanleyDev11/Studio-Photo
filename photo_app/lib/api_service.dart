@@ -188,7 +188,7 @@ class ApiService {
         return details;
       }
     } catch (e) {
-      print('Error fetching auth details: $e');
+      // Erreur lors de la récupération des infos utilisateur — ignorée silencieusement
     }
     return null;
   }
@@ -276,9 +276,30 @@ class ApiService {
 
   static Future<Booking> createBooking(Booking booking) async {
     const url = '$baseUrl/bookings';
-    final response = await _safePost(url, booking.toJson());
+    final body = {
+      'title': booking.title,
+      'description': booking.description,
+      'userId': booking.userId,
+      'startTime': booking.startTime.toIso8601String(),
+      'endTime': booking.endTime.toIso8601String(),
+      'status': booking.status.name.toUpperCase(),
+      'type': _bookingTypeToJson(booking.type),
+      'amount': booking.amount,
+      'notes': booking.notes,
+    };
+    final response = await _safePost(url, body);
     final Map<String, dynamic> responseData = _handleApiResponse(response);
     return Booking.fromJson(responseData);
+  }
+
+  static String _bookingTypeToJson(BookingType type) {
+    switch (type) {
+      case BookingType.photoSession: return 'PHOTO_SESSION';
+      case BookingType.event:        return 'EVENT';
+      case BookingType.portrait:     return 'PORTRAIT';
+      case BookingType.product:      return 'PRODUCT';
+      case BookingType.other:        return 'OTHER';
+    }
   }
 
   static Future<List<Booking>> fetchUserBookings() async {

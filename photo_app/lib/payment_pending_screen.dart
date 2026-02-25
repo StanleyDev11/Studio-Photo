@@ -126,8 +126,16 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen>
       } else if (_attempts >= _maxAttempts) {
         _onTimeout();
       }
-    } catch (_) {
-      if (_attempts >= _maxAttempts) _onTimeout();
+    } catch (e) {
+      // Ne pas compter les erreurs réseau transitoires comme des tentatives
+      final isNetworkError = e.toString().contains('SocketException') ||
+          e.toString().contains('Délai dépassé') ||
+          e.toString().contains('réseau');
+      if (!isNetworkError) {
+        // Erreur non-réseau → on compte quand même la tentative
+        if (_attempts >= _maxAttempts && mounted) _onTimeout();
+      }
+      // Si erreur réseau : on réessaie silencieusement au prochain tick
     }
   }
 

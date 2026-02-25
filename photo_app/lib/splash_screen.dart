@@ -14,63 +14,61 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   VideoPlayerController? _controller;
-  int _currentVideoIndex = 0;
-  final List<String> _videoAssets = [
-    // 'assets/splash.mp4',
-    'assets/splash1.mp4',
-  ];
+  bool _navigated = false;
 
   @override
   void initState() {
     super.initState();
-    _playVideo(index: 0);
+    _initVideo();
+
+    // Sécurité : on navigue dans tous les cas après 3 secondes
+    Future.delayed(const Duration(seconds: 3), () {
+      _navigateToNextScreen();
+    });
   }
 
-  void _playVideo({required int index}) {
-    if (index >= _videoAssets.length) {
-      _navigateToNextScreen();
-      return;
-    }
+  Future<void> _initVideo() async {
+    try {
+      final controller = VideoPlayerController.asset('assets/splash1.mp4');
+      _controller = controller;
+      await controller.initialize();
+      if (!mounted) return;
+      setState(() {});
+      await controller.play();
 
-    _currentVideoIndex = index;
-
-    _controller?.dispose();
-
-    _controller = VideoPlayerController.asset(_videoAssets[_currentVideoIndex])
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {});
-          _controller?.play();
-        }
-      })
-      ..addListener(() {
-        if (_controller!.value.position == _controller!.value.duration) {
-          if (mounted) {
-            _playVideo(index: _currentVideoIndex + 1);
-          }
+      // Attendre la fin de la vidéo
+      controller.addListener(() {
+        if (controller.value.position >= controller.value.duration &&
+            controller.value.duration > Duration.zero) {
+          _navigateToNextScreen();
         }
       });
+    } catch (_) {
+      // Si la vidéo échoue, le timer de 3s prendra le relais
+    }
   }
 
   void _navigateToNextScreen() {
+    if (_navigated || !mounted) return;
+    _navigated = true;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        if (ApiService.authToken != null && ApiService.userId != null) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => HomeScreen(
-                userName: ApiService.userName ?? 'Utilisateur',
-                userLastName: ApiService.userLastName ?? '',
-                userEmail: ApiService.userEmail ?? '',
-                userId: ApiService.userId!,
-              ),
+      if (!mounted) return;
+      if (ApiService.authToken != null && ApiService.userId != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(
+              userName: ApiService.userName ?? 'Utilisateur',
+              userLastName: ApiService.userLastName ?? '',
+              userEmail: ApiService.userEmail ?? '',
+              userId: ApiService.userId!,
             ),
-          );
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-          );
-        }
+          ),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
       }
     });
   }
@@ -84,16 +82,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.black,
       body: Center(
         child: _controller != null && _controller!.value.isInitialized
             ? AspectRatio(
                 aspectRatio: _controller!.value.aspectRatio,
                 child: VideoPlayer(_controller!),
               )
-            : const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-              ),
+            : const SizedBox.shrink(), // fond noir propre pendant le chargement
       ),
     );
   }
