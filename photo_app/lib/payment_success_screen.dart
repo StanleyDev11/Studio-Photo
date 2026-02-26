@@ -7,6 +7,7 @@ import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaymentSuccessScreen extends StatelessWidget {
   final String orderId;
@@ -16,14 +17,83 @@ class PaymentSuccessScreen extends StatelessWidget {
     required this.orderId,
   });
 
-  /// Navigue vers l'historique des commandes en effaçant toute la pile
-  /// de navigation jusqu'à la première route, puis en poussant l'historique.
+  /// Navigue vers l'accueil puis vers l'historique pour éviter le bug de déconnexion.
   void _goToHistory(BuildContext context) {
     ApiService.clearPendingPayment();
-    Navigator.of(context).popUntil((r) => r.isFirst);
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/home',
+      (route) => false,
+      arguments: {
+        'userName': ApiService.userName,
+        'userLastName': ApiService.userLastName,
+        'userEmail': ApiService.userEmail,
+        'userId': ApiService.userId,
+      },
+    );
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const HistoryScreen()),
     );
+  }
+
+  void _goToHome(BuildContext context) {
+    ApiService.clearPendingPayment();
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/home',
+      (route) => false,
+      arguments: {
+        'userName': ApiService.userName,
+        'userLastName': ApiService.userLastName,
+        'userEmail': ApiService.userEmail,
+        'userId': ApiService.userId,
+      },
+    );
+  }
+
+  Future<void> _sendWhatsAppSummary(BuildContext context) async {
+    try {
+      final contact = await ApiService.fetchContactInfo();
+      final phone = contact.phoneNumber.replaceAll(RegExp(r'\s+'), '');
+      
+      final buffer = StringBuffer();
+      buffer.writeln("🎉 *Nouvelle Commande Reçue * 🎉");
+      buffer.writeln("---------------------------------");
+      buffer.writeln("*Commande ID:* $orderId");
+      buffer.writeln("*Client:* ${ApiService.userName} ${ApiService.userLastName}");
+      buffer.writeln("*Contact:* ${ApiService.userPhone ?? ApiService.userEmail}"); 
+      buffer.writeln("*Mode de paiement:* ${ApiService.pendingPaymentMethod ?? 'Mix by Yass'}");
+      buffer.writeln("---------------------------------");
+      buffer.writeln("*Détails de la commande:*");
+
+      if (ApiService.pendingOrderDetails != null) {
+        ApiService.pendingOrderDetails!.forEach((imageUrl, details) {
+          final fileName = imageUrl.split('/').last;
+          buffer.writeln("- Photo: $fileName");
+          buffer.writeln("  Taille: ${details['size']}");
+          buffer.writeln("  Quantité: ${details['quantity']}");
+        });
+      }
+      
+      buffer.writeln("---------------------------------");
+      buffer.writeln("Merci de traiter cette commande.");
+
+      final message = Uri.encodeComponent(buffer.toString());
+      final whatsappUrl = Uri.parse("whatsapp://send?phone=$phone&text=$message");
+      final webUrl = Uri.parse("https://wa.me/$phone?text=$message");
+
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl);
+      } else if (await canLaunchUrl(webUrl)) {
+        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Impossible de lancer WhatsApp';
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur WhatsApp : $e"), backgroundColor: Colors.orange),
+        );
+      }
+    }
   }
 
   @override
@@ -147,19 +217,43 @@ class PaymentSuccessScreen extends StatelessWidget {
 
                         const SizedBox(height: 10),
 
-                        // Bouton principal : aller à l'historique des commandes
+                        // Bouton principal : envoyer WhatsApp et aller à l'historique
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             icon: const Icon(Icons.history_outlined),
-                            label: const Text('Voir mes commandes'),
-                            onPressed: () => _goToHistory(context),
+                            label: const Text('Envoyer WhatsApp & Voir commandes'),
+                            onPressed: () {
+                              _sendWhatsAppSummary(context);
+                              _goToHistory(context);
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
-                              minimumSize: const Size(double.infinity, 48),
+                              minimumSize: const Size(double.infinity, 52),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 4,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Nouveau bouton : Retour à l'accueil (Bouton d'action secondaire propre)
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.home_outlined),
+                            label: const Text("Page d'accueil"),
+                            onPressed: () => _goToHome(context),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.primary, width: 1.5),
+                              foregroundColor: AppColors.primary,
+                              minimumSize: const Size(double.infinity, 52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                           ),
@@ -167,15 +261,6 @@ class PaymentSuccessScreen extends StatelessWidget {
 
                         const SizedBox(height: 8),
 
-                        // Lien secondaire vers l'accueil
-                        TextButton(
-                          onPressed: () {
-                            ApiService.clearPendingPayment();
-                            Navigator.of(context)
-                                .popUntil((r) => r.isFirst);
-                          },
-                          child: const Text("Retour à l'accueil"),
-                        ),
                       ],
                     ),
                   ),

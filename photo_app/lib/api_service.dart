@@ -20,6 +20,7 @@ class ApiService {
   static String? _userName;
   static String? _userLastName;
   static String? _userEmail;
+  static String? _userPhone;
   // Pending payment data
   static Map<String, Map<String, dynamic>>? _pendingOrderDetails;
   static Map<String, double>? _pendingPrices;
@@ -35,6 +36,7 @@ class ApiService {
     _userName = _preferences?.getString('userName');
     _userLastName = _preferences?.getString('userLastName');
     _userEmail = _preferences?.getString('userEmail');
+    _userPhone = _preferences?.getString('userPhone');
   }
 
   // Getters for user details
@@ -43,6 +45,7 @@ class ApiService {
   static String? get userName => _userName;
   static String? get userLastName => _userLastName;
   static String? get userEmail => _userEmail;
+  static String? get userPhone => _userPhone;
   static Map<String, Map<String, dynamic>>? get pendingOrderDetails =>
       _pendingOrderDetails;
   static Map<String, double>? get pendingPrices => _pendingPrices;
@@ -75,12 +78,14 @@ class ApiService {
     _userName = authData['firstname'];
     _userLastName = authData['lastname'];
     _userEmail = authData['email'];
+    _userPhone = authData['phone'];
 
     await _preferences?.setString('authToken', _authToken!);
     await _preferences?.setInt('userId', _userId!);
     await _preferences?.setString('userName', _userName!);
     await _preferences?.setString('userLastName', _userLastName!);
     await _preferences?.setString('userEmail', _userEmail!);
+    if (_userPhone != null) await _preferences?.setString('userPhone', _userPhone!);
   }
 
   static Future<void> clearAuthDetails() async {
@@ -89,11 +94,13 @@ class ApiService {
     _userName = null;
     _userLastName = null;
     _userEmail = null;
+    _userPhone = null;
     await _preferences?.remove('authToken');
     await _preferences?.remove('userId');
     await _preferences?.remove('userName');
     await _preferences?.remove('userLastName');
     await _preferences?.remove('userEmail');
+    await _preferences?.remove('userPhone');
   }
 
   static Map<String, String> get _headers {
@@ -180,10 +187,12 @@ class ApiService {
           _userName = details['firstname'];
           _userLastName = details['lastname'];
           _userEmail = details['email'];
+          _userPhone = details['phone'];
           
           await _preferences?.setString('userName', _userName ?? '');
           await _preferences?.setString('userLastName', _userLastName ?? '');
           await _preferences?.setString('userEmail', _userEmail ?? '');
+          await _preferences?.setString('userPhone', _userPhone ?? '');
         }
         return details;
       }

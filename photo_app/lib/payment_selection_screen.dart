@@ -344,7 +344,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                                       ),
                                       const SizedBox(height: 12),
                                       Text(
-                                        'Cartes Bancaires & Mobile Money (MTN, Moov, Flooz, Wave)',
+                                        'Cartes Bancaires & Mobile Money (MTN, Moov, Flooz, MixxYas Wave)',
                                         textAlign: TextAlign.center,
                                         style: TextStyle(fontSize: 11, color: AppColors.textSecondary.withOpacity(0.8)),
                                       ),
