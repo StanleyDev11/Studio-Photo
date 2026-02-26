@@ -52,7 +52,8 @@ class PaymentSuccessScreen extends StatelessWidget {
   Future<void> _sendWhatsAppSummary(BuildContext context) async {
     try {
       final contact = await ApiService.fetchContactInfo();
-      final phone = contact.phoneNumber.replaceAll(RegExp(r'\s+'), '');
+      // On garde uniquement les chiffres pour WhatsApp (incluant le code pays)
+      final phone = contact.phoneNumber.replaceAll(RegExp(r'\D'), '');
       
       final buffer = StringBuffer();
       buffer.writeln("🎉 *Nouvelle Commande Reçue * 🎉");
@@ -223,9 +224,9 @@ class PaymentSuccessScreen extends StatelessWidget {
                           child: ElevatedButton.icon(
                             icon: const Icon(Icons.history_outlined),
                             label: const Text('Envoyer WhatsApp & Voir commandes'),
-                            onPressed: () {
-                              _sendWhatsAppSummary(context);
-                              _goToHistory(context);
+                            onPressed: () async {
+                              await _sendWhatsAppSummary(context);
+                              if (context.mounted) _goToHistory(context);
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
