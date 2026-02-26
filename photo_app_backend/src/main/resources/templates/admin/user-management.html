@@ -1056,7 +1056,17 @@
                         </button>
                     </div>
                     <div class="modal-body">
-                        <div style="height: 400px; width: 100%;">
+                        <div class="row mb-4">
+                            <div class="col-md-6 text-center border-right">
+                                <div class="text-muted small text-uppercase font-weight-bold">Total Commandes</div>
+                                <div class="h3 font-weight-bold text-primary" id="chartTotalOrders">0</div>
+                            </div>
+                            <div class="col-md-6 text-center">
+                                <div class="text-muted small text-uppercase font-weight-bold">Montant Total</div>
+                                <div class="h3 font-weight-bold text-success"><span id="chartTotalRevenue">0</span> FCFA</div>
+                            </div>
+                        </div>
+                        <div style="height: 350px; width: 100%;">
                             <canvas id="userHistoryChart"></canvas>
                         </div>
                     </div>
@@ -1353,6 +1363,10 @@
                     .then(chartData => {
                         const ctx = document.getElementById('userHistoryChart').getContext('2d');
                         
+                        // Update summary stats
+                        $('#chartTotalOrders').text(chartData.totalOrders);
+                        $('#chartTotalRevenue').text(chartData.totalRevenue.toLocaleString());
+
                         if (userHistoryChart) {
                             userHistoryChart.destroy();
                         }

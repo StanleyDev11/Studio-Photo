@@ -10,5 +10,7 @@ import java.util.List;
 @Builder
 public class RevenueChartDTO {
     private List<String> labels;
-    private List<BigDecimal> data;
+    private List<java.math.BigDecimal> data;
+    private long totalOrders;
+    private java.math.BigDecimal totalRevenue;
 }

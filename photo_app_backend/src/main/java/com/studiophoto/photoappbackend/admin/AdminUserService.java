@@ -53,9 +53,15 @@ public class AdminUserService {
             data.add(monthlyRev != null ? monthlyRev : java.math.BigDecimal.ZERO);
         }
 
+        long totalOrders = orderRepository.countOrdersByUserAndStatusIn(userId, revenueStatuses);
+        java.math.BigDecimal totalRevenue = orderRepository.sumTotalRevenueByUserAndStatusIn(userId, revenueStatuses);
+        if (totalRevenue == null) totalRevenue = java.math.BigDecimal.ZERO;
+
         return com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO.builder()
                 .labels(labels)
                 .data(data)
+                .totalOrders(totalOrders)
+                .totalRevenue(totalRevenue)
                 .build();
     }
 

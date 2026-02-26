@@ -44,6 +44,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.user.id = :userId AND o.status IN :statuses AND o.createdAt BETWEEN :start AND :end")
     BigDecimal sumUserRevenueBetween(@Param("userId") Integer userId, @Param("statuses") List<OrderStatus> statuses, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.user.id = :userId AND o.status IN :statuses")
+    long countOrdersByUserAndStatusIn(@Param("userId") Integer userId, @Param("statuses") List<OrderStatus> statuses);
+
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.user.id = :userId AND o.status IN :statuses")
+    BigDecimal sumTotalRevenueByUserAndStatusIn(@Param("userId") Integer userId, @Param("statuses") List<OrderStatus> statuses);
+
     List<Order> findTop5ByOrderByCreatedAtDesc();
 
     List<Order> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime start, LocalDateTime end);
