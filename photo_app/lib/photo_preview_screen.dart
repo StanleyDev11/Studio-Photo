@@ -340,10 +340,19 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen>
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         title: const Text('Choisir le format'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          tooltip: 'Annuler',
-          onPressed: () => Navigator.of(context).pop(false),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.close, color: AppColors.primary, size: 20),
+              tooltip: 'Annuler',
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+          ),
         ),
       ),
       body: FadeTransition(

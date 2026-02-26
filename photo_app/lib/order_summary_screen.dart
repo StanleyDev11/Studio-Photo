@@ -84,10 +84,10 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
       _totalPrice = _subtotal + _deliveryFee;
     });
   }
-
   void _updateQuantity(String imageUrl, int change) {
     setState(() {
-      final currentQuantity = _editableOrderDetails[imageUrl]!['quantity'] as int;
+      final currentQuantity =
+          _editableOrderDetails[imageUrl]!['quantity'] as int;
       if (currentQuantity + change > 0) {
         _editableOrderDetails[imageUrl]!['quantity'] = currentQuantity + change;
         _calculatePrices();
@@ -102,6 +102,19 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
         title: const Text('Récapitulatif de la commande'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppColors.primary, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
