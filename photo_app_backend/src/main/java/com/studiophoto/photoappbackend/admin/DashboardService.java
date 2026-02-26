@@ -248,4 +248,44 @@ public class DashboardService {
                 .data(dailyBookings)
                 .build();
     }
+
+    public com.studiophoto.photoappbackend.admin.dto.PhotoFormatChartDTO getPhotoFormatChartData() {
+        List<Object[]> results = orderItemRepository.countByPhotoSize();
+        List<String> labels = new java.util.ArrayList<>();
+        List<Long> data = new java.util.ArrayList<>();
+        List<String> colors = Arrays.asList("#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40");
+
+        int colorIndex = 0;
+        List<String> backgroundColors = new java.util.ArrayList<>();
+
+        for (Object[] result : results) {
+            labels.add((String) result[0]);
+            data.add((Long) result[1]);
+            backgroundColors.add(colors.get(colorIndex % colors.size()));
+            colorIndex++;
+        }
+
+        return com.studiophoto.photoappbackend.admin.dto.PhotoFormatChartDTO.builder()
+                .labels(labels)
+                .data(data)
+                .backgroundColors(backgroundColors)
+                .build();
+    }
+
+    public com.studiophoto.photoappbackend.admin.dto.WeeklyActivityChartDTO getWeeklyActivityChartData() {
+        List<String> labels = Arrays.asList("Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche");
+        Long[] activityData = new Long[7];
+        Arrays.fill(activityData, 0L);
+
+        List<com.studiophoto.photoappbackend.order.Order> allOrders = orderRepository.findAll();
+        for (com.studiophoto.photoappbackend.order.Order order : allOrders) {
+            int dayOfWeek = order.getCreatedAt().getDayOfWeek().getValue(); // 1 (Mon) to 7 (Sun)
+            activityData[dayOfWeek - 1]++;
+        }
+
+        return com.studiophoto.photoappbackend.admin.dto.WeeklyActivityChartDTO.builder()
+                .labels(labels)
+                .data(Arrays.asList(activityData))
+                .build();
+    }
 }

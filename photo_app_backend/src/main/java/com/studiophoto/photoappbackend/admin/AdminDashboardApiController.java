@@ -58,4 +58,14 @@ public class AdminDashboardApiController {
     public ResponseEntity<com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO> getRevenueChart() {
         return ResponseEntity.ok(dashboardService.getYearlyRevenueChart());
     }
+
+    @GetMapping("/chart/photo-formats")
+    public ResponseEntity<com.studiophoto.photoappbackend.admin.dto.PhotoFormatChartDTO> getPhotoFormatChart() {
+        return ResponseEntity.ok(dashboardService.getPhotoFormatChartData());
+    }
+
+    @GetMapping("/chart/weekly-activity")
+    public ResponseEntity<com.studiophoto.photoappbackend.admin.dto.WeeklyActivityChartDTO> getWeeklyActivityChart() {
+        return ResponseEntity.ok(dashboardService.getWeeklyActivityChartData());
+    }
 }
