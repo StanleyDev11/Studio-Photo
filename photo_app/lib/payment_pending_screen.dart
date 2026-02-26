@@ -3,6 +3,8 @@ import 'dart:ui';
 
 import 'package:Picon/api_service.dart';
 import 'package:Picon/history_screen.dart';
+import 'package:Picon/home_screen.dart';
+import 'package:Picon/payment_success_screen.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
 import 'package:Picon/widgets/music_wave_loader.dart';
@@ -142,21 +144,13 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen>
   void _onSuccess() {
     _pollTimer?.cancel();
     if (!mounted) return;
-    setState(() {
-      _state = _PayState.success;
-      _successCountdown = 3;
-    });
-    // Compte à rebours 3 s → redirection auto
-    _successTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) return;
-      setState(() {
-        if (_successCountdown > 0) _successCountdown--;
-      });
-      if (_successCountdown <= 0) {
-        t.cancel();
-        _goToHistory();
-      }
-    });
+    
+    // Redirection directe vers la vraie page de succès
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => PaymentSuccessScreen(orderId: _resolvedOrderId ?? ''),
+      ),
+    );
   }
 
   void _onFailed() {
@@ -175,9 +169,23 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen>
   void _goToHistory() {
     ApiService.clearPendingPayment();
     if (!mounted) return;
-    Navigator.of(context).popUntil((r) => r.isFirst);
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const HistoryScreen()),
+    
+    final navigator = Navigator.of(context);
+    
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(
+          userName: ApiService.userName ?? "Utilisateur",
+          userLastName: ApiService.userLastName ?? "",
+          userEmail: ApiService.userEmail ?? "",
+          userId: ApiService.userId ?? 0,
+        ),
+      ),
+      (route) => false,
+    );
+    
+    navigator.push(
+      MaterialPageRoute(builder: (context) => const HistoryScreen()),
     );
   }
 
@@ -249,6 +257,7 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen>
   }
 
   Widget _buildSuccessView() {
+    // Vue temporaire affichée pendant une fraction de seconde avant le pushReplacement
     return Center(
       key: const ValueKey('success'),
       child: Padding(
@@ -272,26 +281,6 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen>
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Merci pour votre confiance.\nRedirection automatique dans $_successCountdown s...',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _goToHistory,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Fermer', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],

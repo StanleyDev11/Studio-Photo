@@ -8,7 +8,6 @@ import 'package:Picon/models/promotion.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class ApiService {
   static const String baseUrl = 'http://109.176.197.158:8080/api';
   static const String rootUrl = 'http://109.176.197.158:8080';
@@ -20,11 +19,16 @@ class ApiService {
   static String? _userName;
   static String? _userLastName;
   static String? _userEmail;
+  static String? _userPhone;
   // Pending payment data
   static Map<String, Map<String, dynamic>>? _pendingOrderDetails;
   static Map<String, double>? _pendingPrices;
   static String? _pendingPaymentMethod;
   static String? _pendingOrderId;
+
+  // Commandes masquées localement (Soft Delete côté client)
+  static List<String> _hiddenOrders = [];
+
   // Flag pour demander la réinitialisation du panier dans HomeScreen
   static bool shouldClearCart = false;
 
@@ -35,6 +39,8 @@ class ApiService {
     _userName = _preferences?.getString('userName');
     _userLastName = _preferences?.getString('userLastName');
     _userEmail = _preferences?.getString('userEmail');
+    _userPhone = _preferences?.getString('userPhone');
+    _hiddenOrders = _preferences?.getStringList('hiddenOrders') ?? [];
   }
 
   // Getters for user details
@@ -43,6 +49,8 @@ class ApiService {
   static String? get userName => _userName;
   static String? get userLastName => _userLastName;
   static String? get userEmail => _userEmail;
+  static String? get userPhone => _userPhone;
+  static List<String> get hiddenOrders => _hiddenOrders;
   static Map<String, Map<String, dynamic>>? get pendingOrderDetails =>
       _pendingOrderDetails;
   static Map<String, double>? get pendingPrices => _pendingPrices;
@@ -69,18 +77,30 @@ class ApiService {
     shouldClearCart = true; // Signale à HomeScreen de vider le panier
   }
 
+  /// Masque une commande localement (côté client uniquement)
+  static Future<void> hideOrderLocally(int orderId) async {
+    final strId = orderId.toString();
+    if (!_hiddenOrders.contains(strId)) {
+      _hiddenOrders.add(strId);
+      await _preferences?.setStringList('hiddenOrders', _hiddenOrders);
+    }
+  }
+
   static Future<void> saveAuthDetails(Map<String, dynamic> authData) async {
     _authToken = authData['token'];
     _userId = authData['id'];
     _userName = authData['firstname'];
     _userLastName = authData['lastname'];
     _userEmail = authData['email'];
+    _userPhone = authData['phone'];
 
     await _preferences?.setString('authToken', _authToken!);
     await _preferences?.setInt('userId', _userId!);
     await _preferences?.setString('userName', _userName!);
     await _preferences?.setString('userLastName', _userLastName!);
     await _preferences?.setString('userEmail', _userEmail!);
+    if (_userPhone != null)
+      await _preferences?.setString('userPhone', _userPhone!);
   }
 
   static Future<void> clearAuthDetails() async {
@@ -89,11 +109,13 @@ class ApiService {
     _userName = null;
     _userLastName = null;
     _userEmail = null;
+    _userPhone = null;
     await _preferences?.remove('authToken');
     await _preferences?.remove('userId');
     await _preferences?.remove('userName');
     await _preferences?.remove('userLastName');
     await _preferences?.remove('userEmail');
+    await _preferences?.remove('userPhone');
   }
 
   static Map<String, String> get _headers {
@@ -115,23 +137,29 @@ class ApiService {
                 'Délai dépassé. Impossible de joindre le serveur.'),
           );
     } catch (error) {
-      throw Exception('Erreur réseau : Impossible de se connecter au serveur. Vérifiez votre connexion et l\'adresse du serveur.');
+      throw Exception(
+          'Erreur réseau : Impossible de se connecter au serveur. Vérifiez votre connexion et l\'adresse du serveur.');
     }
   }
 
   /// Méthode privée pour effectuer une requête POST sécurisée avec un corps JSON.
-  static Future<http.Response> _safePost(String url, Map<String, dynamic> body) async {
+  static Future<http.Response> _safePost(
+      String url, Map<String, dynamic> body) async {
     try {
-      return await http.post(
-        Uri.parse(url),
-        headers: _headers,
-        body: jsonEncode(body),
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw Exception('Délai dépassé. Impossible de joindre le serveur.'),
-      );
+      return await http
+          .post(
+            Uri.parse(url),
+            headers: _headers,
+            body: jsonEncode(body),
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw Exception(
+                'Délai dépassé. Impossible de joindre le serveur.'),
+          );
     } catch (error) {
-      throw Exception('Erreur réseau : Impossible de se connecter au serveur. Vérifiez votre connexion et l\'adresse du serveur.');
+      throw Exception(
+          'Erreur réseau : Impossible de se connecter au serveur. Vérifiez votre connexion et l\'adresse du serveur.');
     }
   }
 
@@ -165,12 +193,14 @@ class ApiService {
     if (responseData != null && responseData.containsKey('token')) {
       return responseData;
     } else {
-      throw Exception(responseData['message'] ?? 'La réponse du serveur est invalide ou ne contient pas de jeton.');
+      throw Exception(responseData['message'] ??
+          'La réponse du serveur est invalide ou ne contient pas de jeton.');
     }
   }
 
   static Future<Map<String, dynamic>?> getAuthDetails() async {
-    const url = '$baseUrl/auth/me'; // Most backends have a /me or /profile endpoint
+    const url =
+        '$baseUrl/auth/me'; // Most backends have a /me or /profile endpoint
     try {
       final response = await _safeGet(url);
       if (response.statusCode == 200) {
@@ -180,10 +210,12 @@ class ApiService {
           _userName = details['firstname'];
           _userLastName = details['lastname'];
           _userEmail = details['email'];
-          
+          _userPhone = details['phone'];
+
           await _preferences?.setString('userName', _userName ?? '');
           await _preferences?.setString('userLastName', _userLastName ?? '');
           await _preferences?.setString('userEmail', _userEmail ?? '');
+          await _preferences?.setString('userPhone', _userPhone ?? '');
         }
         return details;
       }
@@ -193,7 +225,8 @@ class ApiService {
     return null;
   }
 
-  static Future<Map<String, dynamic>> login({String? email, String? phone, required String password}) async {
+  static Future<Map<String, dynamic>> login(
+      {String? email, String? phone, required String password}) async {
     const url = '$baseUrl/auth/authenticate';
     final Map<String, dynamic> body = {'password': password};
 
@@ -209,9 +242,10 @@ class ApiService {
     return _handleAuthResponse(response);
   }
 
-  static Future<Map<String, dynamic>> signup(String name, String email, String phone, String password, String pin) async {
+  static Future<Map<String, dynamic>> signup(String name, String email,
+      String phone, String password, String pin) async {
     const url = '$baseUrl/auth/register';
-    
+
     String firstname = name;
     String lastname = '';
     if (name.contains(' ')) {
@@ -257,7 +291,7 @@ class ApiService {
     return list.map((json) => Promotion.fromJson(json)).toList();
   }
 
-    static Future<List<PhotoFormat>> fetchDimensions() async {
+  static Future<List<PhotoFormat>> fetchDimensions() async {
     const url = '$baseUrl/public/dimensions';
     final response = await _safeGet(url);
     final responseData = _handleApiResponse(response);
@@ -265,7 +299,6 @@ class ApiService {
     final List<dynamic> list = responseData as List<dynamic>;
     return list.map((json) => PhotoFormat.fromJson(json)).toList();
   }
-
 
   static Future<FeaturedContent> fetchFeaturedContent() async {
     const url = '$baseUrl/featured-content/active';
@@ -294,14 +327,18 @@ class ApiService {
 
   static String _bookingTypeToJson(BookingType type) {
     switch (type) {
-      case BookingType.photoSession: return 'PHOTO_SESSION';
-      case BookingType.event:        return 'EVENT';
-      case BookingType.portrait:     return 'PORTRAIT';
-      case BookingType.product:      return 'PRODUCT';
-      case BookingType.other:        return 'OTHER';
+      case BookingType.photoSession:
+        return 'PHOTO_SESSION';
+      case BookingType.event:
+        return 'EVENT';
+      case BookingType.portrait:
+        return 'PORTRAIT';
+      case BookingType.product:
+        return 'PRODUCT';
+      case BookingType.other:
+        return 'OTHER';
     }
   }
-
 
 // fetch user bookings
   static Future<List<Booking>> fetchUserBookings() async {
@@ -310,7 +347,9 @@ class ApiService {
     final responseData = _handleApiResponse(response);
     if (responseData == null) return [];
     final List<dynamic> list = responseData as List<dynamic>;
-    return list.map((json) => Booking.fromRawJson(json as Map<String, dynamic>)).toList();
+    return list
+        .map((json) => Booking.fromRawJson(json as Map<String, dynamic>))
+        .toList();
   }
 
   // fetch active featured contents
@@ -327,18 +366,18 @@ class ApiService {
       ..sort((a, b) => a.priority.compareTo(b.priority));
   }
 
-
 // fetch contact info
   static Future<ContactInfo> fetchContactInfo() async {
-    const url = '$baseUrl/public/contact-info'; // Endpoint to fetch contact info
+    const url =
+        '$baseUrl/public/contact-info'; // Endpoint to fetch contact info
     final response = await _safeGet(url);
     final Map<String, dynamic> responseData = _handleApiResponse(response);
     return ContactInfo.fromJson(responseData);
   }
 
-
-// verify pin for password reset  
-  static Future<Map<String, dynamic>> verifyPinForPasswordReset({String? email, String? phone, required String pin}) async {
+// verify pin for password reset
+  static Future<Map<String, dynamic>> verifyPinForPasswordReset(
+      {String? email, String? phone, required String pin}) async {
     const url = '$baseUrl/auth/verify-pin';
     final Map<String, dynamic> body = {'pin': pin};
 
@@ -347,15 +386,17 @@ class ApiService {
     } else if (phone != null && phone.isNotEmpty) {
       body['identifier'] = phone;
     } else {
-      throw Exception('Email ou numéro de téléphone requis pour la vérification du code PIN.');
+      throw Exception(
+          'Email ou numéro de téléphone requis pour la vérification du code PIN.');
     }
 
     final response = await _safePost(url, body);
     return _handleApiResponse(response); // Expects { "resetToken": "..." }
   }
 
-  // reset password with token  
-  static Future<void> resetPasswordWithToken({required String token, required String newPassword}) async {
+  // reset password with token
+  static Future<void> resetPasswordWithToken(
+      {required String token, required String newPassword}) async {
     const url = '$baseUrl/auth/reset-password';
     final body = {
       'token': token,
@@ -405,13 +446,16 @@ class ApiService {
   }
 
   // update order
-  static Future<Order> updateOrder(int orderId, Map<String, dynamic> updates) async {
+  static Future<Order> updateOrder(
+      int orderId, Map<String, dynamic> updates) async {
     final url = '$baseUrl/orders/$orderId';
-    final response = await http.put(
-      Uri.parse(url),
-      headers: _headers,
-      body: jsonEncode(updates),
-    ).timeout(const Duration(seconds: 15));
+    final response = await http
+        .put(
+          Uri.parse(url),
+          headers: _headers,
+          body: jsonEncode(updates),
+        )
+        .timeout(const Duration(seconds: 15));
     return Order.fromJson(_handleApiResponse(response));
   }
 
@@ -440,7 +484,8 @@ class ApiService {
     }
 
     try {
-      final streamedResponse = await request.send().timeout(const Duration(minutes: 2));
+      final streamedResponse =
+          await request.send().timeout(const Duration(minutes: 2));
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -452,14 +497,16 @@ class ApiService {
           throw Exception('Invalid response format from server.');
         }
       } else {
-        throw Exception('Failed to upload photos. Server responded with status code ${response.statusCode}: ${response.body}');
+        throw Exception(
+            'Failed to upload photos. Server responded with status code ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       throw Exception('Error uploading photos: $e');
     }
   }
 
-  static Future<Map<String, dynamic>> initiateFedapayPayment(Map<String, dynamic> orderPayload) async {
+  static Future<Map<String, dynamic>> initiateFedapayPayment(
+      Map<String, dynamic> orderPayload) async {
     const url = '$baseUrl/payments/fedapay/initiate';
     final response = await _safePost(url, orderPayload);
     final responseData = _handleApiResponse(response);
@@ -470,11 +517,13 @@ class ApiService {
         'deliveryAddress': orderPayload['deliveryAddress'],
       };
     } else {
-      throw Exception('Failed to initiate Fedapay payment: Invalid response from server.');
+      throw Exception(
+          'Failed to initiate Fedapay payment: Invalid response from server.');
     }
   }
 
-  static Future<Map<String, dynamic>> verifyFedapayTransaction(String transactionId) async {
+  static Future<Map<String, dynamic>> verifyFedapayTransaction(
+      String transactionId) async {
     final url = '$baseUrl/payments/fedapay/verify?id=$transactionId';
     final response = await _safeGet(url);
     final responseData = _handleApiResponse(response);
@@ -484,6 +533,4 @@ class ApiService {
       throw Exception('Failed to verify Fedapay transaction.');
     }
   }
-
 }
-

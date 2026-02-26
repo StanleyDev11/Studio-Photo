@@ -1,4 +1,4 @@
-﻿// ignore_for_file: unused_import
+// ignore_for_file: unused_import
 
 import 'dart:async';
 import 'dart:ui';
@@ -32,6 +32,8 @@ import 'package:Picon/models/promotion.dart';
 import 'package:Picon/models/order.dart';
 import 'package:Picon/models/booking.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:Picon/utils/print_quality_utils.dart';
+import 'package:Picon/utils/image_helper.dart';
 
 // --- Model Class for Real History Data ---
 enum HistoryItemType { order, booking }
@@ -73,55 +75,7 @@ class HomeScreen extends StatefulWidget {
 
 enum CartMode { detail, batch }
 
-// ── Utilitaires qualité d'impression ──────────────────────
-enum PrintQuality { recommended, acceptable, unsuitable }
-
-double _parseDimensionAspect(String dimension) {
-  final matches = RegExp(r'(\d+([.,]\d+)?)').allMatches(dimension).toList();
-  if (matches.length >= 2) {
-    final w = double.tryParse(matches[0].group(1)!.replaceAll(',', '.')) ?? 1;
-    final h = double.tryParse(matches[1].group(1)!.replaceAll(',', '.')) ?? 1;
-    return h == 0 ? 1 : w / h;
-  }
-  return 1;
-}
-
-double _computeKeepFraction(Size imageSize, double targetAspect) {
-  final imageAspect = imageSize.width / imageSize.height;
-  if (imageAspect > targetAspect) return targetAspect / imageAspect;
-  return imageAspect / targetAspect;
-}
-
-PrintQuality _computePrintQuality(double keepFraction) {
-  if (keepFraction >= 0.90) return PrintQuality.recommended;
-  if (keepFraction >= 0.75) return PrintQuality.acceptable;
-  return PrintQuality.unsuitable;
-}
-
-IconData _qualityIcon(PrintQuality q) {
-  switch (q) {
-    case PrintQuality.recommended: return Icons.check_circle;
-    case PrintQuality.acceptable:  return Icons.warning_amber_rounded;
-    case PrintQuality.unsuitable:  return Icons.cancel;
-  }
-}
-
-Color _qualityColor(PrintQuality q) {
-  switch (q) {
-    case PrintQuality.recommended: return const Color(0xFF2E7D32);
-    case PrintQuality.acceptable:  return const Color(0xFFE65100);
-    case PrintQuality.unsuitable:  return const Color(0xFFC62828);
-  }
-}
-
-String _qualityLabel(PrintQuality q) {
-  switch (q) {
-    case PrintQuality.recommended: return 'Recommandé';
-    case PrintQuality.acceptable:  return 'Acceptable';
-    case PrintQuality.unsuitable:  return 'Déconseillé';
-  }
-}
-// ──────────────────────────────────────────────────────────
+// ── Qualité d'impression : voir utils/print_quality_utils.dart ──
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
@@ -142,7 +96,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // --- New state variables for cart ---
   CartMode _selectedMode = CartMode.detail;
   bool _isExpress = false;
-  bool _isSuggesting = false;
   double _totalPrice = 0.0;
   Map<String, double>? _prices;
   bool _isLoadingPrices = true;
@@ -408,7 +361,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
 
       try {
-        final uploadedUrls = await ApiService.uploadPhotos(pickedFiles);
+        // Compression des images avant upload
+        final compressedPaths = await compressBatch(pickedFiles);
+        final compressedFiles = compressedPaths.map((p) => File(p)).toList();
+        final uploadedUrls = await ApiService.uploadPhotos(compressedFiles);
 
         if (_prices != null && _prices!.isNotEmpty) {
           // Copies temporaires : n'affectent le panier QUE si l'utilisateur confirme
@@ -598,7 +554,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 children: [
                   Image.asset(
                     'assets/images/pro.png',
-                    height: 30, // Smaller logo
+                    height: 75, // Agrandissement du logo
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 2), // Reduced space
@@ -722,15 +678,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         // Vérifier si la photo est incompatible avec tous les formats
                         if (_prices != null && _prices!.isNotEmpty) {
                           final size = await _loadImageSizeLocal(imageUrl);
-                          double bestKeep = 0;
+                          double bestDpi = 0;
                           for (final dim in _prices!.keys) {
-                            final k = _computeKeepFraction(size, _parseDimensionAspect(dim));
-                            if (k > bestKeep) bestKeep = k;
+                            final d = computeDpi(size, dim);
+                            if (d > bestDpi) bestDpi = d;
                           }
-                          if (_computePrintQuality(bestKeep) == PrintQuality.unsuitable && mounted) {
-                            final continueAnyway = await _showNoCompatibleFormatDialog();
-                            if (!continueAnyway) return;
-                          }
+                          
                         }
                         setState(() {
                           _selectedImages.add(imageUrl);
@@ -796,66 +749,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    SegmentedButton<CartMode>(
-                      style: SegmentedButton.styleFrom(
-                        selectedBackgroundColor: AppColors.primary,
-                        selectedForegroundColor: Colors.white,
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
-                      ),
-                      segments: const [
-                        ButtonSegment(
-                            value: CartMode.detail,
-                            label: Text('Par détail'),
-                            icon: Icon(Icons.photo_library_outlined)),
-                        ButtonSegment(
-                            value: CartMode.batch,
-                            label: Text('Par lot'),
-                            icon: Icon(Icons.collections_outlined)),
-                      ],
-                      selected: {_selectedMode},
-                      onSelectionChanged: (Set<CartMode> newSelection) {
-                        setState(() {
-                          _selectedMode = newSelection.first;
-                          _calculateTotal();
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: Container(
-                        key: ValueKey(_selectedMode),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.info_outline,
-                                size: 16, color: AppColors.primary),
-                            const SizedBox(width: 8),
-                            Text(
-                              _selectedMode == CartMode.detail
-                                  ? "Une photo pour Une dimension"
-                                  : "Plusieurs photos pour une même dimension",
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                child: const SizedBox.shrink(),
               ),
               Expanded(
                 child: RefreshIndicator(
@@ -884,9 +778,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                           ],
                         )
-                      : _selectedMode == CartMode.detail
-                          ? _buildDetailCart()
-                          : _buildBatchCart(),
+                      : _buildDetailCart(),
                 ),
               ),
               if (_selectedImages.isNotEmpty)
@@ -983,166 +875,239 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildDetailCart() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      itemCount: _selectedImages.length,
-      itemBuilder: (context, index) {
-        final imageUrl = _selectedImages.elementAt(index);
-        if (!_photoDetails.containsKey(imageUrl)) {
-          _photoDetails[imageUrl] = {'size': '10x15 cm', 'quantity': 1};
-        }
-        final photoDetails = _photoDetails[imageUrl]!;
-        final price = _prices![photoDetails['size']] ?? 0;
-        final subtotal = price * (photoDetails['quantity'] as int);
+    return Column(
+      children: [
+        // -- Liste des photos --
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            itemCount: _selectedImages.length,
+            itemBuilder: (context, index) {
+              final imageUrl = _selectedImages.elementAt(index);
+              if (!_photoDetails.containsKey(imageUrl)) {
+                _photoDetails[imageUrl] = {'size': '10x15 cm', 'quantity': 1};
+              }
+              final photoDetails = _photoDetails[imageUrl]!;
+              final price = _prices![photoDetails['size']] ?? 0;
+              final subtotal = price * (photoDetails['quantity'] as int);
 
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
-          clipBehavior: Clip.antiAlias,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: ExpansionTile(
-            key: ValueKey(imageUrl),
-            title: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  child: (imageUrl.startsWith('http'))
-                      ? Image.network(imageUrl,
-                          width: 60, height: 60, fit: BoxFit.cover)
-                      : Image.file(File(imageUrl),
-                          width: 60, height: 60, fit: BoxFit.cover),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: ExpansionTile(
+                  key: ValueKey(imageUrl),
+                  title: Row(
                     children: [
-                      Text('Photo ${index + 1}',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${subtotal.toStringAsFixed(0)} FCFA',
-                        style: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold),
+                      // -- Vignette + Badge DPI --
+                      FutureBuilder<Size>(
+                        future: _loadImageSizeLocal(imageUrl),
+                        builder: (ctx, snap) {
+                          final dimension = photoDetails['size'] as String? ?? '10x15 cm';
+                          Widget badge = const SizedBox.shrink();
+                          if (snap.hasData) {
+                            final dpi = computeDpi(snap.data!, dimension);
+                            final q = qualityFromDpi(dpi);
+                            badge = Positioned(
+                              top: 2, right: 2,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: qualityColor(q),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(qualityIcon(q),
+                                    size: 14, color: Colors.white),
+                              ),
+                            );
+                          }
+                          return Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8.0),
+                                child: (imageUrl.startsWith('http'))
+                                    ? Image.network(imageUrl,
+                                        width: 60, height: 60, fit: BoxFit.cover)
+                                    : Image.file(File(imageUrl),
+                                        width: 60, height: 60, fit: BoxFit.cover),
+                              ),
+                              badge,
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Photo ${index + 1}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${subtotal.toStringAsFixed(0)} FCFA',
+                              style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            // -- Mini badge qualite textuel --
+                            FutureBuilder<Size>(
+                              future: _loadImageSizeLocal(imageUrl),
+                              builder: (ctx, snap) {
+                                if (!snap.hasData) return const SizedBox.shrink();
+                                final dim = photoDetails['size'] as String? ?? '10x15 cm';
+                                final dpi = computeDpi(snap.data!, dim);
+                                final q = qualityFromDpi(dpi);
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Row(
+                                    children: [
+                                      Icon(qualityIcon(q), size: 12, color: qualityColor(q)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${qualityLabel(q)} (${dpi.round()} DPI)',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: qualityColor(q),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color.fromARGB(255, 236, 7, 7),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.delete,
+                              size: 18, color: Colors.white),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _selectedImages.remove(imageUrl);
+                            _photoDetails.remove(imageUrl);
+                            _calculateTotal();
+                          });
+                        },
                       ),
                     ],
                   ),
-                ),
-                IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Color.fromARGB(255, 236, 7, 7), // Blue background
-                      shape: BoxShape.circle, // Circular shape
-                    ),
-                    child: const Icon(Icons.delete,
-                        size: 18, color: Colors.white), // White icon
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _selectedImages.remove(imageUrl);
-                      _photoDetails.remove(imageUrl);
-                      _calculateTotal();
-                    });
-                  },
-                ),
-              ],
-            ),
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Format :',
-                            style: TextStyle(fontWeight: FontWeight.w500)),
-                        // Format en lecture seule — modifiable via Prévisualiser
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: AppColors.primary.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Icon(Icons.straighten,
-                                  size: 14, color: AppColors.primary),
-                              const SizedBox(width: 6),
-                              Text(
-                                photoDetails['size'] as String? ?? '—',
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                              const Text('Format :',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w500)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                      color:
+                                          AppColors.primary.withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.straighten,
+                                        size: 14, color: AppColors.primary),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      photoDetails['size'] as String? ?? '---',
+                                      style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Quantite :'),
+                              Row(
+                                children: [
+                                  IconButton(
+                                      icon: const Icon(Icons.remove),
+                                      onPressed: () {
+                                        if (photoDetails['quantity'] > 1) {
+                                          setState(() {
+                                            _photoDetails[imageUrl]![
+                                                'quantity'] -= 1;
+                                            _calculateTotal();
+                                          });
+                                        }
+                                      }),
+                                  Text('${photoDetails['quantity']}'),
+                                  IconButton(
+                                      icon: const Icon(Icons.add),
+                                      onPressed: () {
+                                        setState(() {
+                                          _photoDetails[imageUrl]![
+                                              'quantity'] += 1;
+                                          _calculateTotal();
+                                        });
+                                      }),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Quantité :'),
-                        Row(
-                          children: [
-                            IconButton(
-                                icon: const Icon(Icons.remove),
-                                onPressed: () {
-                                  if (photoDetails['quantity'] > 1) {
-                                    setState(() {
-                                      _photoDetails[imageUrl]!['quantity'] -= 1;
-                                      _calculateTotal();
-                                    });
-                                  }
-                                }),
-                            Text('${photoDetails['quantity']}'),
-                            IconButton(
-                                icon: const Icon(Icons.add),
-                                onPressed: () {
-                                  setState(() {
-                                    _photoDetails[imageUrl]!['quantity'] += 1;
-                                    _calculateTotal();
-                                  });
-                                }),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              // Hint discret : comment modifier le format
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: Row(
-                  children: const [
-                    Icon(Icons.info_outline,
-                        size: 12, color: AppColors.textSecondary),
-                    SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        'Pour changer le format, utilisez "Prévisualiser / Recadrer"',
-                        style: TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.info_outline,
+                              size: 12, color: AppColors.textSecondary),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Pour changer le format, utilisez "Previsualiser / Recadrer"',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -1190,32 +1155,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     });
                   }
                 },
-              ),
-              const SizedBox(height: 8),
-              // Bouton Suggérer bien visible
-              ElevatedButton.icon(
-                onPressed: _isSuggesting ? null : _suggestBestDimension,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                icon: _isSuggesting
-                    ? const SizedBox(
-                        width: 16, height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.auto_awesome, size: 18),
-                label: Text(
-                  _isSuggesting
-                      ? 'Analyse en cours...'
-                      : 'Suggérer la meilleure dimension',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 13),
-                ),
               ),
             ],
           ),
@@ -1269,14 +1208,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// Bannière de synthèse : combien de photos sont recommandées/acceptables/déconseillées
   Widget _buildQualitySummaryBanner(String dimension) {
-    final targetAspect = _parseDimensionAspect(dimension);
+    final targetAspect = dimensionAspect(dimension);
     final images = _selectedImages.toList();
 
     return FutureBuilder<List<PrintQuality>>(
       future: Future.wait(images.map((url) async {
         final size = await _loadImageSizeLocal(url);
-        final keep = _computeKeepFraction(size, targetAspect);
-        return _computePrintQuality(keep);
+        final keep = computeKeepFraction(size, targetAspect);
+        return qualityFromKeepFraction(keep);
       })),
       builder: (context, snap) {
         if (!snap.hasData) {
@@ -1286,9 +1225,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
         }
         final qualities = snap.data!;
-        final nbRec = qualities.where((q) => q == PrintQuality.recommended).length;
-        final nbAcc = qualities.where((q) => q == PrintQuality.acceptable).length;
-        final nbUns = qualities.where((q) => q == PrintQuality.unsuitable).length;
+        final nbRec = qualities.where((q) => q == PrintQuality.perfect).length;
+        final nbAcc = qualities.where((q) => q == PrintQuality.correct).length;
+        final nbUns = qualities.where((q) => q == PrintQuality.tooSmall).length;
         final hasIssues = nbUns > 0 || nbAcc > 0;
 
         return Container(
@@ -1311,15 +1250,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               if (nbRec > 0)
                 _SummaryChip(
                     count: nbRec,
-                    quality: PrintQuality.recommended),
+                    quality: PrintQuality.perfect),
               if (nbAcc > 0)
                 _SummaryChip(
                     count: nbAcc,
-                    quality: PrintQuality.acceptable),
+                    quality: PrintQuality.correct),
               if (nbUns > 0)
                 _SummaryChip(
                     count: nbUns,
-                    quality: PrintQuality.unsuitable),
+                    quality: PrintQuality.tooSmall),
               if (!hasIssues)
                 Row(children: const [
                   Icon(Icons.check_circle,
@@ -1338,188 +1277,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// Charge la taille d'une image localement (cache simple)
+  /// Charge la taille d'une image (lecture rapide des headers)
   final Map<String, Size> _batchSizeCache = {};
   Future<Size> _loadImageSizeLocal(String imageUrl) async {
     if (_batchSizeCache.containsKey(imageUrl)) {
       return _batchSizeCache[imageUrl]!;
     }
-    final completer = Completer<Size>();
-    final ImageProvider provider = imageUrl.startsWith('http')
-        ? NetworkImage(imageUrl)
-        : FileImage(File(imageUrl)) as ImageProvider;
-    final stream = provider.resolve(const ImageConfiguration());
-    late ImageStreamListener listener;
-    listener = ImageStreamListener(
-      (info, _) {
-        final size = Size(
-            info.image.width.toDouble(), info.image.height.toDouble());
-        _batchSizeCache[imageUrl] = size;
-        if (!completer.isCompleted) completer.complete(size);
-        stream.removeListener(listener);
-      },
-      onError: (_, __) {
-        if (!completer.isCompleted) completer.complete(const Size(1, 1));
-        stream.removeListener(listener);
-      },
-    );
-    stream.addListener(listener);
-    return completer.future;
+    final size = await getImageDimensions(imageUrl);
+    _batchSizeCache[imageUrl] = size;
+    return size;
   }
 
 
   // ── Suggestion automatique de la meilleure dimension ──────────────────
-  Future<void> _suggestBestDimension() async {
-    if (_prices == null || _prices!.isEmpty || _selectedImages.isEmpty) return;
-    setState(() => _isSuggesting = true);
-
-    final images = _selectedImages.toList();
-    final sizes = await Future.wait(images.map(_loadImageSizeLocal));
-
-    // Scorer chaque dimension disponible
-    String? bestDimension;
-    double bestScore = -1;
-    int bestRec = -1;
-
-    for (final dim in _prices!.keys) {
-      final aspect = _parseDimensionAspect(dim);
-      double score = 0;
-      int rec = 0;
-      for (final size in sizes) {
-        final keep = _computeKeepFraction(size, aspect);
-        final q = _computePrintQuality(keep);
-        if (q == PrintQuality.recommended) { score += 1.0; rec++; }
-        else if (q == PrintQuality.acceptable) { score += 0.6; }
-      }
-      if (score > bestScore || (score == bestScore && rec > bestRec)) {
-        bestScore = score;
-        bestRec = rec;
-        bestDimension = dim;
-      }
-    }
-
-    if (bestDimension == null || !mounted) {
-      setState(() => _isSuggesting = false);
-      return;
-    }
-
-    // Appliquer la meilleure dimension globale
-    setState(() {
-      for (final key in _photoDetails.keys) {
-        _photoDetails[key]!['size'] = bestDimension;
-      }
-      _calculateTotal();
-      _isSuggesting = false;
-    });
-
-    // Calculer les photos encore déconseillées + leur meilleure dimension individuelle
-    final chosenAspect = _parseDimensionAspect(bestDimension!);
-    final List<Map<String, dynamic>> unsuitablePhotos = [];
-
-    for (int i = 0; i < images.length; i++) {
-      final url = images[i];
-      final size = sizes[i];
-      final keep = _computeKeepFraction(size, chosenAspect);
-      if (_computePrintQuality(keep) == PrintQuality.unsuitable) {
-        // Trouver la meilleure dimension individuelle pour cette photo
-        String? bestIndivDim;
-        double bestIndivScore = -1;
-        for (final dim in _prices!.keys) {
-          final k = _computeKeepFraction(size, _parseDimensionAspect(dim));
-          if (k > bestIndivScore) {
-            bestIndivScore = k;
-            bestIndivDim = dim;
-          }
-        }
-        unsuitablePhotos.add({
-          'url': url,
-          'bestDim': bestIndivDim ?? bestDimension,
-          'keepFraction': bestIndivScore,
-        });
-      }
-    }
-
-    if (!mounted) return;
-
-    if (unsuitablePhotos.isEmpty) {
-      // Toutes les photos sont ok
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Row(children: [
-          const Icon(Icons.check_circle, color: Colors.white, size: 16),
-          const SizedBox(width: 8),
-          Expanded(child: Text('Meilleure dimension : $bestDimension — Toutes les photos sont compatibles !')),
-        ]),
-        backgroundColor: const Color(0xFF2E7D32),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 3),
-      ));
-    } else {
-      // Certaines photos restent déconseillées
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.showSnackBar(SnackBar(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Ligne titre
-            Row(children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text('Format partiellement incompatible',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-              // Bouton X
-              GestureDetector(
-                onTap: () => messenger.hideCurrentSnackBar(),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(Icons.close, color: Colors.white, size: 18),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 8),
-            // Message
-            Text(
-              'Dimension : $bestDimension — ${unsuitablePhotos.length} photo(s) restent déconseillées.',
-              style: const TextStyle(fontSize: 13, color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            // Bouton Adapter
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  messenger.hideCurrentSnackBar();
-                  _showUnsuitableAdaptDialog(unsuitablePhotos, bestDimension!);
-                },
-                icon: const Icon(Icons.tune, size: 16),
-                label: const Text('Adapter les photos déconseillées',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFFE65100),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFFE65100),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        duration: const Duration(seconds: 10),
-      ));
-    }
-  }
 
   /// Bottom sheet : photos déconseillées avec leur meilleure dimension individuelle
   void _showUnsuitableAdaptDialog(
@@ -1581,7 +1351,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       final url = photo['url'] as String;
                       final bestDim = photo['bestDim'] as String;
                       final keep = ((photo['keepFraction'] as double) * 100).toInt();
-                      final q = _computePrintQuality(photo['keepFraction'] as double);
+                      final q = qualityFromKeepFraction(photo['keepFraction'] as double);
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
@@ -1592,7 +1362,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               : Image.file(File(url), width: 56, height: 56, fit: BoxFit.cover),
                         ),
                         title: Row(children: [
-                          Icon(_qualityIcon(q), size: 14, color: _qualityColor(q)),
+                          Icon(qualityIcon(q), size: 14, color: qualityColor(q)),
                           const SizedBox(width: 6),
                           Text(bestDim,
                               style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -1602,7 +1372,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           children: [
                             Text('Conservation : $keep%',
                                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                            if (q == PrintQuality.unsuitable)
+                            if (q == PrintQuality.tooSmall)
                               const Text(
                                 'Aucun format pleinement compatible — moins mauvaise option',
                                 style: TextStyle(fontSize: 10, color: Color(0xFFC62828)),
@@ -1610,10 +1380,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ],
                         ),
                         trailing: Chip(
-                          label: Text(_qualityLabel(q),
-                              style: TextStyle(fontSize: 11, color: _qualityColor(q))),
-                          backgroundColor: _qualityColor(q).withOpacity(0.1),
-                          side: BorderSide(color: _qualityColor(q).withOpacity(0.3)),
+                          label: Text(qualityLabel(q),
+                              style: TextStyle(fontSize: 11, color: qualityColor(q))),
+                          backgroundColor: qualityColor(q).withOpacity(0.1),
+                          side: BorderSide(color: qualityColor(q).withOpacity(0.3)),
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                         ),
                       );
@@ -1669,122 +1439,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       },
     );
   }
-    // ── Vérifier si des photos sont déconseillées avant de valider ─────────
   Future<void> _validateWithUnsuitableCheck() async {
-    if (_selectedMode == CartMode.batch && _selectedImages.isNotEmpty) {
-      final commonSizeSet = _photoDetails.values.map((d) => d['size'] as String).toSet();
-      if (commonSizeSet.length == 1) {
-        final dim = commonSizeSet.first;
-        final aspect = _parseDimensionAspect(dim);
-        final images = _selectedImages.toList();
-        final sizes = await Future.wait(images.map(_loadImageSizeLocal));
-        final hasUnsuitable = sizes.any((size) {
-          final keep = _computeKeepFraction(size, aspect);
-          return _computePrintQuality(keep) == PrintQuality.unsuitable;
-        });
-        if (hasUnsuitable && mounted) {
-          final proceed = await _showUnsuitableWarningDialog();
-          if (!proceed) return;
-        }
-      }
-    }
     _showValidationPopup();
-  }
-
-
-  // ── Dialog : aucun format compatible pour cette photo ─────────────────
-  Future<bool> _showNoCompatibleFormatDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            title: Row(children: const [
-              Icon(Icons.photo_camera_back_outlined, color: Color(0xFFC62828), size: 28),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text('Photo peu adaptée à l\'impression',
-                    style: TextStyle(fontSize: 16)),
-              ),
-            ]),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Cette photo n\'a aucun format d\'impression compatible.\n\n'
-                  'Sa résolution ou ses proportions sont trop éloignées de nos formats disponibles, '
-                  'ce qui entraînerait une qualité d\'impression très dégradée pour tous les formats.',
-                  style: TextStyle(fontSize: 13),
-                ),
-                SizedBox(height: 12),
-                Row(children: [
-                  Icon(Icons.lightbulb_outline, size: 14, color: Color(0xFFE65100)),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Conseil : utilisez une photo avec une résolution plus élevée ou des proportions plus standard.',
-                      style: TextStyle(fontSize: 11, color: Color(0xFFE65100)),
-                    ),
-                  ),
-                ]),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Ne pas ajouter',
-                    style: TextStyle(color: AppColors.textSecondary)),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC62828),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Ajouter quand même'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-  Future<bool> _showUnsuitableWarningDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(children: const [
-              Icon(Icons.warning_amber_rounded, color: Color(0xFFC62828), size: 28),
-              SizedBox(width: 8),
-              Text('Format déconseillé', style: TextStyle(fontSize: 17)),
-            ]),
-            content: const Text(
-              'Une ou plusieurs photos seront fortement recadrées avec ce format.\n\n'
-              'La qualité d\'impression sera très dégradée.\n\n'
-              'Voulez-vous quand même continuer, ou choisir un autre format ?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Changer le format',
-                    style: TextStyle(color: AppColors.primary)),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC62828),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Continuer quand même'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
   }
   void _showValidationPopup() {
     // Use a local variable for the state of the switch inside the dialog
@@ -2870,9 +2526,9 @@ class _BatchPhotoTile extends StatelessWidget {
     );
     stream.addListener(listener);
     final size = await completer.future;
-    final aspect = _parseDimensionAspect(dimension);
-    final keep = _computeKeepFraction(size, aspect);
-    return _computePrintQuality(keep);
+    final aspect = dimensionAspect(dimension);
+    final keep = computeKeepFraction(size, aspect);
+    return qualityFromKeepFraction(keep);
   }
 
   @override
@@ -2911,8 +2567,8 @@ class _BatchPhotoTile extends StatelessWidget {
                 }
                 final q = snap.data!;
                 return Tooltip(
-                  message: _qualityLabel(q),
-                  child: Icon(_qualityIcon(q), size: 18, color: _qualityColor(q),
+                  message: qualityLabel(q),
+                  child: Icon(qualityIcon(q), size: 18, color: qualityColor(q),
                       shadows: const [Shadow(color: Colors.black45, blurRadius: 4)]),
                 );
               },
@@ -2944,15 +2600,20 @@ class _SummaryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _qualityColor(quality);
+    final color = qualityColor(quality);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(_qualityIcon(quality), size: 15, color: color),
+        Icon(qualityIcon(quality), size: 15, color: color),
         const SizedBox(width: 4),
-        Text('$count ${_qualityLabel(quality)}',
+        Text('$count ${qualityLabel(quality)}',
             style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
       ],
     );
   }
 }
+
+
+
+
+

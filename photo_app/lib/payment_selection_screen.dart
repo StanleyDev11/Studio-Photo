@@ -38,11 +38,9 @@ class PaymentSelectionScreen extends StatefulWidget {
 }
 
 class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
-  String? _selectedMethodName;
+  String? _selectedMethodName = 'FedaPay';
   Map<String, double>? _prices;
   bool _isLoadingPrices = true;
-  // String _prestatairePhoneNumber = ""; // Removed: no longer needed for static methods
-  // bool _isLoadingContactInfo = true; // Removed: no longer needed
 
   final List<Map<String, String>> _paymentMethods = [
     {
@@ -218,9 +216,22 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Paiement'),
+        title: const Text('Confirmation finale'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppColors.primary, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ),
       ),
       body:
           (_isLoadingPrices /* || _isLoadingContactInfo */) // _isLoadingContactInfo removed
@@ -275,151 +286,72 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           child: Text(
-                            _paymentMethods.length == 1
-                                ? 'Confirmez le paiement via ${_paymentMethods.first['name']} :'
-                                : 'Choisissez votre mode de paiement :',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(color: AppColors.textPrimary),
+                            'Veuillez confirmer vos informations avant de procéder au paiement sécurisé.',
+                            style: TextStyle(color: AppColors.textPrimary.withOpacity(0.7), fontSize: 13),
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: Colors.white.withOpacity(0.2)),
-                            ),
-                            child: const Text(
-                              'Le code PIN Mobile Money est saisi sur l’interface de paiement FedaPay.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ),
                         Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(
-                                    horizontal: 16.0),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                      color: Colors.white.withOpacity(0.2)),
-                                ),
-                                child: Column(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                // Bloc Info Client
+                                _buildInfoCard(
+                                  title: 'Informations de livraison',
+                                  icon: Icons.local_shipping_outlined,
                                   children: [
-                                    Expanded(
-                                      child: ListView.builder(
-                                        padding: const EdgeInsets.all(16.0),
-                                        itemCount: _paymentMethods.length,
-                                        itemBuilder: (context, index) {
-                                          final method = _paymentMethods[index];
-                                          final isSelected = method['name'] ==
-                                              _selectedMethodName;
-
-                                          return Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 10.0),
-                                            child: GestureDetector(
-                                              onTap: () => _onMethodSelected(
-                                                  method['name']!),
-                                              child: AnimatedContainer(
-                                                duration: 400.ms,
-                                                curve: Curves.easeOutQuart,
-                                                transform: isSelected 
-                                                  ? (Matrix4.identity()..scale(1.02))
-                                                  : Matrix4.identity(),
-                                                decoration: BoxDecoration(
-                                                  color: isSelected
-                                                      ? Colors.white.withOpacity(0.15)
-                                                      : Colors.white.withOpacity(0.05),
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
-                                                  boxShadow: isSelected ? [
-                                                    BoxShadow(
-                                                      color: AppColors.primary.withOpacity(0.3),
-                                                      blurRadius: 15,
-                                                      spreadRadius: 2,
-                                                    )
-                                                  ] : [],
-                                                  border: Border.all(
-                                                    color: isSelected
-                                                        ? AppColors.primary
-                                                        : Colors.white
-                                                            .withOpacity(0.2),
-                                                    width:
-                                                        isSelected ? 2.0 : 1.0,
-                                                  ),
-                                                ),
-                                                child: ListTile(
-                                                  contentPadding:
-                                                      const EdgeInsets.symmetric(
-                                                          horizontal: 20, vertical: 12),
-                                                  leading: Container(
-                                                    padding: const EdgeInsets.all(8),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white,
-                                                      borderRadius: BorderRadius.circular(12),
-                                                    ),
-                                                    child: Image.asset(
-                                                      method['logo']!,
-                                                      width: 40,
-                                                      height: 40,
-                                                      fit: BoxFit.contain,
-                                                    ),
-                                                  ),
-                                                  title: Text(
-                                                    method['name']!,
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-                                                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                                                      letterSpacing: 0.5,
-                                                    ),
-                                                  ),
-                                                  subtitle: isSelected ? Padding(
-                                                    padding: const EdgeInsets.only(top: 8.0),
-                                                    child: Text(
-                                                      method['description']!,
-                                                      style: TextStyle(
-                                                        color: AppColors.textPrimary.withOpacity(0.7),
-                                                        fontSize: 12,
-                                                      ),
-                                                    ).animate().fadeIn(),
-                                                  ) : null,
-                                                  trailing: isSelected 
-                                                    ? Icon(Icons.check_circle, color: AppColors.primary, size: 28)
-                                                    : Icon(Icons.radio_button_off, color: Colors.white.withOpacity(0.4), size: 24),
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                              .animate()
-                                              .fadeIn(delay: (50 * index).ms)
-                                              .slideY(begin: 0.2, curve: Curves.easeOutBack);
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
+                                    _buildInfoRow(Icons.person_outline, 'Destinataire', '${widget.customerFirstname} ${widget.customerLastname}'),
+                                    _buildInfoRow(Icons.phone_outlined, 'Téléphone', widget.customerPhone ?? 'Non spécifié'),
+                                    _buildInfoRow(Icons.map_outlined, 'Adresse de livraison', widget.deliveryAddress ?? "Non spécifiée"),
+                                    _buildInfoRow(Icons.speed_outlined, 'Mode de retrait', widget.isExpress ? "Express (Prioritaire)" : "Standard"),
                                   ],
                                 ),
-                              ),
+                                const SizedBox(height: 20),
+                                // Bloc Logos de confiance
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.lock_outline, size: 16, color: Colors.green),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Paiement 100% sécurisé',
+                                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 13),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          _buildTrustLogo('assets/logos/pro.png'), // Feda
+                                          _buildTrustLogo('assets/logos/mixbyyass.jpg'), // Yass
+                                          _buildTrustLogo('assets/logos/mastercard.png'),
+                                          _buildTrustLogo('assets/logos/flooz.webp'),
+                                          const Icon(Icons.credit_card, size: 32, color: AppColors.primary),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'Cartes Bancaires & Mobile Money (MTN, Moov, Flooz, MixxYas Wave)',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary.withOpacity(0.8)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -431,28 +363,100 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     );
   }
 
-  Widget _buildConfirmButton() {
-    bool isVisible = _selectedMethodName != null;
-    return AnimatedContainer(
-      duration: 300.ms,
-      height: isVisible ? 100 : 0,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              foregroundColor: AppColors.textOnPrimary,
-              backgroundColor: AppColors.primary,
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: _processPayment,
-            child: const Text(
-              'Payer',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  Widget _buildInfoCard({required String title, required IconData icon, required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.primary, letterSpacing: 0.3)),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Divider(height: 1, thickness: 0.5, color: Colors.white24),
+          ),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: AppColors.primary.withOpacity(0.6)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary.withOpacity(0.7), letterSpacing: 0.5)),
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrustLogo(String assetPath) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2)],
+      ),
+      child: Image.asset(assetPath, width: 35, height: 25, fit: BoxFit.contain),
+    );
+  }
+
+  Widget _buildConfirmButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          foregroundColor: AppColors.textOnPrimary,
+          backgroundColor: AppColors.primary,
+          minimumSize: const Size(double.infinity, 54),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 8,
+          shadowColor: AppColors.primary.withOpacity(0.4),
+        ),
+        onPressed: _processPayment,
+        child: Text(
+          'Confirmer et Payer ${widget.totalAmount.toStringAsFixed(0)} FCFA',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
         ),
       ),
     );

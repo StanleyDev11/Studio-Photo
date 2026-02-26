@@ -84,6 +84,19 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
         title: const Text('Infos du client'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppColors.primary, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: [
