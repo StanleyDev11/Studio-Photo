@@ -26,6 +26,10 @@ class ApiService {
   static Map<String, double>? _pendingPrices;
   static String? _pendingPaymentMethod;
   static String? _pendingOrderId;
+  
+  // Commandes masquées localement (Soft Delete côté client)
+  static List<String> _hiddenOrders = [];
+
   // Flag pour demander la réinitialisation du panier dans HomeScreen
   static bool shouldClearCart = false;
 
@@ -37,6 +41,7 @@ class ApiService {
     _userLastName = _preferences?.getString('userLastName');
     _userEmail = _preferences?.getString('userEmail');
     _userPhone = _preferences?.getString('userPhone');
+    _hiddenOrders = _preferences?.getStringList('hiddenOrders') ?? [];
   }
 
   // Getters for user details
@@ -46,6 +51,7 @@ class ApiService {
   static String? get userLastName => _userLastName;
   static String? get userEmail => _userEmail;
   static String? get userPhone => _userPhone;
+  static List<String> get hiddenOrders => _hiddenOrders;
   static Map<String, Map<String, dynamic>>? get pendingOrderDetails =>
       _pendingOrderDetails;
   static Map<String, double>? get pendingPrices => _pendingPrices;
@@ -70,6 +76,15 @@ class ApiService {
     _pendingPaymentMethod = null;
     _pendingOrderId = null;
     shouldClearCart = true; // Signale à HomeScreen de vider le panier
+  }
+
+  /// Masque une commande localement (côté client uniquement)
+  static Future<void> hideOrderLocally(int orderId) async {
+    final strId = orderId.toString();
+    if (!_hiddenOrders.contains(strId)) {
+      _hiddenOrders.add(strId);
+      await _preferences?.setStringList('hiddenOrders', _hiddenOrders);
+    }
   }
 
   static Future<void> saveAuthDetails(Map<String, dynamic> authData) async {
