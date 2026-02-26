@@ -5,6 +5,7 @@ import com.studiophoto.photoappbackend.model.Status;
 import com.studiophoto.photoappbackend.model.User;
 import com.studiophoto.photoappbackend.repository.UserRepository;
 import com.studiophoto.photoappbackend.security.JwtService;
+import com.studiophoto.photoappbackend.service.ActivityService;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,6 +25,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final ActivityService activityService;
 
     public AuthenticationResponse register(RegisterRequest request) {
         boolean emailExists = userRepository.existsByEmail(request.getEmail());
@@ -48,6 +50,8 @@ public class AuthenticationService {
                 .build();
 
         var savedUser = userRepository.save(user);
+
+        activityService.logActivity(savedUser.getEmail(), "REGISTER", "Nouvelle inscription via API");
 
         String jwtToken = jwtService.generateToken(savedUser);
 
@@ -83,6 +87,8 @@ public class AuthenticationService {
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByPhone(identifier))
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'identifiant : " + identifier));
+
+        activityService.logActivity(user.getEmail(), "LOGIN", "Connexion réussie");
 
         String jwtToken = jwtService.generateToken(user);
 

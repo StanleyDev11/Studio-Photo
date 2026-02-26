@@ -7,7 +7,9 @@ import com.studiophoto.photoappbackend.model.User;
 import com.studiophoto.photoappbackend.booking.BookingRepository;
 import com.studiophoto.photoappbackend.order.OrderRepository;
 import com.studiophoto.photoappbackend.repository.UserRepository;
+import com.studiophoto.photoappbackend.service.ActivityService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,11 @@ public class AdminUserService {
     private final PasswordEncoder passwordEncoder;
     private final OrderRepository orderRepository;
     private final BookingRepository bookingRepository;
+    private final ActivityService activityService;
+
+    private String getCurrentAdminEmail() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
 
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
@@ -55,7 +62,9 @@ public class AdminUserService {
                 .phone(request.getPhone())
                 .pin(request.getPin())
                 .build();
-        return mapToUserResponse(userRepository.save(user));
+        UserResponse response = mapToUserResponse(userRepository.save(user));
+        activityService.logActivity(getCurrentAdminEmail(), "USER_CREATE", "Création de l'utilisateur: " + user.getEmail());
+        return response;
     }
 
     public Optional<UserResponse> updateUser(Integer id, UserRequest request) {
@@ -73,7 +82,9 @@ public class AdminUserService {
                     if (request.getPassword() != null && !request.getPassword().isEmpty()) {
                         user.setPassword(passwordEncoder.encode(request.getPassword()));
                     }
-                    return mapToUserResponse(userRepository.save(user));
+                    UserResponse response = mapToUserResponse(userRepository.save(user));
+                    activityService.logActivity(getCurrentAdminEmail(), "USER_UPDATE", "Modification de l'utilisateur ID: " + id);
+                    return response;
                 });
     }
 
@@ -83,6 +94,7 @@ public class AdminUserService {
         return userRepository.findById(id)
                 .map(user -> {
                     try {
+                        String userEmail = user.getEmail();
                         // 1. Delete all bookings associated with this user
                         log.debug("Suppression des réservations pour l'utilisateur {}", id);
                         bookingRepository.deleteAll(bookingRepository.findByUser(user));
@@ -95,6 +107,7 @@ public class AdminUserService {
                         log.debug("Suppression de l'utilisateur {} de la base", id);
                         userRepository.delete(user);
                         log.info("Utilisateur {} supprimé avec succès", id);
+                        activityService.logActivity(getCurrentAdminEmail(), "USER_DELETE", "Suppression de l'utilisateur: " + userEmail);
                         return true;
                     } catch (Exception e) {
                         log.error("Erreur lors de la suppression de l'utilisateur {}: {}", id, e.getMessage());

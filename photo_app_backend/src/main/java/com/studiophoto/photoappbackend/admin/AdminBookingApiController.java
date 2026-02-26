@@ -5,8 +5,10 @@ import com.studiophoto.photoappbackend.booking.BookingService;
 import com.studiophoto.photoappbackend.booking.BookingStatus;
 import com.studiophoto.photoappbackend.model.User;
 import com.studiophoto.photoappbackend.repository.UserRepository;
+import com.studiophoto.photoappbackend.service.ActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,6 +24,11 @@ public class AdminBookingApiController {
 
     private final BookingService bookingService;
     private final UserRepository userRepository;
+    private final ActivityService activityService;
+
+    private String getCurrentAdminEmail() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
 
     @PostMapping
     public ResponseEntity<Booking> createBooking(@RequestBody AdminBookingRequest bookingRequest) {
@@ -37,7 +44,10 @@ public class AdminBookingApiController {
         newBooking.setStatus(bookingRequest.getStatus());
         newBooking.setAmount(bookingRequest.getAmount());
         newBooking.setNotes(bookingRequest.getNotes());
-        return ResponseEntity.ok(bookingService.createBooking(newBooking));
+        
+        Booking saved = bookingService.createBooking(newBooking);
+        activityService.logActivity(getCurrentAdminEmail(), "BOOKING_CREATE", "Nouvelle réservation pour: " + user.getEmail());
+        return ResponseEntity.ok(saved);
     }
 
     @PutMapping("/{id}")
@@ -59,31 +69,29 @@ public class AdminBookingApiController {
         booking.setAmount(bookingRequest.getAmount());
         booking.setNotes(bookingRequest.getNotes());
 
-        return ResponseEntity.ok(bookingService.updateBooking(id, booking));
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Booking> getBookingById(@PathVariable Long id) {
-        return bookingService.getBookingById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Booking updated = bookingService.updateBooking(id, booking);
+        activityService.logActivity(getCurrentAdminEmail(), "BOOKING_UPDATE", "Modification de la réservation ID: " + id);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBooking(@PathVariable Long id) {
         bookingService.deleteBooking(id);
+        activityService.logActivity(getCurrentAdminEmail(), "BOOKING_DELETE", "Suppression de la réservation ID: " + id);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/confirm")
     public ResponseEntity<Booking> confirmBooking(@PathVariable Long id) {
         Booking updatedBooking = bookingService.updateBookingStatus(id, BookingStatus.CONFIRMED);
+        activityService.logActivity(getCurrentAdminEmail(), "BOOKING_CONFIRM", "Confirmation de la réservation ID: " + id);
         return ResponseEntity.ok(updatedBooking);
     }
 
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Booking> cancelBooking(@PathVariable Long id) {
         Booking updatedBooking = bookingService.updateBookingStatus(id, BookingStatus.CANCELLED);
+        activityService.logActivity(getCurrentAdminEmail(), "BOOKING_CANCEL", "Annulation de la réservation ID: " + id);
         return ResponseEntity.ok(updatedBooking);
     }
 
