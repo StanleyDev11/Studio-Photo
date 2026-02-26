@@ -133,6 +133,12 @@ public class AdminUserController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/api/{id}/activity-chart")
+    @ResponseBody
+    public ResponseEntity<com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO> getUserActivityChart(@PathVariable Integer id) {
+        return ResponseEntity.ok(adminUserService.getUserActivityChartData(id));
+    }
+
     @PostMapping("/api")
     @ResponseBody
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {

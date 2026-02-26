@@ -1045,6 +1045,28 @@
             </div>
         </div>
 
+        <!-- Activity Chart Modal -->
+        <div class="modal fade" id="userActivityModal" tabindex="-1" aria-labelledby="userActivityModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="userActivityModalLabel"><i class="fas fa-chart-line mr-2"></i>Historique d'activité : <span id="chartUserName"></span></h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="height: 400px; width: 100%;">
+                            <canvas id="userHistoryChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="footer">
             <p>&copy; 2026 Studio Photo Admin. Tous droits réservés. | Version 2.1.0</p>
@@ -1054,6 +1076,7 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!--    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>-->
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
@@ -1169,6 +1192,9 @@
                         render: function (data, type, row) {
                             return `
                             <div class="table-actions">
+                                <button class="btn btn-sm btn-outline-primary history-btn" data-id="${row.id}" data-name="${row.firstname} ${row.lastname}" title="Historique d'activité">
+                                    <i class="fas fa-chart-line"></i>
+                                </button>
                                 <button class="btn btn-sm btn-outline-info edit-btn" data-id="${row.id}" title="Modifier">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -1310,6 +1336,74 @@
                 $('#changePasswordCheckbox').prop('checked', false); // Ensure it's unchecked
 
                 $('.select2').trigger('change');
+            });
+
+            let userHistoryChart = null;
+
+            // History Chart
+            $('#usersTable tbody').on('click', '.history-btn', function () {
+                const userId = $(this).data('id');
+                const userName = $(this).data('name');
+                
+                $('#chartUserName').text(userName);
+                showLoading();
+                
+                fetch(`/admin/users/api/${userId}/activity-chart`)
+                    .then(response => response.json())
+                    .then(chartData => {
+                        const ctx = document.getElementById('userHistoryChart').getContext('2d');
+                        
+                        if (userHistoryChart) {
+                            userHistoryChart.destroy();
+                        }
+                        
+                        userHistoryChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: chartData.labels,
+                                datasets: [{
+                                    label: 'Dépenses mensuelles (FCFA)',
+                                    data: chartData.data,
+                                    borderColor: '#4567b7',
+                                    backgroundColor: 'rgba(69, 103, 183, 0.1)',
+                                    borderWidth: 3,
+                                    fill: true,
+                                    tension: 0.4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            callback: function(value) {
+                                                return value.toLocaleString() + ' FCFA';
+                                            }
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return context.parsed.y.toLocaleString() + ' FCFA';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        
+                        $('#userActivityModal').modal('show');
+                        hideLoading();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching user history:', error);
+                        hideLoading();
+                        Swal.fire('Erreur', 'Impossible de charger l\'historique.', 'error');
+                    });
             });
 
             // Edit User

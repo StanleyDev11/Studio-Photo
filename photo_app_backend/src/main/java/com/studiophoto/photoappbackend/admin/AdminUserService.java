@@ -34,6 +34,31 @@ public class AdminUserService {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
+    public com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO getUserActivityChartData(Integer userId) {
+        List<String> labels = new java.util.ArrayList<>();
+        List<java.math.BigDecimal> data = new java.util.ArrayList<>();
+        List<com.studiophoto.photoappbackend.order.OrderStatus> revenueStatuses = java.util.Arrays.asList(
+                com.studiophoto.photoappbackend.order.OrderStatus.COMPLETED,
+                com.studiophoto.photoappbackend.order.OrderStatus.PROCESSING);
+
+        java.time.YearMonth currentMonth = java.time.YearMonth.now();
+        for (int i = 5; i >= 0; i--) {
+            java.time.YearMonth month = currentMonth.minusMonths(i);
+            labels.add(month.getMonth().name());
+
+            java.time.LocalDateTime start = month.atDay(1).atStartOfDay();
+            java.time.LocalDateTime end = month.atEndOfMonth().atTime(23, 59, 59);
+
+            java.math.BigDecimal monthlyRev = orderRepository.sumUserRevenueBetween(userId, revenueStatuses, start, end);
+            data.add(monthlyRev != null ? monthlyRev : java.math.BigDecimal.ZERO);
+        }
+
+        return com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO.builder()
+                .labels(labels)
+                .data(data)
+                .build();
+    }
+
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(this::mapToUserResponse)
