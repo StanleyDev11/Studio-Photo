@@ -884,7 +884,8 @@
                     document.getElementById('totalUsers').innerText = '154';
                     document.getElementById('totalPhotos').innerText = '2,345';
                     document.getElementById('totalPendingOrders').innerText = '12';
-                    document.getElementById('totalRevenue').innerText = '€4,250';
+                    document.getElementById('totalRevenue').innerText = '4,250 FCFA';
+                    document.getElementById('averageOrderValue').innerText = '350 FCFA';
                 })
                 .finally(() => {
                     hideLoading(); // Hide spinner after fetch completes (success or error)
@@ -972,7 +973,7 @@
         }
 
         function formatCurrency(amount) {
-            return '€' + formatNumber(amount);
+            return formatNumber(amount);
         }
 
         function initializeChart() {
