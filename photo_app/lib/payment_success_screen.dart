@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:Picon/api_service.dart';
 import 'package:Picon/history_screen.dart';
+import 'package:Picon/home_screen.dart';
 import 'package:Picon/receipt_screen.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
@@ -20,17 +21,22 @@ class PaymentSuccessScreen extends StatelessWidget {
   /// Navigue vers l'accueil puis vers l'historique pour éviter le bug de déconnexion.
   void _goToHistory(BuildContext context) {
     ApiService.clearPendingPayment();
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      '/home',
+    
+    final navigator = Navigator.of(context);
+    
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(
+          userName: ApiService.userName ?? "Utilisateur",
+          userLastName: ApiService.userLastName ?? "",
+          userEmail: ApiService.userEmail ?? "",
+          userId: ApiService.userId ?? 0,
+        ),
+      ),
       (route) => false,
-      arguments: {
-        'userName': ApiService.userName,
-        'userLastName': ApiService.userLastName,
-        'userEmail': ApiService.userEmail,
-        'userId': ApiService.userId,
-      },
     );
-    Navigator.of(context).push(
+    
+    navigator.push(
       MaterialPageRoute(builder: (context) => const HistoryScreen()),
     );
   }
@@ -78,15 +84,15 @@ class PaymentSuccessScreen extends StatelessWidget {
       buffer.writeln("Merci de traiter cette commande.");
 
       final message = Uri.encodeComponent(buffer.toString());
-      final whatsappUrl = Uri.parse("whatsapp://send?phone=$phone&text=$message");
-      final webUrl = Uri.parse("https://wa.me/$phone?text=$message");
+      
+      final whatsappAppUrl = Uri.parse("whatsapp://send?phone=$phone&text=$message");
+      final whatsappWebUrl = Uri.parse("https://api.whatsapp.com/send?phone=$phone&text=$message");
 
-      if (await canLaunchUrl(whatsappUrl)) {
-        await launchUrl(whatsappUrl);
-      } else if (await canLaunchUrl(webUrl)) {
-        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+      if (await canLaunchUrl(whatsappAppUrl)) {
+        await launchUrl(whatsappAppUrl, mode: LaunchMode.externalApplication);
       } else {
-        throw 'Impossible de lancer WhatsApp';
+        // En Android 11+, canLaunchUrl peut échouer même si WhatsApp est installé (sans <queries>). On tente alors le fallback web.
+        await launchUrl(whatsappWebUrl, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
       if (context.mounted) {
@@ -103,173 +109,250 @@ class PaymentSuccessScreen extends StatelessWidget {
         ApiService.pendingPrices != null &&
         ApiService.pendingPaymentMethod != null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Paiement confirmé'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnPrimary,
-        automaticallyImplyLeading: false, // Pas de retour arrière possible
-      ),
-      body: Stack(
-        children: [
-          const Positioned.fill(child: GeometricBackground()),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding: const EdgeInsets.all(28),
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Paiement confirmé'),
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.textOnPrimary,
+          automaticallyImplyLeading: false, // Pas de retour arrière possible
+        ),
+        body: Stack(
+          children: [
+            const Positioned.fill(child: GeometricBackground()),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                    padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.15),
+                          Colors.white.withOpacity(0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Icône de succès animée
-                        Container(
-                          width: 74,
-                          height: 74,
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withOpacity(0.3),
-                                blurRadius: 18,
-                                spreadRadius: 2,
+                        // Héro : Icône de succès avec glow
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.green.withOpacity(0.2),
                               ),
-                            ],
-                          ),
-                          child: const Icon(Icons.check,
-                              color: Colors.white, size: 40),
-                        )
-                            .animate()
-                            .scale(
-                                duration: 450.ms,
-                                curve: Curves.easeOutBack),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Paiement réussi !',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Commande #$orderId',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Votre commande est en cours de traitement.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
+                            ).animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
+                            Container(
+                              width: 74,
+                              height: 74,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF388E3C), Color(0xFF4CAF50), Color(0xFF81C784)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.green.withOpacity(0.5),
+                                    blurRadius: 24,
+                                    spreadRadius: 4,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(Icons.check_rounded, color: Colors.white, size: 44),
+                            ).animate().scale(duration: 600.ms, delay: 200.ms, curve: Curves.elasticOut),
+                          ],
                         ),
                         const SizedBox(height: 24),
+                        const Text(
+                          'Paiement Réussi !',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                            color: AppColors.textPrimary,
+                          ),
+                        ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0),
+                        
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Commande #$orderId',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ).animate().fadeIn(delay: 200.ms),
 
-                        // Bouton "Voir le reçu" (si données disponibles)
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Votre commande est enregistrée et est actuellement en cours de préparation.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.5,
+                            color: AppColors.textSecondary,
+                          ),
+                        ).animate().fadeIn(delay: 300.ms),
+                        
+                        const SizedBox(height: 32),
+
+                        // Bouton "Voir le reçu" (Premium Soft)
                         if (hasPending)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.receipt_long_outlined),
-                              label: const Text('Voir le reçu'),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ReceiptScreen(
-                                      orderDetails:
-                                          ApiService.pendingOrderDetails!,
-                                      paymentMethod:
-                                          ApiService.pendingPaymentMethod!,
-                                      orderId: orderId,
-                                      prices: ApiService.pendingPrices!,
-                                      userName:
-                                          ApiService.userName ?? "Client",
-                                      userPhone:
-                                          ApiService.userEmail ?? "",
-                                    ),
-                                  ),
-                                ).then((_) => _goToHistory(context));
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.accent,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(double.infinity, 48),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.receipt_long_rounded, color: AppColors.primary),
+                                label: const Text(
+                                  'Afficher mon reçu',
+                                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
                                 ),
-                              ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ReceiptScreen(
+                                        orderDetails: ApiService.pendingOrderDetails!,
+                                        paymentMethod: ApiService.pendingPaymentMethod!,
+                                        orderId: orderId,
+                                        prices: ApiService.pendingPrices!,
+                                        userName: ApiService.userName ?? "Client",
+                                        userPhone: ApiService.userPhone ?? "",
+                                      ),
+                                    ),
+                                  ); // Supprimé : .then((_) => _goToHistory(context))
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                                  elevation: 0,
+                                  shadowColor: Colors.transparent,
+                                  minimumSize: const Size(double.infinity, 54),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 1.5),
+                                  ),
+                                ),
+                              ).animate().fadeIn(delay: 400.ms),
                             ),
                           ),
 
-                        const SizedBox(height: 10),
-
-                        // Bouton principal : envoyer WhatsApp et aller à l'historique
+                        // Bouton principal (Call to Action : WhatsApp + Historique)
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.history_outlined),
-                            label: const Text('Envoyer WhatsApp & Voir commandes'),
-                            onPressed: () async {
-                              await _sendWhatsAppSummary(context);
-                              if (context.mounted) _goToHistory(context);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(double.infinity, 52),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              gradient: const LinearGradient(
+                                colors: [AppColors.primary, Color(0xFF5C6BC0)],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
                               ),
-                              elevation: 4,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withOpacity(0.4),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
-                          ),
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                _sendWhatsAppSummary(context);
+                                await Future.delayed(const Duration(milliseconds: 300));
+                                if (context.mounted) _goToHistory(context);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.history_rounded, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Poursuivre & Voir mes commandes',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ).animate().fadeIn(delay: 500.ms),
                         ),
 
                         const SizedBox(height: 12),
 
-                        // Nouveau bouton : Retour à l'accueil (Bouton d'action secondaire propre)
+                        // Bouton Retour Accueil (Minimaliste)
                         SizedBox(
                           width: double.infinity,
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.home_outlined),
-                            label: const Text("Page d'accueil"),
+                          child: TextButton(
                             onPressed: () => _goToHome(context),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: AppColors.primary, width: 1.5),
-                              foregroundColor: AppColors.primary,
-                              minimumSize: const Size(double.infinity, 52),
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 50),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                          ),
+                            child: const Text(
+                              "Retour à l'accueil",
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ).animate().fadeIn(delay: 600.ms),
                         ),
-
-                        const SizedBox(height: 8),
-
                       ],
                     ),
+                  ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

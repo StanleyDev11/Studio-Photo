@@ -297,7 +297,7 @@ class ReceiptScreen extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close),
             label: const Text('Fermer'),
             style: ElevatedButton.styleFrom(
