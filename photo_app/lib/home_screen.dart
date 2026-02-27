@@ -429,17 +429,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: Stack(
         children: [
           GeometricBackground(), // Using GeometricBackground
+          Padding(
+            padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top +
+                    85), // Adjusted top padding to clear the TopBar
+            child: _buildBody(),
+          ),
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: _buildFixedTopBar(context),
-          ),
-          Padding(
-            padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top +
-                    kToolbarHeight), // Adjusted top padding
-            child: _buildBody(),
           ),
           if (_isUploading)
             Container(
@@ -966,15 +966,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 4),
                                   child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Icon(qualityIcon(q), size: 12, color: qualityColor(q)),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        '${qualityLabel(q)} (${dpi.round()} DPI)',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: qualityColor(q),
-                                          fontWeight: FontWeight.w600,
+                                      Flexible( // Wrapped with Flexible to prevent overflow on small screens
+                                        child: Text(
+                                          '${qualityLabel(q)} (${dpi.round()} DPI)',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: qualityColor(q),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
