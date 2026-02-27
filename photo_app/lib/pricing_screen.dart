@@ -95,6 +95,24 @@ class _PricingScreenState extends State<PricingScreen> {
   Widget _buildGridView(List<PhotoFormat> prices, {bool isOffline = false}) {
     final currencyFormatter = NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
 
+    // Fonction rudimentaire pour vérifier si c'est un cadre (>= 20x25)
+    bool isFramed(String dim) {
+      if (dim.contains('20x25') || dim.contains('20 x 25')) return true;
+      if (dim.contains('20x30') || dim.contains('30x40') || dim.contains('40x60') || dim.contains('50x70') || dim.contains('60x80') || dim.contains('60x90') || dim.contains('A4') || dim.contains('A3')) return true;
+      
+      // Essayer d'extraire la première largeur pour une comparaison numérique si format NxM
+      final regex = RegExp(r'^(\d+)[xX]');
+      final match = regex.firstMatch(dim);
+      if (match != null) {
+        final width = int.tryParse(match.group(1) ?? '0') ?? 0;
+        if (width >= 20) return true;
+      }
+      return false;
+    }
+
+    final standardPrints = prices.where((p) => !isFramed(p.dimension)).toList();
+    final framedPrints = prices.where((p) => isFramed(p.dimension)).toList();
+
     return Column(
       children: [
         if (isOffline)
@@ -107,23 +125,98 @@ class _PricingScreenState extends State<PricingScreen> {
             ),
           ),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16.0),
+          child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.2,
-            ),
-            itemCount: prices.length,
-            itemBuilder: (context, index) {
-              final item = prices[index];
-              return _PriceTile(
-                dimension: item.dimension,
-                price: currencyFormatter.format(item.price),
-              );
-            },
+            slivers: [
+              if (standardPrints.isNotEmpty) ...[
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                    child: Text(
+                      'Tirages Simples',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.2,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final item = standardPrints[index];
+                        return _PriceTile(
+                          dimension: item.dimension,
+                          price: currencyFormatter.format(item.price),
+                        );
+                      },
+                      childCount: standardPrints.length,
+                    ),
+                  ),
+                ),
+              ],
+              if (framedPrints.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 32, 16, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Photos avec Cadre',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'À partir du format 20x25 cm, les photos sont livrées directement avec un cadre photo.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary.withOpacity(0.8),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.2,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final item = framedPrints[index];
+                        return _PriceTile(
+                          dimension: item.dimension,
+                          price: currencyFormatter.format(item.price),
+                          isFramed: true,
+                        );
+                      },
+                      childCount: framedPrints.length,
+                    ),
+                  ),
+                ),
+              ],
+              const SliverPadding(padding: EdgeInsets.only(bottom: 32)),
+            ],
           ),
         ),
       ],
@@ -134,8 +227,13 @@ class _PricingScreenState extends State<PricingScreen> {
 class _PriceTile extends StatelessWidget {
   final String dimension;
   final String price;
+  final bool isFramed;
 
-  const _PriceTile({required this.dimension, required this.price});
+  const _PriceTile({
+    required this.dimension,
+    required this.price,
+    this.isFramed = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +250,11 @@ class _PriceTile extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              if (isFramed)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 4.0),
+                  child: Icon(Icons.crop_original, color: AppColors.primary, size: 20),
+                ),
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
