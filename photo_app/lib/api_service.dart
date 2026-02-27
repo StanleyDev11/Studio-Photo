@@ -167,12 +167,12 @@ class ApiService {
   static dynamic _handleApiResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isNotEmpty) {
-        return jsonDecode(response.body);
+        return jsonDecode(utf8.decode(response.bodyBytes));
       }
       return null; // No content
     } else {
       try {
-        final errorBody = jsonDecode(response.body);
+        final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
         final errorMessage = errorBody['message'];
         if (errorMessage != null && errorMessage.isNotEmpty) {
           throw Exception(errorMessage);
@@ -489,7 +489,7 @@ class ApiService {
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final responseData = jsonDecode(response.body);
+        final responseData = jsonDecode(utf8.decode(response.bodyBytes));
         // Assuming the backend returns a JSON object with a key 'urls' which is a list of strings
         if (responseData is Map && responseData.containsKey('urls')) {
           return List<String>.from(responseData['urls']);

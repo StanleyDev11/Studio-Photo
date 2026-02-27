@@ -18,7 +18,7 @@ void main() async {
   await ApiService.init();
   runApp(
     DevicePreview(
-      enabled: true,
+      enabled: false,
       builder: (context) => const MyApp(),
     ),
   );
