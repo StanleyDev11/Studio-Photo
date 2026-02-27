@@ -422,12 +422,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<bool> _onWillPop() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Quitter l\'application', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Voulez-vous vraiment fermer l\'application et vous déconnecter ?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Oui, Quitter', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true) {
+      await ApiService.clearAuthDetails();
+      return true;
+    }
+    return false;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true, // Évite les débordements liés au clavier
-      extendBody: true,
-      body: Stack(
-        children: [
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        resizeToAvoidBottomInset: true, // Évite les débordements liés au clavier
+        extendBody: true,
+        body: Stack(
+          children: [
           GeometricBackground(), // Using GeometricBackground
           Padding(
             padding: EdgeInsets.only(
@@ -473,6 +507,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             end: const Offset(1.1, 1.1),
             curve: Curves.easeInOut,
           ),
+      ),
     );
   }
 

@@ -2,7 +2,6 @@ import 'package:Picon/api_service.dart';
 import 'package:Picon/home_screen.dart';
 import 'package:Picon/login_screen.dart';
 import 'package:Picon/signup_screen.dart';
-import 'package:Picon/splash_screen.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/police.dart';
 import 'package:flutter/material.dart';
@@ -189,11 +188,9 @@ class _MyAppState extends State<MyApp> {
         fontFamily: primaryFont.fontFamily,
       ),
       debugShowCheckedModeBanner: false,
-      initialRoute: '/splash',
+      home: _getInitialScreen(),
       onGenerateRoute: (settings) {
         switch (settings.name) {
-          case '/splash':
-            return MaterialPageRoute(builder: (context) => const SplashScreen());
           case '/login':
             return MaterialPageRoute(builder: (context) => const LoginScreen());
           case '/signup':
@@ -213,5 +210,17 @@ class _MyAppState extends State<MyApp> {
         }
       },
     );
+  }
+
+  Widget _getInitialScreen() {
+    if (ApiService.authToken != null && ApiService.userId != null) {
+      return HomeScreen(
+        userName: ApiService.userName ?? 'Utilisateur',
+        userLastName: ApiService.userLastName ?? '',
+        userEmail: ApiService.userEmail ?? '',
+        userId: ApiService.userId!,
+      );
+    }
+    return const LoginScreen();
   }
 }
