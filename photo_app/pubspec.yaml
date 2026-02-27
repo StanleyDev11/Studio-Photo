@@ -40,7 +40,7 @@ dependencies:
   permission_handler: ^11.0.0
   carousel_slider: ^5.1.1
   connectivity_plus: ^5.0.2
-  intl: ^0.19.0
+  intl: ^0.20.2
   flutter_animate: ^4.5.0
   pinput: ^6.0.1
   country_code_picker: ^3.4.1
@@ -57,6 +57,7 @@ dependencies:
   stomp_dart_client: ^2.0.0
   image_size_getter: ^2.2.0
   flutter_image_compress: ^2.3.0
+  device_preview: ^1.2.0
 
 dev_dependencies:
   flutter_test:

@@ -12,11 +12,17 @@ import 'package:app_links/app_links.dart';
 import 'package:Picon/receipt_screen.dart'; // Import ReceiptScreen
 import 'package:Picon/payment_pending_screen.dart';
 import 'package:Picon/payment_success_screen.dart';
+import 'package:device_preview/device_preview.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiService.init();
-  runApp(const MyApp());
+  runApp(
+    DevicePreview(
+      enabled: true,
+      builder: (context) => const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -160,6 +166,8 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       navigatorKey: _navigatorKey, // Add navigator key
       title: 'Photo App',
       theme: ThemeData(

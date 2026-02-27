@@ -205,13 +205,16 @@ class PaymentSuccessScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          const Text(
-                            'Paiement Réussi !',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                              color: AppColors.textPrimary,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: const Text(
+                              'Paiement Réussi !',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                           )
                               .animate()
@@ -346,12 +349,17 @@ class PaymentSuccessScreen extends StatelessWidget {
                                     Icon(Icons.history_rounded,
                                         color: Colors.white),
                                     SizedBox(width: 8),
-                                    Text(
-                                      'Poursuivre & Voir mes commandes',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
+                                    Flexible(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: const Text(
+                                          'Poursuivre & Voir mes commandes',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],

@@ -189,14 +189,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
           children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(height: 8),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w900, color: color)),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    color: color.withOpacity(0.7),
-                    fontWeight: FontWeight.bold)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(value,
+                  style: TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w900, color: color)),
+            ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: color.withOpacity(0.7),
+                      fontWeight: FontWeight.bold)),
+            ),
           ],
         ),
       ),
@@ -290,10 +296,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                '${order.totalAmount.toStringAsFixed(0)} FCFA',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w900, color: AppColors.primary),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${order.totalAmount.toStringAsFixed(0)} FCFA',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900, color: AppColors.primary),
+                ),
               ),
               _statusMiniBadge(order.status),
             ],
@@ -392,9 +401,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ],
             ),
           ),
-          Text(
-            '${((item.pricePerUnit ?? 0) * item.quantity).toStringAsFixed(0)} FCFA',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${((item.pricePerUnit ?? 0) * item.quantity).toStringAsFixed(0)} FCFA',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
           ),
         ],
       ),

@@ -272,13 +272,18 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                                     fontSize: 14,
                                   ),
                                 ),
-                                Text(
-                                  '${widget.totalAmount.toStringAsFixed(0)} FCFA',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      '${widget.totalAmount.toStringAsFixed(0)} FCFA',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -393,7 +398,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                 child: Icon(icon, color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: 12),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.primary, letterSpacing: 0.3)),
+              Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.primary, letterSpacing: 0.3)))),
             ],
           ),
           const Padding(
@@ -454,9 +459,12 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
           shadowColor: AppColors.primary.withOpacity(0.4),
         ),
         onPressed: _processPayment,
-        child: Text(
-          'Confirmer et Payer ${widget.totalAmount.toStringAsFixed(0)} FCFA',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'Confirmer et Payer ${widget.totalAmount.toStringAsFixed(0)} FCFA',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+          ),
         ),
       ),
     );

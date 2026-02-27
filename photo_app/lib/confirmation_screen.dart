@@ -24,8 +24,10 @@ class ConfirmationScreen extends StatelessWidget {
         color: AppColors.background,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.check_circle, color: AppColors.accent, size: 100),
               const SizedBox(height: 30),
@@ -54,6 +56,7 @@ class ConfirmationScreen extends StatelessWidget {
                 child: const Text('Retour à l\'accueil'),
               ),
             ],
+          ),
           ),
         ),
       ),

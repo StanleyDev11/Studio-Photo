@@ -177,6 +177,7 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           GeometricBackground(),
@@ -244,12 +245,15 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: AppColors.textPrimary,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textPrimary,
+        ),
       ),
     ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.2);
   }
@@ -291,9 +295,14 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                 ),
                 if (option['price'] > 0)
-                  Text(
-                    '${NumberFormat('#,###').format(option['price'])} F',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.accent),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${NumberFormat('#,###').format(option['price'])} F',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.accent),
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -340,7 +349,12 @@ class _BookingScreenState extends State<BookingScreen> {
           children: [
             Icon(icon, size: 18, color: AppColors.primary),
             const SizedBox(width: 10),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ),
           ],
         ),
       ),
@@ -387,11 +401,18 @@ class _BookingScreenState extends State<BookingScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('Total estimé',
-              style: TextStyle(color: Colors.white, fontSize: 16)),
-          Text(
-            '${NumberFormat('#,###').format(selectedService['price'])} FCFA',
-            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          Flexible(
+            child: const Text('Total estimé',
+                style: TextStyle(color: Colors.white, fontSize: 16)),
+          ),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '${NumberFormat('#,###').format(selectedService['price'])} FCFA',
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
           ),
         ],
       ),
@@ -410,8 +431,13 @@ class _BookingScreenState extends State<BookingScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           elevation: 5,
         ),
-        child: const Text('CONFIRMER MA RÉSERVATION',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        child: Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: const Text('CONFIRMER MA RÉSERVATION',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          ),
+        ),
       ),
     );
   }

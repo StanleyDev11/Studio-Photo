@@ -177,17 +177,23 @@ class _TileInfo extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  format.dimension,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    format.dimension,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold),
+                  ),
                 ),
-                Text(
-                  currencyFormatter.format(format.price),
-                  style: const TextStyle(
-                      color: Colors.orangeAccent,
-                      fontWeight: FontWeight.w600),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    currencyFormatter.format(format.price),
+                    style: const TextStyle(
+                        color: Colors.orangeAccent,
+                        fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
@@ -296,19 +302,25 @@ class _DimensionDetailDialogState extends State<DimensionDetailDialog> {
                             mainAxisAlignment:
                                 MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                widget.format.dimension,
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.white),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  widget.format.dimension,
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.white),
+                                ),
                               ),
-                              Text(
-                                currencyFormatter
-                                    .format(widget.format.price),
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.orangeAccent,
-                                    fontWeight: FontWeight.bold),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  currencyFormatter
+                                      .format(widget.format.price),
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.orangeAccent,
+                                      fontWeight: FontWeight.bold),
+                                ),
                               ),
                             ],
                           )

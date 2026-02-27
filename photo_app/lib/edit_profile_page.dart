@@ -68,7 +68,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: true,
+      backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -128,6 +129,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             children: <Widget>[
               TextFormField(
                 controller: _nameController,
+                textInputAction: TextInputAction.next,
                 decoration: _glassyInputDecoration('Nom complet', icon: Icons.person_outline),
                 validator: (value) => (value?.isEmpty ?? true) ? 'Champ requis' : null,
               ),
@@ -147,6 +149,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     flagWidth: 25,
                   ),
                 ),
+                textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.phone,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -159,6 +162,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               TextFormField(
                 controller: _emailController,
                 decoration: _glassyInputDecoration('Adresse e-mail', icon: Icons.email_outlined),
+                textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
                   if (value == null || !RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)) {
@@ -171,11 +175,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 padding: EdgeInsets.symmetric(vertical: 16.0),
                 child: Divider(color: Colors.white30),
               ),
-              const Text("Changer le mot de passe (optionnel)", style: TextStyle(color: AppColors.textSecondary)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: const Text("Changer le mot de passe (optionnel)", style: TextStyle(color: AppColors.textSecondary)),
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
+                textInputAction: TextInputAction.next,
                 decoration: _glassyInputDecoration('Nouveau mot de passe', icon: Icons.lock_outline).copyWith(
                   suffixIcon: IconButton(
                     icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: AppColors.textPrimary.withOpacity(0.7)),
@@ -214,7 +223,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))
                 ),
-                child: const Text('SAUVEGARDER', style: TextStyle(color: Colors.white, fontSize: 16)),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: const Text('SAUVEGARDER', style: TextStyle(color: Colors.white, fontSize: 16)),
+                ),
               ),
             ],
           ),

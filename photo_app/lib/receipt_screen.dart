@@ -250,9 +250,14 @@ class ReceiptScreen extends StatelessWidget {
               'TOTAL',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
             ),
-            Text(
-              '${totalPrice.toStringAsFixed(0)} FCFA',
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${totalPrice.toStringAsFixed(0)} FCFA',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
+                ),
+              ),
             ),
           ],
         ),
@@ -285,7 +290,7 @@ class ReceiptScreen extends StatelessWidget {
           child: ElevatedButton.icon(
             onPressed: () => Printing.layoutPdf(onLayout: (format) => _generatePdf()),
             icon: const Icon(Icons.print),
-            label: const Text('Imprimer'),
+            label: FittedBox(fit: BoxFit.scaleDown, child: const Text('Imprimer')),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.accent,
               foregroundColor: Colors.white,
@@ -299,7 +304,7 @@ class ReceiptScreen extends StatelessWidget {
           child: ElevatedButton.icon(
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close),
-            label: const Text('Fermer'),
+            label: FittedBox(fit: BoxFit.scaleDown, child: const Text('Fermer')),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: AppColors.primary,

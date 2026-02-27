@@ -60,10 +60,17 @@ class OrderDetailScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'CMD-${order.id}',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'CMD-${order.id}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Chip(
                   avatar: Icon(statusInfo['icon'], color: statusInfo['color'], size: 18),
                   label: Text(statusInfo['text'], style: TextStyle(color: statusInfo['color'], fontWeight: FontWeight.bold)),
@@ -91,8 +98,9 @@ class OrderDetailScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
+          Flexible(child: Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15))),
+          const SizedBox(width: 16),
+          Flexible(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15), textAlign: TextAlign.right)),
         ],
       ),
     );

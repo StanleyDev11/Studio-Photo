@@ -12,8 +12,10 @@ class NoConnectionScreen extends StatelessWidget {
         children: [
           GeometricBackground(),
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(
                   Icons.wifi_off,
@@ -53,9 +55,10 @@ class NoConnectionScreen extends StatelessWidget {
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.textOnPrimary,
                   ),
-                )
+                ),
               ],
             ),
+          ),
           ),
         ],
       ),

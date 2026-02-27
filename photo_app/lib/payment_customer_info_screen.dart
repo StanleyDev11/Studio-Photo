@@ -169,13 +169,18 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
                                   ),
                                 ],
                               ),
-                              Text(
-                                '${widget.totalAmount.toStringAsFixed(0)} FCFA',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '${widget.totalAmount.toStringAsFixed(0)} FCFA',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -185,16 +190,19 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
                         _buildField(
                           label: 'Prénom',
                           controller: _firstName,
+                          textInputAction: TextInputAction.next,
                           validator: (v) =>
                               v == null || v.trim().isEmpty ? 'Requis' : null,
                         ),
                         _buildField(
                           label: 'Nom (optionnel)',
                           controller: _lastName,
+                          textInputAction: TextInputAction.next,
                         ),
                         _buildField(
                           label: 'Email',
                           controller: _email,
+                          textInputAction: TextInputAction.next,
                           keyboardType: TextInputType.emailAddress,
                           validator: (v) =>
                               v == null || v.trim().isEmpty ? 'Requis' : null,
@@ -202,6 +210,7 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
                         _buildField(
                           label: 'Adresse de livraison complète',
                           controller: _address,
+                          textInputAction: TextInputAction.next,
                           hint: 'Quartier, Rue, Maison...',
                           validator: (v) =>
                               v == null || v.trim().isEmpty ? 'Requis' : null,
@@ -209,6 +218,7 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
                         _buildField(
                           label: 'Téléphone (Mobile Money)',
                           controller: _phone,
+                          textInputAction: TextInputAction.done,
                           keyboardType: TextInputType.phone,
                           hint: 'Ex: 90 00 00 00',
                           prefix: CountryCodePicker(
@@ -257,11 +267,14 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
                               ),
                             ),
                             onPressed: _continue,
-                            child: const Text(
-                              'Continuer',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: const Text(
+                                'Continuer',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
@@ -283,6 +296,7 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
     required TextEditingController controller,
     String? hint,
     TextInputType? keyboardType,
+    TextInputAction? textInputAction,
     String? Function(String?)? validator,
     Widget? prefix,
   }) {
@@ -291,6 +305,7 @@ class _PaymentCustomerInfoScreenState extends State<PaymentCustomerInfoScreen> {
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
         validator: validator,
         decoration: _glassyInputDecoration(
           label,

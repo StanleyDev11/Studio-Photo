@@ -195,10 +195,13 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  Text(
-                    'Récupération du compte',
-                    textAlign: TextAlign.center,
-                    style: textTheme.headlineSmall?.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Récupération du compte',
+                      textAlign: TextAlign.center,
+                      style: textTheme.headlineSmall?.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -214,6 +217,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                     TextFormField(
                       controller: _emailController,
                       decoration: _glassyInputDecoration('Email', icon: Icons.email_outlined),
+                      textInputAction: TextInputAction.next,
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null || value.isEmpty) return 'Champ requis';
@@ -234,6 +238,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                           textStyle: TextStyle(color: AppColors.textPrimary.withOpacity(0.9)),
                         ),
                       ),
+                      textInputAction: TextInputAction.next,
                       keyboardType: TextInputType.phone,
                       validator: (value) => (value?.isEmpty ?? true) ? 'Champ requis' : null,
                     ),
@@ -437,15 +442,19 @@ class _NewPasswordDialogState extends State<_NewPasswordDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Créer un nouveau mot de passe',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: const Text(
+                        'Créer un nouveau mot de passe',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.next,
                       decoration: _glassyInputDecoration('Nouveau mot de passe').copyWith(
                         suffixIcon: IconButton(
                           icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: AppColors.textPrimary.withOpacity(0.7)),

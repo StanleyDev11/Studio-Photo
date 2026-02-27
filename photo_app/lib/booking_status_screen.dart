@@ -142,22 +142,27 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  _infoItem(Icons.calendar_today, DateFormat('dd MMM yyyy').format(booking.startTime)),
-                  const SizedBox(width: 20),
-                  _infoItem(Icons.access_time, DateFormat('HH:mm').format(booking.startTime)),
+                  Flexible(child: _infoItem(Icons.calendar_today, DateFormat('dd MMM yyyy').format(booking.startTime))),
+                  const SizedBox(width: 10),
+                  Flexible(child: _infoItem(Icons.access_time, DateFormat('HH:mm').format(booking.startTime))),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _infoItem(Icons.style, booking.type.name.replaceAll('_', ' ')),
-                  Text(
-                    '${booking.amount?.toStringAsFixed(0) ?? '0'} FCFA',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
+                  Flexible(child: _infoItem(Icons.style, booking.type.name.replaceAll('_', ' '))),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${booking.amount?.toStringAsFixed(0) ?? '0'} FCFA',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -200,12 +205,17 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> {
       children: [
         Icon(icon, size: 16, color: AppColors.primary.withOpacity(0.6)),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w500,
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ),
       ],

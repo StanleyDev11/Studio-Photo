@@ -209,12 +209,16 @@ class _ContactInfoTile extends StatelessWidget {
     return ListTile(
       onTap: onTap,
       leading: Icon(icon, color: AppColors.primary, size: 30),
-      title: Text(
-        title,
-        style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: AppColors.textPrimary),
+      title: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: AppColors.textPrimary),
+        ),
       ),
       subtitle: Text(
         subtitle,

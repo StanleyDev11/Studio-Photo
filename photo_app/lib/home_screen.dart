@@ -424,6 +424,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true, // Évite les débordements liés au clavier
       extendBody: true,
       body: Stack(
         children: [
@@ -549,24 +550,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       : null,
                 ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'assets/images/pro.png',
-                    height: 75, // Agrandissement du logo
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(height: 2), // Reduced space
-                  // Text(
-                  //   'Hey, $_currentUserLastName!',
-                  //   textAlign: TextAlign.center,
-                  //   style: const TextStyle(
-                  //     color: Colors.white,
-                  //     fontSize: 11, // Smaller text
-                  //   ),
-                  // ),
-                ],
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Image.asset(
+                        'assets/images/pro.png',
+                        height: 75, // Agrandissement du logo
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    const SizedBox(height: 2), // Reduced space
+                  ],
+                ),
               ),
               IconButton(
                 onPressed: () {
@@ -1017,34 +1014,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Format :',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w500)),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                      color:
-                                          AppColors.primary.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.straighten,
-                                        size: 14, color: AppColors.primary),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      photoDetails['size'] as String? ?? '---',
-                                      style: const TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
+                              Flexible(
+                                child: Text('Format :',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w500)),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                flex: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                        color:
+                                            AppColors.primary.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.straighten,
+                                          size: 14, color: AppColors.primary),
+                                      const SizedBox(width: 6),
+                                      Flexible( // Wrap text
+                                        child: Text(
+                                          photoDetails['size'] as String? ?? '---',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
@@ -1260,16 +1266,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     count: nbUns,
                     quality: PrintQuality.tooSmall),
               if (!hasIssues)
-                Row(children: const [
-                  Icon(Icons.check_circle,
-                      size: 15, color: Color(0xFF2E7D32)),
-                  SizedBox(width: 4),
-                  Text('Toutes les photos sont compatibles !',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF2E7D32),
-                          fontWeight: FontWeight.bold)),
-                ]),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_circle,
+                          size: 15, color: Color(0xFF2E7D32)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: FittedBox(
+                           fit: BoxFit.scaleDown,
+                           child: const Text('Toutes les photos sont compatibles !',
+                             style: TextStyle(
+                                 fontSize: 12,
+                                 color: Color(0xFF2E7D32),
+                                 fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ]),
+                ),
             ],
           ),
         );
@@ -1751,17 +1766,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildQuickActions() {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Padding(
       padding: const EdgeInsets.fromLTRB(6.0, 2.0, 16.0, 0.0), //padding en bas de la page des actions
       child: GridView.builder(
         shrinkWrap: true, // Important for nested scroll views
         physics:
             const NeverScrollableScrollPhysics(), // Disable GridView's own scrolling
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3, // 3 items per row
           crossAxisSpacing: 16.0,
           mainAxisSpacing: 16.0,
-          childAspectRatio: 0.85, // Adjust aspect ratio for better look
+          childAspectRatio: screenWidth < 360 ? 0.75 : 0.85, // Adjust aspect ratio for better look on small screens
         ),
         itemCount: 6, // Total number of quick actions
         itemBuilder: (context, index) {
@@ -1865,16 +1881,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(Icons.add_a_photo, color: Colors.white),
-                SizedBox(width: 10),
-                Text(
-                  'Passer ma Commande',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    letterSpacing: 0.2,
+              children: [
+                const Icon(Icons.add_a_photo, color: Colors.white),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: const Text(
+                      'Passer ma Commande',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1924,15 +1945,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 children: [
                   Icon(icon, color: AppColors.primary, size: 36), // Larger icon
                   const SizedBox(height: 8),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -2197,41 +2221,67 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildFloatingBottomNavBar() {
-    return SizedBox(
-      height: 83,
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding > 0 ? bottomPadding : 16.0),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary, width: 2),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: _onTabTapped,
-            backgroundColor: Colors.white.withOpacity(0.3),
-            selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.textPrimary.withOpacity(0.6),
-            elevation: 0,
-            type: BottomNavigationBarType.fixed,
-            selectedFontSize: 11,
-            unselectedFontSize: 10,
-            iconSize: 22,
-            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.shopping_cart), label: 'Commandes'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.person), label: 'Profil'),
-            ],
+        height: 65,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary, width: 2),
+          color: Colors.transparent, // Let BackdropFilter handle the background blur
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              color: Colors.white.withOpacity(0.3),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildNavItem(Icons.home, 'Accueil', 0),
+                  _buildNavItem(Icons.shopping_cart, 'Commandes', 1),
+                  _buildNavItem(Icons.person, 'Profil', 2),
+                ],
+              ),
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? AppColors.primary : AppColors.textPrimary.withOpacity(0.6);
+    
+    return GestureDetector(
+      onTap: () => _onTabTapped(index),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 80,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }

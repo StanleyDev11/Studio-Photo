@@ -104,7 +104,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: AppColors.primary.withOpacity(0.4), // Use glassmorphic style consistent with home screen
@@ -151,11 +151,14 @@ class _ProfilePageState extends State<ProfilePage> {
                       const SizedBox(height: 30),
                       _buildAvatar(),
                       const SizedBox(height: 20),
-                      Text(
-                        '$_currentName $_currentLastName',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith( // Use headlineMedium for a more prominent name
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '$_currentName $_currentLastName',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith( // Use headlineMedium for a more prominent name
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -271,7 +274,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildProfileMenuTile({required IconData icon, required String title, required VoidCallback onTap, Color? color}) {
     return ListTile(
       leading: Icon(icon, color: color ?? AppColors.textPrimary),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: color ?? AppColors.textPrimary)),
+      title: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: color ?? AppColors.textPrimary)),
+      ),
       trailing: Icon(Icons.arrow_forward_ios, size: 16, color: color ?? AppColors.textSecondary),
       onTap: onTap,
     );

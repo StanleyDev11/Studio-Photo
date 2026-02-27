@@ -56,6 +56,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
@@ -76,17 +77,20 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _buildHeader() {
+    final size = MediaQuery.of(context).size;
     return SizedBox(
-      height: 220,
+      height: size.height * 0.25,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 30),
-          Image.asset(
-            'assets/images/pro.png',
-            height: 180, // Adjust height as needed
-            width: 180, // Adjust width as needed
-            fit: BoxFit.contain,
+          Flexible(
+            child: Image.asset(
+              'assets/images/pro.png',
+              height: 180, // Nominally 180, Flexible scales it down if needed
+              width: 180,
+              fit: BoxFit.contain,
+            ),
           ),
         ],
       ),
@@ -124,6 +128,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   const SizedBox(height: 20),
                   TextFormField(
                     controller: _nameController,
+                    textInputAction: TextInputAction.next,
                     decoration: _glassyInputDecoration('Nom complet',
                         icon: Icons.person_outline),
                     validator: (value) =>
@@ -208,6 +213,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         flagWidth: 25,
                       ),
                     ),
+                    textInputAction: TextInputAction.next,
                     keyboardType: TextInputType.phone,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -221,6 +227,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     controller: _emailController,
                     decoration: _glassyInputDecoration('Email',
                         icon: Icons.email_outlined),
+                    textInputAction: TextInputAction.next,
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -297,16 +304,26 @@ class _SignupScreenState extends State<SignupScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("J'ai un compte...",
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: AppColors.textPrimary)),
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.pushReplacementNamed(context, '/login'),
-                        child: const Text('Acceder',
-                            style: TextStyle(color: AppColors.primary)),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text("J'ai un compte...",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: AppColors.textPrimary)),
+                        ),
+                      ),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: TextButton(
+                            onPressed: () =>
+                                Navigator.pushReplacementNamed(context, '/login'),
+                            child: const Text('Acceder',
+                                style: TextStyle(color: AppColors.primary)),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -470,8 +487,8 @@ class _PinCreationSheetState extends State<_PinCreationSheet> {
                     controller: _pinController,
                     focusNode: _pinFocusNode,
                     defaultPinTheme: PinTheme(
-                      width: 56,
-                      height: 56,
+                      width: MediaQuery.of(context).size.width < 360 ? 40 : 56,
+                      height: MediaQuery.of(context).size.width < 360 ? 40 : 56,
                       textStyle: const TextStyle(fontSize: 20, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
                       decoration: BoxDecoration(
                         border: Border.all(color: AppColors.primary.withOpacity(0.5)),

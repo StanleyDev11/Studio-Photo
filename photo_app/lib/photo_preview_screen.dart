@@ -6,6 +6,8 @@ import 'package:Picon/utils/geometric_background.dart';
 import 'package:flutter/material.dart';
 import 'package:Picon/utils/print_quality_utils.dart';
 import 'package:Picon/utils/image_helper.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:Picon/api_service.dart';
 
 // ─────────────────────────────────────────────
 //  Modèle de classement d'un format d'impression
@@ -277,6 +279,67 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen>
     }
   }
 
+  Future<void> _addMorePhotos() async {
+    final picker = ImagePicker();
+    List<XFile> pickedFiles = [];
+    try {
+      pickedFiles = await picker.pickMultiImage(imageQuality: 50);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Impossible d'ouvrir la galerie. Vérifiez les permissions."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (pickedFiles.isNotEmpty && mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+
+      try {
+        final compressedPaths = await compressBatch(pickedFiles);
+        final compressedFiles = compressedPaths.map((p) => File(p)).toList();
+        final uploadedUrls = await ApiService.uploadPhotos(compressedFiles);
+        
+        if (mounted) {
+          setState(() {
+            final oldLength = widget.images.length;
+            widget.images.addAll(uploadedUrls);
+            
+            // Set details for new photos
+            for (final url in uploadedUrls) {
+              _localDetails[url] = {
+                'size': widget.prices.keys.firstOrNull ?? '',
+                'quantity': 1,
+              };
+            }
+            
+            // Auto sort them to best format
+            _preloadAndAssignBestFormats();
+            
+            // Select the newly added first photo
+            _selectedIndex = oldLength;
+          });
+        }
+      } catch (e) {
+        // Handle error silently or log
+      } finally {
+        if (mounted) {
+          Navigator.of(context).pop(); // Dismiss loading
+        }
+      }
+    }
+  }
+
   Widget _buildImage(String url, {BoxFit fit = BoxFit.cover, Alignment alignment = Alignment.center}) {
     if (url.startsWith('http')) {
       return Image.network(
@@ -354,6 +417,14 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen>
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            tooltip: 'Ajouter des photos',
+            onPressed: _addMorePhotos,
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: FadeTransition(
         opacity: _fadeAnimation,
@@ -525,6 +596,35 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen>
                         }
                         return const SizedBox.shrink();
                       },
+                    ),
+                    // Bouton de suppression X
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            widget.images.removeAt(index);
+                            _localDetails.remove(url);
+                            widget.photoDetails.remove(url);
+                            // Adjust selected index if it's out of bounds
+                            if (_selectedIndex >= widget.images.length && _selectedIndex > 0) {
+                              _selectedIndex--;
+                            }
+                          });
+                          if (widget.images.isEmpty) {
+                            Navigator.of(context).pop(false);
+                          }
+                        },
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.redAccent,
+                            borderRadius: BorderRadius.only(topRight: Radius.circular(8)),
+                          ),
+                          padding: const EdgeInsets.all(2),
+                          child: const Icon(Icons.close, color: Colors.white, size: 16),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -744,7 +844,10 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen>
       child: ElevatedButton.icon(
         onPressed: _confirm,
         icon: const Icon(Icons.check_circle_outline),
-        label: const Text('Confirmer les formats'),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: const Text('Confirmer les formats'),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
