@@ -937,8 +937,8 @@
 
                 let totalRevenue = 0;
                 Array.from(visibleRows).forEach(function (rowNode) {
-                    // Assuming the total amount is the 3rd column in the current table structure (index 2 for 0-based)
-                    const amountText = $(rowNode).find('td:nth-child(3) .font-weight-bold').text();
+                    // Assuming the total amount is the 4th column in the current table structure (index 3 for 0-based)
+                    const amountText = $(rowNode).find('td:nth-child(4) .font-weight-bold').text();
                     const amount = parseFloat(amountText.replace(' FCFA', '').replace(/\s/g, '').replace(',', '.')) || 0;
                     totalRevenue += amount;
                 });
@@ -960,17 +960,17 @@
                 const dateFilter = $('#filterDate').val();
                 const deliveryFilter = $('#filterDelivery').val();
 
-                // Filtrage Status (Colonne 3)
-                ordersDataTable.column(3).search(statusFilter ? statusFilter : '', true, false);
+                // Filtrage Status (Colonne 5, index 4)
+                ordersDataTable.column(4).search(statusFilter ? statusFilter : '', true, false);
 
-                // Filtrage Livraison (Colonne 5)
-                ordersDataTable.column(5).search(deliveryFilter ? deliveryFilter : '', true, false);
+                // Filtrage Livraison (Colonne 7, index 6)
+                ordersDataTable.column(6).search(deliveryFilter ? deliveryFilter : '', true, false);
 
                 // Filtrage Date (Logique personnalisée DataTables)
                 $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
                     if (!dateFilter) return true;
 
-                    const dateStr = data[1]; // Colonne Date (index 1)
+                    const dateStr = data[2]; // Colonne Date (index 2)
                     const parts = dateStr.split(' ')[0].split('/'); // dd/mm/yyyy
                     if (parts.length < 3) return true;
                     const orderDate = new Date(parts[2], parts[1] - 1, parts[0]);
