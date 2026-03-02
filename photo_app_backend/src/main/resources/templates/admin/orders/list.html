@@ -914,21 +914,25 @@
             function hideLoading() {
                 $('#loadingOverlay').fadeOut();
             }
-            showLoading(); // Show spinner before DataTable initialization
-            // Initialize DataTable
-            var ordersDataTable = $('#ordersTable').DataTable({
-                language: {
-                    url: '/i18n/French.json'
-                },
-                pageLength: 25,
-                order: [1, 'desc'] // Tri par date (index 1) descendant par défaut
-            });
-            ordersDataTable.on('draw.dt', function () {
-                hideLoading(); // Hide spinner after DataTable redraws (initial load and filters)
-            });
+            var ordersDataTable;
+            if ($('#ordersTable').length > 0) {
+                showLoading(); // Show spinner before DataTable initialization
+                // Initialize DataTable
+                ordersDataTable = $('#ordersTable').DataTable({
+                    language: {
+                        url: '/i18n/French.json'
+                    },
+                    pageLength: 25,
+                    order: [1, 'desc'] // Tri par date (index 1) descendant par défaut
+                });
+                ordersDataTable.on('draw.dt', function () {
+                    hideLoading(); // Hide spinner after DataTable redraws (initial load and filters)
+                });
+            }
 
             // Function to update statistics based on currently displayed (filtered) rows
             function updateStatsFromDataTable() {
+                if (!ordersDataTable) return;
                 const visibleRows = ordersDataTable.rows({ search: 'applied' }).nodes(); // Get all rows that are currently displayed by DataTables
                 const totalOrders = visibleRows.length;
                 const pendingOrders = visibleRows.filter((_, row) => $(row).find('.status-badge.badge-pending').length > 0 || $(row).find('.status-badge.badge-pending_payment').length > 0).length;
@@ -955,6 +959,7 @@
 
             // Filter functionality
             $('#applyFilters').click(function () {
+                if (!ordersDataTable) return;
                 showLoading();
                 const statusFilter = $('#filterStatus').val();
                 const dateFilter = $('#filterDate').val();
@@ -996,6 +1001,7 @@
             });
 
             $('#resetFilters').click(function () {
+                if (!ordersDataTable) return;
                 showLoading();
                 $('#filterStatus, #filterDate, #filterDelivery').val('');
                 ordersDataTable.columns().search('').draw();
