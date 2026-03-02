@@ -687,7 +687,7 @@
                     <i class="fas fa-shopping-cart"></i>
                 </div>
                 <div class="stat-content">
-                    <div class="stat-value" id="totalOrders" th:text="${orders.size()}">0</div>
+                    <div class="stat-value" id="totalOrders" th:text="${orders != null ? orders.size() : 0}">0</div>
                     <div class="stat-label">Commandes totales</div>
                     <div class="stat-change positive">
                         <i class="fas fa-arrow-up mr-1"></i> 15% ce mois
@@ -776,7 +776,7 @@
         </div>
 
         <!-- Orders Table -->
-        <div th:unless="${orders.isEmpty()}" class="dataTables_wrapper">
+        <div th:unless="${orders == null || orders.isEmpty()}" class="dataTables_wrapper">
             <table id="ordersTable" class="table table-hover" style="width:100%">
                 <thead>
                     <tr>
@@ -807,24 +807,24 @@
                         <td>
                             <div class="customer-info">
                                 <div class="customer-avatar"
-                                    th:text="${(order.user?.firstname?.substring(0,1) ?: '') + (order.user?.lastname?.substring(0,1) ?: '')}">
+                                    th:text="${(order.user != null && order.user.firstname != null && !order.user.firstname.isEmpty() ? order.user.firstname.substring(0,1) : '') + (order.user != null && order.user.lastname != null && !order.user.lastname.isEmpty() ? order.user.lastname.substring(0,1) : '')}">
                                 </div>
                                 <div>
                                     <div class="font-weight-bold"
-                                        th:text="${order.user?.firstname + ' ' + order.user?.lastname ?: 'Client anonyme'}">
+                                        th:text="${order.user != null ? (order.user.firstname + ' ' + order.user.lastname) : 'Client anonyme'}">
                                     </div>
                                 </div>
                             </div>
                         </td>
                         <td th:data-order="${order.createdAt}">
-                            <div class="font-weight-bold" th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy')}">
+                            <div class="font-weight-bold" th:text="${order.createdAt != null ? #temporals.format(order.createdAt, 'dd/MM/yyyy') : 'N/A'}">
                                 29/01/2026</div>
                             <small class="text-muted"
-                                th:text="${#temporals.format(order.createdAt, 'HH:mm')}">10:00</small>
+                                th:text="${order.createdAt != null ? #temporals.format(order.createdAt, 'HH:mm') : ''}">10:00</small>
                         </td>
                         <td>
                             <div class="font-weight-bold"
-                                th:text="${#numbers.formatDecimal(order.totalAmount, 1, 'POINT', 2, 'COMMA') + ' FCFA'}">
+                                th:text="${order.totalAmount != null ? #numbers.formatDecimal(order.totalAmount, 1, 'POINT', 2, 'COMMA') + ' FCFA' : '0 FCFA'}">
                                 1500.00 FCFA</div>
                             <small class="text-muted"
                                 th:text="${order.orderItems?.size() ?: 0} + ' article(s)'"></small>
@@ -878,7 +878,7 @@
         </div>
 
         <!-- Empty State (when no orders) -->
-        <div th:if="${orders.isEmpty()}" class="empty-state">
+        <div th:if="${orders == null || orders.isEmpty()}" class="empty-state">
             <div class="empty-icon">
                 <i class="fas fa-shopping-cart"></i>
             </div>
