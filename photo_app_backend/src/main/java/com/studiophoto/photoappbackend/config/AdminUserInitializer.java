@@ -5,12 +5,14 @@ import com.studiophoto.photoappbackend.model.Status; // Import Status enum
 import com.studiophoto.photoappbackend.model.User;
 import com.studiophoto.photoappbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class AdminUserInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
@@ -25,7 +27,7 @@ public class AdminUserInitializer implements CommandLineRunner {
                 if (existingAdmin.getStatus() != Status.ACTIVE) {
                     existingAdmin.setStatus(Status.ACTIVE);
                     userRepository.save(existingAdmin);
-                    System.out.println("Existing admin user updated to ACTIVE status: " + existingAdmin.getEmail());
+                    log.info("Existing admin user updated to ACTIVE status: {}", existingAdmin.getEmail());
                 }
             },
             // If user does not exist, create a new one with ACTIVE status
@@ -39,7 +41,7 @@ public class AdminUserInitializer implements CommandLineRunner {
                         .status(Status.ACTIVE) // Explicitly set status to ACTIVE
                         .build();
                 userRepository.save(admin);
-                System.out.println("Default admin user created: admin@example.com");
+                log.info("Default admin user created: admin@example.com");
             }
         );
     }

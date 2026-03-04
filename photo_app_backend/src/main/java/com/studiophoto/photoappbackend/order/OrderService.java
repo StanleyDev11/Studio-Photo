@@ -7,6 +7,7 @@ import com.studiophoto.photoappbackend.payment.FedapayInitiateRequest; // Added 
 import com.studiophoto.photoappbackend.payment.FedapayInitiateRequest.OrderItemDto; // Added import
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final OrderRepository orderRepository;
@@ -197,7 +199,7 @@ public class OrderService {
                     fileCount++;
                 } catch (IOException e) {
                     // Log the error but continue with other files
-                    System.err.println("Failed to download image from " + item.getImageUrl() + ": " + e.getMessage());
+                    log.error("Failed to download image from {}: {}", item.getImageUrl(), e.getMessage());
                 }
             }
             if (fileCount == 0) {
@@ -235,7 +237,7 @@ public class OrderService {
                     fileCount++;
                 } catch (IOException e) {
                     // Log the error but continue with other files
-                    System.err.println("Failed to download image from " + item.getImageUrl() + ": " + e.getMessage());
+                    log.error("Failed to download image from {}: {}", item.getImageUrl(), e.getMessage());
                 }
             }
             if (fileCount == 0) {

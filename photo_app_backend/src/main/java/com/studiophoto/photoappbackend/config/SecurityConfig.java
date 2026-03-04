@@ -11,8 +11,16 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import jakarta.servlet.http.HttpServletResponse; // Added import
-import org.springframework.http.MediaType; // Added import
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.MediaType;
+
+import java.util.Arrays;
+import java.util.Collections;
 
 @Configuration
 @EnableWebSecurity
@@ -20,57 +28,88 @@ import org.springframework.http.MediaType; // Added import
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-        private final JwtAuthenticationFilter jwtAuthFilter;
-        private final AuthenticationProvider authenticationProvider;
+    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final AuthenticationProvider authenticationProvider;
 
-        @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-                http
-                                .csrf(csrf -> csrf.disable())
-                                .authorizeHttpRequests(auth -> auth
-                                                // Public access for static resources
-                                                .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**",
-                                                                "/uploads/**")
-                                                .permitAll()
-                                                // Public access for new public endpoints
-                                                .requestMatchers("/api/public/**", "/api/promotions/**",
-                                                                "/api/featured-content/**")
-                                                .permitAll()
-                                                .requestMatchers("/payment/**").permitAll()
-                                                .requestMatchers("/api/payments/fedapay/webhook").permitAll()
-                                                // Public access for authentication and admin login page
-                                                .requestMatchers("/api/auth/**").permitAll() // API authentication
-                                                                                             // should be permitted
-                                                .requestMatchers("/admin/login").permitAll() // Admin login page
-                                                // Admin paths should be authenticated and role-based
-                                                .requestMatchers("/admin/**").hasRole("ADMIN")
-                                                .anyRequest()
-                                                .authenticated())
-                                .exceptionHandling(exception -> exception
-                                                .authenticationEntryPoint((request, response, authException) -> {
-                                                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                                                        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                                                        // Provide a more user-friendly message for authentication
-                                                        // failures
-                                                        response.getWriter().write(
-                                                                        "{ \"message\": \"Email ou mot de passe incorrect.\" }");
-                                                }))
-                                .formLogin(form -> form
-                                                .loginPage("/admin/login")
-                                                .defaultSuccessUrl("/admin/dashboard", true) // Redirect to admin
-                                                                                             // dashboard on success
-                                                .failureUrl("/admin/login?error")
-                                                .permitAll() // Allow everyone to access the login form
-                                )
-                                .logout(logout -> logout
-                                                .logoutUrl("/admin/logout")
-                                                .logoutSuccessUrl("/admin/login?logout")
-                                                .permitAll())
-                                .sessionManagement(session -> session
-                                                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                                .authenticationProvider(authenticationProvider)
-                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(
+                                new AntPathRequestMatcher("/api/**"),
+                                new AntPathRequestMatcher("/payment/**"),
+                                new AntPathRequestMatcher("/api/payments/fedapay/webhook")
+                        )
+                )
+                .authorizeHttpRequests(auth -> auth
+                        // Public access for static resources
+                        .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**").permitAll()
+                        // Uploads should ideally be authenticated, but if needed for mobile <img> tags:
+                        // .requestMatchers("/uploads/**").permitAll() // Security by obscurity (UUIDs)
+                        .requestMatchers("/uploads/**").authenticated()
+                        
+                        // Public access for new public endpoints
+                        .requestMatchers("/api/public/**", "/api/promotions/**", "/api/featured-content/**").permitAll()
+                        .requestMatchers("/payment/**").permitAll()
+                        .requestMatchers("/api/payments/fedapay/webhook").permitAll()
+                        
+                        // Public access for authentication and admin login page
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/admin/login").permitAll()
+                        
+                        // Admin paths should be authenticated and role-based
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        
+                        .anyRequest().authenticated()
+                )
+                .exceptionHandling(exception -> exception
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/admin/login"),
+                                new AntPathRequestMatcher("/admin/**")
+                        )
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            // Fallback for API calls: return JSON instead of redirecting
+                            if (request.getRequestURI().startsWith("/api/")) {
+                                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                                response.getWriter().write("{ \"message\": \"Non autorisé. Veuillez vous connecter.\" }");
+                            } else {
+                                response.sendRedirect("/admin/login");
+                            }
+                        })
+                )
+                .formLogin(form -> form
+                        .loginPage("/admin/login")
+                        .defaultSuccessUrl("/admin/dashboard", true)
+                        .failureUrl("/admin/login?error")
+                        .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/admin/logout")
+                        .logoutSuccessUrl("/admin/login?logout")
+                        .permitAll())
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-                return http.build();
-        }
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // IMPORTANT: En production, remplacez "*" par vos domaines frontend autorisés
+        configuration.setAllowedOriginPatterns(Collections.singletonList("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Auth-Token", "X-CSRF-TOKEN"));
+        configuration.setExposedHeaders(Collections.singletonList("Authorization"));
+        configuration.setAllowCredentials(true);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 }
+

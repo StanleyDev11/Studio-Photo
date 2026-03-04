@@ -1,5 +1,6 @@
 package com.studiophoto.photoappbackend.auth;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,21 +21,21 @@ public class AuthenticationController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> register(
-            @RequestBody RegisterRequest request
+            @Valid @RequestBody RegisterRequest request
     ) {
         return ResponseEntity.ok(service.register(request));
     }
 
     @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> authenticate(
-            @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request
     ) {
         return ResponseEntity.ok(service.authenticate(request));
     }
 
     @PostMapping("/verify-pin")
     public ResponseEntity<Map<String, String>> verifyPin(
-            @RequestBody VerifyPinRequest request
+            @Valid @RequestBody VerifyPinRequest request
     ) {
         String resetToken = service.verifyPinForPasswordReset(request.getIdentifier(), request.getPin());
         Map<String, String> response = new HashMap<>();
@@ -44,7 +45,7 @@ public class AuthenticationController {
 
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(
-            @RequestBody ResetPasswordWithTokenRequest request
+            @Valid @RequestBody ResetPasswordWithTokenRequest request
     ) {
         service.resetPassword(request.getToken(), request.getNewPassword());
         return ResponseEntity.ok().build();
