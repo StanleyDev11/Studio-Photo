@@ -39,7 +39,8 @@ public class SecurityConfig {
                         .ignoringRequestMatchers(
                                 new AntPathRequestMatcher("/api/**"),
                                 new AntPathRequestMatcher("/payment/**"),
-                                new AntPathRequestMatcher("/api/payments/fedapay/webhook")
+                                new AntPathRequestMatcher("/api/payments/fedapay/webhook"),
+                                new AntPathRequestMatcher("/actuator/**")
                         )
                 )
                 .authorizeHttpRequests(auth -> auth
@@ -60,6 +61,7 @@ public class SecurityConfig {
                         
                         // Admin paths should be authenticated and role-based
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         
                         .anyRequest().authenticated()
                 )
