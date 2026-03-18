@@ -3,7 +3,9 @@ package com.studiophoto.photoappbackend.order;
 import com.studiophoto.photoappbackend.model.User;
 import com.studiophoto.photoappbackend.storage.StorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -29,8 +32,7 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<Order> createOrder(
             @RequestBody CreateOrderRequest request,
-            @AuthenticationPrincipal User currentUser
-    ) {
+            @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(401).build(); // Non autorisé
         }
@@ -39,12 +41,28 @@ public class OrderController {
     }
 
     @GetMapping("/my-orders")
-    public ResponseEntity<List<Order>> getMyOrders(@AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<List<OrderResponseDTO>> getMyOrders(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(401).build();
         }
-        List<Order> orders = orderService.findOrdersByUser(currentUser.getId());
+        List<OrderResponseDTO> orders = orderService.findOrdersByUser(currentUser.getId())
+                .stream()
+                .map(OrderResponseDTO::from)
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(orders);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponseDTO> getOrderById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return orderService.findById(id)
+                .filter(order -> order.getUser().getId().equals(currentUser.getId()))
+                .map(order -> ResponseEntity.ok(OrderResponseDTO.from(order)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/upload")
@@ -77,16 +95,16 @@ public class OrderController {
                 if (originalFilename == null) {
                     originalFilename = "unnamed-file";
                 }
-                
+
                 // Clean the filename to prevent directory traversal issues
                 String sanitizedFilename = Paths.get(originalFilename).getFileName().toString();
-
 
                 Path destinationFile = userDirectory.resolve(sanitizedFilename).normalize().toAbsolutePath();
 
                 // Double check to prevent saving files outside the intended directory
                 if (!destinationFile.getParent().equals(userDirectory.toAbsolutePath())) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Cannot store file outside the designated directory.");
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body("Cannot store file outside the designated directory.");
                 }
 
                 file.transferTo(destinationFile);
@@ -101,6 +119,47 @@ public class OrderController {
             // Log the exception for debugging purposes
             // logger.error("Failed to upload files for user {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload files.");
+        }
+    }
+
+    @GetMapping("/{orderId}/download-photos")
+    public ResponseEntity<byte[]> downloadOrderPhotos(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            byte[] zipBytes = orderService.createOrderPhotosZip(orderId, currentUser);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "order_" + orderId + "_photos.zip");
+            headers.setContentLength(zipBytes.length);
+
+            return new ResponseEntity<>(zipBytes, headers, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // Order not found or not owned by user
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null); // Error during zip creation
+        }
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelOrder(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
+        try {
+            orderService.cancelOrder(id, currentUser);
+            return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Une erreur est survenue lors de l'annulation.");
         }
     }
 }

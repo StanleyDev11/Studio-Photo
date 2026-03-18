@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace 'com.example.picon' // Remplacez par le namespace de votre application
-    compileSdk 35 // SDK de compilation
+    compileSdk 36 // SDK de compilation
 
     defaultConfig {
         applicationId 'com.example.picon' // Identifiant unique de l'application
         minSdkVersion flutter.minSdkVersion // Minimum SDK supporté
-        targetSdk 35 // SDK cible
+        targetSdk 36 // SDK cible
         versionCode 1 // Numéro de version de build
         versionName '1.0.0' // Nom de la version
     }

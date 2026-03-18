@@ -1,6 +1,6 @@
-featured-content/delete/4:1  Failed to load resource: the server responded with a status of 405 ()
+on va ajouter le meme filtre qu'on a jouter sur agence sur caisse 
 
+desactivé , activé , ouvert et fermer
 
+mais avant de faire on va créer un nouvelle branch  
 
-
-J'arrive pas supprimer les contenu de la page  contenu mise en avant  apres avoir insrer le sweet alerte et aussi le swet alerte n'est pas sur l'ajout et la modification

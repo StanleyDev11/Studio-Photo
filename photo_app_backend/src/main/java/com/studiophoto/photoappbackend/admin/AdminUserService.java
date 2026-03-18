@@ -4,21 +4,66 @@ import com.studiophoto.photoappbackend.admin.dto.UserRequest;
 import com.studiophoto.photoappbackend.admin.dto.UserResponse;
 import com.studiophoto.photoappbackend.model.Status; // Import Status enum
 import com.studiophoto.photoappbackend.model.User;
+import com.studiophoto.photoappbackend.booking.BookingRepository;
+import com.studiophoto.photoappbackend.order.OrderRepository;
 import com.studiophoto.photoappbackend.repository.UserRepository;
+import com.studiophoto.photoappbackend.service.ActivityService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminUserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OrderRepository orderRepository;
+    private final BookingRepository bookingRepository;
+    private final ActivityService activityService;
+
+    private String getCurrentAdminEmail() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
+    public com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO getUserActivityChartData(Integer userId) {
+        List<String> labels = new java.util.ArrayList<>();
+        List<java.math.BigDecimal> data = new java.util.ArrayList<>();
+        List<com.studiophoto.photoappbackend.order.OrderStatus> revenueStatuses = java.util.Arrays.asList(
+                com.studiophoto.photoappbackend.order.OrderStatus.COMPLETED,
+                com.studiophoto.photoappbackend.order.OrderStatus.PROCESSING);
+
+        java.time.YearMonth currentMonth = java.time.YearMonth.now();
+        for (int i = 5; i >= 0; i--) {
+            java.time.YearMonth month = currentMonth.minusMonths(i);
+            labels.add(month.getMonth().name());
+
+            java.time.LocalDateTime start = month.atDay(1).atStartOfDay();
+            java.time.LocalDateTime end = month.atEndOfMonth().atTime(23, 59, 59);
+
+            java.math.BigDecimal monthlyRev = orderRepository.sumUserRevenueBetween(userId, revenueStatuses, start, end);
+            data.add(monthlyRev != null ? monthlyRev : java.math.BigDecimal.ZERO);
+        }
+
+        long totalOrders = orderRepository.countOrdersByUserAndStatusIn(userId, revenueStatuses);
+        java.math.BigDecimal totalRevenue = orderRepository.sumTotalRevenueByUserAndStatusIn(userId, revenueStatuses);
+        if (totalRevenue == null) totalRevenue = java.math.BigDecimal.ZERO;
+
+        return com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO.builder()
+                .labels(labels)
+                .data(data)
+                .totalOrders(totalOrders)
+                .totalRevenue(totalRevenue)
+                .build();
+    }
 
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
@@ -30,7 +75,6 @@ public class AdminUserService {
         return userRepository.findById(id)
                 .map(this::mapToUserResponse);
     }
-
 
     public UserResponse createUser(UserRequest request) {
         // Check if user with the same email already exists
@@ -44,11 +88,14 @@ public class AdminUserService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
-                .status(request.getStatus() != null ? request.getStatus() : Status.PENDING) // Use request status or default
+                .status(request.getStatus() != null ? request.getStatus() : Status.PENDING) // Use request status or
+                                                                                            // default
                 .phone(request.getPhone())
                 .pin(request.getPin())
                 .build();
-        return mapToUserResponse(userRepository.save(user));
+        UserResponse response = mapToUserResponse(userRepository.save(user));
+        activityService.logActivity(getCurrentAdminEmail(), "USER_CREATE", "Création de l'utilisateur: " + user.getEmail());
+        return response;
     }
 
     public Optional<UserResponse> updateUser(Integer id, UserRequest request) {
@@ -66,23 +113,50 @@ public class AdminUserService {
                     if (request.getPassword() != null && !request.getPassword().isEmpty()) {
                         user.setPassword(passwordEncoder.encode(request.getPassword()));
                     }
-                    return mapToUserResponse(userRepository.save(user));
+                    UserResponse response = mapToUserResponse(userRepository.save(user));
+                    activityService.logActivity(getCurrentAdminEmail(), "USER_UPDATE", "Modification de l'utilisateur ID: " + id);
+                    return response;
                 });
     }
 
+    @Transactional
     public boolean deleteUser(Integer id) {
-        if (userRepository.existsById(id)) {
-            userRepository.deleteById(id);
-            return true;
-        }
-        return false;
+        log.info("Tentative de suppression de l'utilisateur ID: {}", id);
+        return userRepository.findById(id)
+                .map(user -> {
+                    try {
+                        String userEmail = user.getEmail();
+                        // 1. Delete all bookings associated with this user
+                        log.debug("Suppression des réservations pour l'utilisateur {}", id);
+                        bookingRepository.deleteAll(bookingRepository.findByUser(user));
+
+                        // 2. Delete all orders associated with this user
+                        log.debug("Suppression des commandes pour l'utilisateur {}", id);
+                        orderRepository.deleteAll(orderRepository.findByUserIdOrderByCreatedAtDesc(id));
+
+                        // 3. Delete the user
+                        log.debug("Suppression de l'utilisateur {} de la base", id);
+                        userRepository.delete(user);
+                        log.info("Utilisateur {} supprimé avec succès", id);
+                        activityService.logActivity(getCurrentAdminEmail(), "USER_DELETE", "Suppression de l'utilisateur: " + userEmail);
+                        return true;
+                    } catch (Exception e) {
+                        log.error("Erreur lors de la suppression de l'utilisateur {}: {}", id, e.getMessage());
+                        throw new RuntimeException(
+                                "Impossible de supprimer l'utilisateur car il possède des données liées qui ne peuvent pas être effacées.");
+                    }
+                }).orElseGet(() -> {
+                    log.warn("Utilisateur ID {} non trouvé pour suppression", id);
+                    return false;
+                });
     }
 
     public Optional<UserResponse> resetUserPassword(Integer id, String newPassword) {
         return userRepository.findById(id)
                 .map(user -> {
                     // Generate a new password if null or empty, otherwise use provided
-                    String passwordToEncode = (newPassword == null || newPassword.isEmpty()) ? generateRandomPassword() : newPassword;
+                    String passwordToEncode = (newPassword == null || newPassword.isEmpty()) ? generateRandomPassword()
+                            : newPassword;
                     user.setPassword(passwordEncoder.encode(passwordToEncode));
                     return mapToUserResponse(userRepository.save(user));
                 });

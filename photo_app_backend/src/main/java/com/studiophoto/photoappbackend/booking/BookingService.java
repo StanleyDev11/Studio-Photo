@@ -11,6 +11,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -38,7 +39,7 @@ public class BookingService {
 
     public List<Booking> getBookingsByUser(Integer userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé"));
         return bookingRepository.findByUser(user);
     }
 
@@ -46,8 +47,8 @@ public class BookingService {
         // Optionnel: Ajouter des validations métier (ex: chevauchement de rendez-vous)
         // Assurez-vous que l'utilisateur existe
         userRepository.findById(booking.getUser().getId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé"));
+
         // Statut par défaut si non fourni
         if (booking.getStatus() == null) {
             booking.setStatus(BookingStatus.PENDING);
@@ -67,7 +68,7 @@ public class BookingService {
                     existingBooking.setUpdatedAt(LocalDateTime.now());
                     return bookingRepository.save(existingBooking);
                 })
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Réservation non trouvée avec l'ID : " + id));
     }
 
     public void deleteBooking(Long id) {
@@ -81,7 +82,7 @@ public class BookingService {
                     booking.setUpdatedAt(LocalDateTime.now());
                     return bookingRepository.save(booking);
                 })
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Réservation non trouvée avec l'ID : " + id));
     }
 
     public void saveBooking(Booking booking) {
@@ -91,7 +92,8 @@ public class BookingService {
         long totalBookings = bookingRepository.count();
         long pendingBookings = bookingRepository.countByStatus(BookingStatus.PENDING);
         long confirmedBookings = bookingRepository.countByStatus(BookingStatus.CONFIRMED);
-        long todayBookings = bookingRepository.countByStartTimeBetween(LocalDateTime.now().withHour(0).withMinute(0), LocalDateTime.now().withHour(23).withMinute(59));
+        long todayBookings = bookingRepository.countByStartTimeBetween(LocalDateTime.now().withHour(0).withMinute(0),
+                LocalDateTime.now().withHour(23).withMinute(59));
 
         return com.studiophoto.photoappbackend.admin.BookingStats.builder()
                 .totalBookings(totalBookings)
@@ -102,10 +104,11 @@ public class BookingService {
     }
 
     public Map<String, Object> getBookingDataTable(int draw, int start, int length, String searchValue,
-                                                    int orderColumn, String orderDir, String status, String dateRange, Long userId) {
+            int orderColumn, String orderDir, String status, String dateRange, Long userId) {
 
         // Define column names for sorting
-        String[] columnNames = {"user", "title", "startTime", "startTime", "duration", "type", "status", "amount", "createdAt"};
+        String[] columnNames = { "user", "title", "startTime", "startTime", "duration", "type", "status", "amount",
+                "createdAt" };
 
         // Build sorting
         Sort.Direction direction = Sort.Direction.fromString(orderDir);
@@ -126,8 +129,7 @@ public class BookingService {
                         cb.like(cb.lower(root.get("notes")), likePattern),
                         cb.like(cb.lower(root.get("user").get("firstname")), likePattern),
                         cb.like(cb.lower(root.get("user").get("lastname")), likePattern),
-                        cb.like(cb.lower(root.get("user").get("email")), likePattern)
-                ));
+                        cb.like(cb.lower(root.get("user").get("email")), likePattern)));
             }
 
             // Status filter
@@ -140,31 +142,44 @@ public class BookingService {
                 LocalDateTime now = LocalDateTime.now();
                 switch (dateRange) {
                     case "today":
-                        predicates.add(cb.between(root.get("startTime"), now.withHour(0).withMinute(0), now.withHour(23).withMinute(59)));
+                        predicates.add(cb.between(root.get("startTime"), now.withHour(0).withMinute(0),
+                                now.withHour(23).withMinute(59)));
                         break;
                     case "tomorrow":
                         LocalDateTime tomorrow = now.plusDays(1);
-                        predicates.add(cb.between(root.get("startTime"), tomorrow.withHour(0).withMinute(0), tomorrow.withHour(23).withMinute(59)));
+                        predicates.add(cb.between(root.get("startTime"), tomorrow.withHour(0).withMinute(0),
+                                tomorrow.withHour(23).withMinute(59)));
                         break;
                     case "this_week":
-                        LocalDateTime startOfWeek = now.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).withHour(0).withMinute(0);
-                        LocalDateTime endOfWeek = now.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).withHour(23).withMinute(59);
+                        LocalDateTime startOfWeek = now.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                                .withHour(0).withMinute(0);
+                        LocalDateTime endOfWeek = now.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).withHour(23)
+                                .withMinute(59);
                         predicates.add(cb.between(root.get("startTime"), startOfWeek, endOfWeek));
                         break;
                     case "next_week":
-                        LocalDateTime nextWeekStart = now.plusWeeks(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).withHour(0).withMinute(0);
-                        LocalDateTime nextWeekEnd = now.plusWeeks(1).with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).withHour(23).withMinute(59);
+                        LocalDateTime nextWeekStart = now.plusWeeks(1)
+                                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).withHour(0).withMinute(0);
+                        LocalDateTime nextWeekEnd = now.plusWeeks(1)
+                                .with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).withHour(23).withMinute(59);
                         predicates.add(cb.between(root.get("startTime"), nextWeekStart, nextWeekEnd));
                         break;
                     case "this_month":
-                        predicates.add(cb.between(root.get("startTime"), now.withDayOfMonth(1).withHour(0).withMinute(0), now.with(TemporalAdjusters.lastDayOfMonth()).withHour(23).withMinute(59)));
+                        predicates
+                                .add(cb.between(root.get("startTime"), now.withDayOfMonth(1).withHour(0).withMinute(0),
+                                        now.with(TemporalAdjusters.lastDayOfMonth()).withHour(23).withMinute(59)));
                         break;
                 }
             }
 
-            // User filter
             if (userId != null) {
                 predicates.add(cb.equal(root.get("user").get("id"), userId));
+            }
+
+            // Force fetch user details to avoid "Non assigné" in admin table due to Lazy
+            // Loading
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                root.fetch("user", JoinType.LEFT);
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -177,7 +192,7 @@ public class BookingService {
         response.put("recordsTotal", bookingRepository.count()); // Total records without filtering
         response.put("recordsFiltered", bookingsPage.getTotalElements()); // Total records after filtering
         response.put("data", bookingsPage.getContent()); // Data for the current page
-        
+
         return response;
     }
 

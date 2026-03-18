@@ -11,4 +11,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class FedapayInitiateResponse {
     private String paymentUrl;
+    private Long orderId;
 }

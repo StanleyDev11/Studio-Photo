@@ -104,7 +104,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: AppColors.primary.withOpacity(0.4), // Use glassmorphic style consistent with home screen
@@ -124,35 +124,54 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       body: Stack(
         children: [
-          const GeometricBackground(),
-          SingleChildScrollView(
-            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight, bottom: 20),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 30),
-                    _buildAvatar(),
-                    const SizedBox(height: 20),
-                    Text(
-                      '$_currentName $_currentLastName',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith( // Use headlineMedium for a more prominent name
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+          GeometricBackground(),
+          RefreshIndicator(
+            onRefresh: () async {
+              // Trigger global refresh logic from here
+              final details = await ApiService.getAuthDetails();
+              if (details != null && mounted) {
+                setState(() {
+                  _currentName = details['firstname'] ?? _currentName;
+                  _currentLastName = details['lastname'] ?? _currentLastName;
+                  _currentEmail = details['email'] ?? _currentEmail;
+                });
+                widget.onProfileUpdated(_currentName, _currentLastName, _currentEmail);
+              }
+            },
+            color: AppColors.primary,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + kToolbarHeight, bottom: 20),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 30),
+                      _buildAvatar(),
+                      const SizedBox(height: 20),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '$_currentName $_currentLastName',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith( // Use headlineMedium for a more prominent name
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _currentEmail,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith( // Use bodyLarge for email
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    _buildMenuItems(),
-                  ],
+                      const SizedBox(height: 8),
+                      // Text(
+                      //   _currentEmail,
+                      //   style: Theme.of(context).textTheme.bodyLarge?.copyWith( // Use bodyLarge for email
+                      //     color: AppColors.textSecondary,
+                      //   ),
+                      // ),
+                      const SizedBox(height: 40),
+                      _buildMenuItems(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -174,7 +193,7 @@ class _ProfilePageState extends State<ProfilePage> {
               radius: 70,
               backgroundImage: _currentAvatar != null
                   ? FileImage(_currentAvatar!) as ImageProvider
-                  : const AssetImage('assets/images/pro1.png'), // A default placeholder
+                  : const AssetImage('assets/images/user.png'), // A default placeholder
             ),
           ),
           Positioned(
@@ -255,7 +274,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildProfileMenuTile({required IconData icon, required String title, required VoidCallback onTap, Color? color}) {
     return ListTile(
       leading: Icon(icon, color: color ?? AppColors.textPrimary),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: color ?? AppColors.textPrimary)),
+      title: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: color ?? AppColors.textPrimary)),
+      ),
       trailing: Icon(Icons.arrow_forward_ios, size: 16, color: color ?? AppColors.textSecondary),
       onTap: onTap,
     );

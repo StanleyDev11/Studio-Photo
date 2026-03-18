@@ -11,6 +11,7 @@ import java.util.Optional;
 public class PromotionService {
 
     private final PromotionRepository promotionRepository;
+    private final com.studiophoto.photoappbackend.service.NotificationService notificationService;
 
     public List<Promotion> getAllActivePromotions() {
         return promotionRepository.findByActiveTrue();
@@ -25,10 +26,13 @@ public class PromotionService {
     }
 
     public Promotion savePromotion(Promotion promotion) {
-        return promotionRepository.save(promotion);
+        Promotion saved = promotionRepository.save(promotion);
+        notificationService.sendSyncNotification("PROMOTIONS_UPDATED");
+        return saved;
     }
 
     public void deletePromotion(Long id) {
         promotionRepository.deleteById(id);
+        notificationService.sendSyncNotification("PROMOTIONS_UPDATED");
     }
 }

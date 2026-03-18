@@ -1,5 +1,6 @@
 package com.studiophoto.photoappbackend.order;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.studiophoto.photoappbackend.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -28,9 +30,13 @@ public class Order {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @JsonManagedReference
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();
+
+    @Column(unique = true)
+    private String orderNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -41,6 +47,12 @@ public class Order {
 
     @Column
     private String paymentMethod;
+
+    @Column
+    private String paymentStatus;
+
+    @Column
+    private String deliveryAddress;
 
     @Column(nullable = false)
     private String deliveryType; // e.g., "Standard", "Xpress"
@@ -55,6 +67,9 @@ public class Order {
         createdAt = LocalDateTime.now();
         if (status == null) {
             status = OrderStatus.PENDING;
+        }
+        if (orderNumber == null) {
+            orderNumber = UUID.randomUUID().toString();
         }
     }
 

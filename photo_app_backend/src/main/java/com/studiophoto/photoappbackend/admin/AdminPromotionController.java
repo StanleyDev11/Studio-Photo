@@ -3,6 +3,7 @@ package com.studiophoto.photoappbackend.admin;
 import com.studiophoto.photoappbackend.promotion.Promotion;
 import com.studiophoto.photoappbackend.promotion.PromotionService;
 import com.studiophoto.photoappbackend.storage.StorageService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +15,8 @@ import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin/promotions")
-//@RequiredArgsConstructor // Removed because we will manually create constructor
+// @RequiredArgsConstructor // Removed because we will manually create
+// constructor
 public class AdminPromotionController {
 
     private final PromotionService promotionService;
@@ -35,7 +37,8 @@ public class AdminPromotionController {
     // Endpoint pour afficher le formulaire d'ajout/édition
     @GetMapping("/form")
     public String showPromotionForm(@RequestParam(value = "id", required = false) Long id, Model model) {
-        Promotion promotion = id != null ? promotionService.getPromotionById(id).orElse(new Promotion()) : new Promotion();
+        Promotion promotion = id != null ? promotionService.getPromotionById(id).orElse(new Promotion())
+                : new Promotion();
         model.addAttribute("promotion", promotion);
         return "admin/promotion-form";
     }
@@ -43,8 +46,8 @@ public class AdminPromotionController {
     // Endpoint pour sauvegarder une promotion
     @PostMapping("/save")
     public String savePromotion(@ModelAttribute Promotion promotion,
-                                @RequestParam(value = "file", required = false) MultipartFile file,
-                                RedirectAttributes redirectAttributes) {
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            RedirectAttributes redirectAttributes) {
 
         if (file != null && !file.isEmpty()) {
             // Supprimer l'ancienne image si elle existe et si on la remplace
@@ -72,9 +75,16 @@ public class AdminPromotionController {
 
     // Endpoint pour supprimer une promotion
     @PostMapping("/delete/{id}")
-    public String deletePromotion(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        promotionService.deletePromotion(id); // La méthode deletePromotion dans le service gérera la suppression du fichier
-        redirectAttributes.addFlashAttribute("successMessage", "Promotion supprimée avec succès !");
-        return "redirect:/admin/promotions";
+    @ResponseBody
+    public ResponseEntity<Void> deletePromotion(@PathVariable Long id) {
+        promotionService.deletePromotion(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/bulk-delete")
+    @ResponseBody
+    public ResponseEntity<Void> bulkDelete(@RequestBody List<Long> ids) {
+        ids.forEach(promotionService::deletePromotion);
+        return ResponseEntity.noContent().build();
     }
 }

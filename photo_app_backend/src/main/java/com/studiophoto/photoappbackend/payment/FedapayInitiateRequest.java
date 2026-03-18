@@ -1,5 +1,6 @@
 package com.studiophoto.photoappbackend.payment;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,9 +16,16 @@ import java.util.List;
 public class FedapayInitiateRequest {
     private Long userId;
     private String paymentMethod;
+    @JsonProperty("isExpress")
     private boolean isExpress;
+    private String deliveryAddress; // Added delivery address field
     private BigDecimal totalAmount; // Added totalAmount from mobile app
     private List<OrderItemDto> items;
+    private String customerFirstname;
+    private String customerLastname;
+    private String customerEmail;
+    private String customerPhone;
+    private String customerCountry;
 
     @Data
     @Builder

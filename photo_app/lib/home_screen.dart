@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:Picon/api_service.dart';
 import 'package:Picon/booking_screen.dart';
+import 'package:Picon/booking_status_screen.dart';
 import 'package:Picon/contact_screen.dart';
 import 'package:Picon/history_screen.dart';
 import 'package:Picon/no_connection_screen.dart';
@@ -11,9 +12,11 @@ import 'package:Picon/notifications_screen.dart';
 import 'package:Picon/portfolio_screen.dart';
 import 'package:Picon/pricing_screen.dart';
 import 'package:Picon/profile_page.dart';
+import 'package:Picon/photo_preview_screen.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/connectivity_service.dart';
 import 'package:Picon/utils/geometric_background.dart';
+import 'package:Picon/utils/realtime_service.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -25,14 +28,30 @@ import 'package:image_picker/image_picker.dart';
 
 import 'login_screen.dart';
 import 'order_summary_screen.dart';
+import 'package:Picon/models/promotion.dart';
+import 'package:Picon/models/order.dart';
+import 'package:Picon/models/booking.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:Picon/utils/print_quality_utils.dart';
+import 'package:Picon/utils/image_helper.dart';
 
-// --- Model Class for Mock Data ---
-class RecentRequest {
+// --- Model Class for Real History Data ---
+enum HistoryItemType { order, booking }
+
+class HistoryItem {
   final String title;
   final DateTime date;
   final IconData icon;
+  final HistoryItemType type;
+  final dynamic originalObject;
 
-  RecentRequest({required this.title, required this.date, required this.icon});
+  HistoryItem({
+    required this.title,
+    required this.date,
+    required this.icon,
+    required this.type,
+    this.originalObject,
+  });
 }
 // --- End of Model Class ---
 
@@ -56,7 +75,9 @@ class HomeScreen extends StatefulWidget {
 
 enum CartMode { detail, batch }
 
-class _HomeScreenState extends State<HomeScreen> {
+// ── Qualité d'impression : voir utils/print_quality_utils.dart ──
+
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final Set<String> _selectedImages = {};
   Future<List<String>>? _albumImagesFuture;
@@ -79,32 +100,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, double>? _prices;
   bool _isLoadingPrices = true;
   bool _isUploading = false;
+  Future<List<Promotion>>? _promotionsFuture;
+  Future<List<HistoryItem>>? _historyFuture;
+  RealtimeService? _realtimeService;
+  List<dynamic> _featuredContents = []; // FeaturedContent depuis la BDD
   // --- End of new state variables ---
 
-  // --- Mock Data for History ---
-  final List<RecentRequest> _mockHistory = [
-    RecentRequest(
-        title: "Commande de 15 photos",
-        date: DateTime.now().subtract(const Duration(days: 1)),
-        icon: Icons.photo_camera),
-    RecentRequest(
-        title: "Réservation - Mariage",
-        date: DateTime.now().subtract(const Duration(days: 3)),
-        icon: Icons.calendar_today),
-    RecentRequest(
-        title: "Tirage 20x30",
-        date: DateTime.now().subtract(const Duration(days: 6)),
-        icon: Icons.print),
-    RecentRequest(
-        title: "Commande Album",
-        date: DateTime.now().subtract(const Duration(days: 10)),
-        icon: Icons.book),
-    RecentRequest(
-        title: "Photos d'identité",
-        date: DateTime.now().subtract(const Duration(days: 4)),
-        icon: Icons.person),
-  ];
-  // --- End of Mock Data ---
 
   @override
   void initState() {
@@ -113,6 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _currentUserLastName = widget.userLastName;
     _currentUserEmail = widget.userEmail;
     _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
+    _promotionsFuture = ApiService.fetchPromotions();
+    _historyFuture = _fetchRecentHistory();
+    _loadFeaturedContents();
     _connectivitySubscription =
         _connectivityService.connectivityStream.listen((result) {
       if (result == ConnectivityResult.none) {
@@ -132,6 +136,100 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     _fetchPrices();
+    _initRealtime();
+    WidgetsBinding.instance.addObserver(this);
+
+    // Si un paiement vient d'être validé, on vide le panier après le premier rendu
+    if (ApiService.shouldClearCart) {
+      ApiService.shouldClearCart = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _clearCart());
+    }
+  }
+
+  void _initRealtime() {
+    // On utilise l'URL de base de l'API mais avec le protocole ws
+    final wsUrl = ApiService.rootUrl.replaceFirst('http', 'ws') + '/ws';
+    _realtimeService = RealtimeService(
+      wsUrl: wsUrl,
+      onNotification: (type) {
+        if (mounted) {
+      // ignore: avoid_print — notification realtimée: $type
+          if (type == 'PROMOTIONS_UPDATED') {
+            setState(() {
+              _promotionsFuture = ApiService.fetchPromotions();
+            });
+          } else if (type == 'DIMENSIONS_UPDATED') {
+            _fetchPrices();
+          } else if (type == 'FEATURED_UPDATED') {
+            // Optionnel: ajouter un futur pour le contenu à la une si nécessaire
+          }
+        }
+      },
+    );
+    _realtimeService?.connect();
+  }
+
+  Future<void> _handleGlobalRefresh() async {
+    // This reloads everything - like a fake hot reload (global refresh)
+    final List<Future<dynamic>> detailTasks = [
+      _fetchRecentHistory().then((history) => setState(() => _historyFuture = Future.value(history))),
+      ApiService.getAlbumImages(widget.userId).then((images) => setState(() => _albumImagesFuture = Future.value(images))),
+      ApiService.fetchPromotions().then((promos) => setState(() => _promotionsFuture = Future.value(promos))),
+      _fetchPrices(),
+      ApiService.getAuthDetails().then((details) {
+        if (details != null && mounted) {
+          setState(() {
+            _currentUserName = details['firstname'] ?? _currentUserName;
+            _currentUserLastName = details['lastname'] ?? _currentUserLastName;
+            _currentUserEmail = details['email'] ?? _currentUserEmail;
+          });
+        }
+      }),
+    ];
+    await Future.wait(detailTasks);
+  }
+
+  Future<List<HistoryItem>> _fetchRecentHistory() async {
+    try {
+      final results = await Future.wait([
+        ApiService.fetchMyOrders(),
+        ApiService.fetchUserBookings(),
+      ]);
+
+      final List<Order> orders = results[0] as List<Order>;
+      final List<Booking> bookings = results[1] as List<Booking>;
+
+      final List<HistoryItem> items = [];
+
+      for (var order in orders) {
+        items.add(HistoryItem(
+          title: "Commande #${order.id}",
+          date: order.createdAt,
+          icon: Icons.shopping_bag,
+          type: HistoryItemType.order,
+          originalObject: order,
+        ));
+      }
+
+      for (var booking in bookings) {
+        items.add(HistoryItem(
+          title: booking.title,
+          date: booking.startTime,
+          icon: Icons.event,
+          type: HistoryItemType.booking,
+          originalObject: booking,
+        ));
+      }
+
+      // Sort by date descending
+      items.sort((a, b) => b.date.compareTo(a.date));
+
+      // Limit to 5
+      return items.take(5).toList();
+    } catch (e) {
+      // ignore: avoid_print — erreur récupération historique
+      return [];
+    }
   }
 
   Future<void> _fetchPrices() async {
@@ -142,14 +240,18 @@ class _HomeScreenState extends State<HomeScreen> {
           _prices = {
             for (var dim in fetchedDimensions) dim.dimension: dim.price
           };
-          _calculateTotal();
+          // _calculateTotal(); // Note: if _calculateTotal is needed, ensure it exists
           _isLoadingPrices = false;
         });
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Erreur de chargement des prix: $e")));
+            .showSnackBar(SnackBar(content: Text(errorMessage)));
         setState(() {
           _isLoadingPrices = false;
         });
@@ -158,14 +260,35 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && ApiService.shouldClearCart) {
+      ApiService.shouldClearCart = false;
+      _clearCart();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _connectivitySubscription.cancel();
+    _realtimeService?.disconnect();
     super.dispose();
   }
 
+  /// Vide le panier après un paiement réussi.
+  void _clearCart() {
+    if (!mounted) return;
+    setState(() {
+      _selectedImages.clear();
+      _photoDetails.clear();
+      _totalPrice = 0.0;
+      _isExpress = false;
+    });
+  }
+
   void _onTabTapped(int index) {
-    if (index == 3) {
-      // Index 3 is for Profile
+    if (index == 2) {
+      // Index 2 is for Profile (previously 3)
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -216,7 +339,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _quickPhotoOrder() async {
     final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage(imageQuality: 50);
+    List<XFile> pickedFiles = [];
+    try {
+      pickedFiles = await picker.pickMultiImage(imageQuality: 50);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                "Impossible d'ouvrir la galerie. Vérifiez les permissions."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
     if (pickedFiles.isNotEmpty) {
       setState(() {
@@ -224,41 +361,119 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       try {
-        final uploadedUrls = await ApiService.uploadPhotos(pickedFiles);
-        setState(() {
-          _selectedImages.addAll(uploadedUrls);
-          _calculateTotal();
-        });
-        _onTabTapped(2); // Switch to the Commands tab
+        // Compression des images avant upload
+        final compressedPaths = await compressBatch(pickedFiles);
+        final compressedFiles = compressedPaths.map((p) => File(p)).toList();
+        final uploadedUrls = await ApiService.uploadPhotos(compressedFiles);
+
+        if (_prices != null && _prices!.isNotEmpty) {
+          // Copies temporaires : n'affectent le panier QUE si l'utilisateur confirme
+          final tempImages = uploadedUrls.toList();
+          final tempDetails = <String, Map<String, dynamic>>{};
+
+          final confirmed = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PhotoPreviewScreen(
+                images: tempImages,
+                photoDetails: tempDetails,
+                prices: _prices!,
+              ),
+            ),
+          );
+
+          if (confirmed == true && mounted) {
+            setState(() {
+              _selectedImages.addAll(tempImages);
+              for (final e in tempDetails.entries) {
+                _photoDetails[e.key] = e.value;
+              }
+              _calculateTotal();
+              _currentIndex = 1; // Onglet Commandes
+            });
+          }
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de l\'envoi: ${e.toString()}'), backgroundColor: Colors.red),
-        );
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+          );
+        }
       } finally {
-        setState(() {
-          _isUploading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isUploading = false;
+          });
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                "Aucune photo sélectionnée ou accès refusé à la galerie."),
+          ),
+        );
       }
     }
   }
 
+  Future<bool> _onWillPop() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Quitter l\'application', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Voulez-vous vraiment fermer l\'application et vous déconnecter ?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Oui, Quitter', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true) {
+      await ApiService.clearAuthDetails();
+      return true;
+    }
+    return false;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: Stack(
-        children: [
-          const GeometricBackground(), // Using GeometricBackground
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        resizeToAvoidBottomInset: true, // Évite les débordements liés au clavier
+        extendBody: true,
+        body: Stack(
+          children: [
+          GeometricBackground(), // Using GeometricBackground
+          Padding(
+            padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top +
+                    85), // Adjusted top padding to clear the TopBar
+            child: _buildBody(),
+          ),
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: _buildFixedTopBar(context),
-          ),
-          Padding(
-            padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top +
-                    kToolbarHeight), // Adjusted top padding
-            child: _buildBody(),
           ),
           if (_isUploading)
             Container(
@@ -292,6 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
             end: const Offset(1.1, 1.1),
             curve: Curves.easeInOut,
           ),
+      ),
     );
   }
 
@@ -312,9 +528,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           padding: EdgeInsets.fromLTRB(
               16.0,
-              MediaQuery.of(context).padding.top + 8,
+              MediaQuery.of(context).padding.top + 4,
               16.0,
-              8.0), // Reduced vertical padding
+              4.0), // Reduced vertical padding
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -369,24 +585,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       : null,
                 ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'assets/images/pro.png',
-                    height: 30, // Smaller logo
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(height: 2), // Reduced space
-                  Text(
-                    'Hey, $_currentUserLastName!', //$_currentUserName je peux ajouter ceci pour avoir nom et prenom
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11, // Smaller text
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Image.asset(
+                        'assets/images/pro.png',
+                        height: 75, // Agrandissement du logo
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2), // Reduced space
+                  ],
+                ),
               ),
               IconButton(
                 onPressed: () {
@@ -397,7 +609,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
                 icon: const Icon(Icons.notifications_none,
-                    color: Colors.white, size: 22), // Smaller icon
+                    color: Colors.white, size: 28), // Increased icon size
               ),
             ],
           ),
@@ -409,7 +621,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBody() {
     final List<Widget> tabs = [
       _buildHomeTab(),
-      _buildPhotosTab(),
       _buildCommandsTab(),
       _buildProfileTab(),
     ];
@@ -420,21 +631,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeTab() {
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Column(
-            children: [
-              const SizedBox(height: 2), // Reduced space above the card
-              _buildTopCard(),
-            ],
+    return RefreshIndicator(
+      onRefresh: _handleGlobalRefresh,
+      color: AppColors.primary,
+      backgroundColor: Colors.white,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 2), // 
+                _buildTopCard(),
+              ],
+            ),
           ),
-        ),
-        SliverToBoxAdapter(child: _buildQuickActions()),
-        _buildHistorySection(),
-        SliverToBoxAdapter(child: _buildAdCarousel()),
-        const SliverToBoxAdapter(child: SizedBox(height: 100)),
-      ],
+          SliverToBoxAdapter(child: _buildOrderNowButton()),
+          SliverToBoxAdapter(child: _buildQuickActions()),
+          _buildHistorySection(),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)), //padding en bas de la page des actions
+          SliverToBoxAdapter(child: _buildAdCarousel()),
+          const SliverToBoxAdapter(child: SizedBox(height: 140)), //padding en bas de la page des carousels
+        ],
+      ),
     );
   }
 
@@ -442,80 +660,106 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       color: AppColors.background,
       padding: const EdgeInsets.only(top: 100),
-      child: FutureBuilder<List<String>>(
-        future: _albumImagesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Erreur: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Aucune image trouvée.'));
-          } else {
-            final images = snapshot.data!;
-            return GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16.0,
-                crossAxisSpacing: 16.0,
-              ),
-              itemCount: images.length,
-              itemBuilder: (context, index) {
-                final imageUrl = images[index];
-                final isSelected = _selectedImages.contains(imageUrl);
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    if (isSelected) {
-                      _selectedImages.remove(imageUrl);
-                    } else {
-                      _selectedImages.add(imageUrl);
-                    }
-                    _calculateTotal();
-                  }),
-                  child: Stack(
-                    children: [
-                      Card(
-                        clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.0)),
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) =>
-                              progress == null
-                                  ? child
-                                  : const Center(
-                                      child: CircularProgressIndicator()),
-                          errorBuilder: (context, error, stack) =>
-                              const Icon(Icons.broken_image, size: 50),
-                        ),
-                      ),
-                      if (isSelected)
-                        const Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Icon(Icons.check_circle,
-                              color: AppColors.accent, size: 30),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            );
-          }
+      child: RefreshIndicator(
+        onRefresh: () async {
+          setState(() {
+            _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
+          });
+          await _albumImagesFuture;
         },
+        color: AppColors.primary,
+        child: FutureBuilder<List<String>>(
+          future: _albumImagesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Erreur: ${snapshot.error}'));
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Center(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(height: 200),
+                    Center(child: Text('Aucune image trouvée.')),
+                  ],
+                ),
+              );
+            } else {
+              final images = snapshot.data!;
+              return GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 120),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16.0,
+                  crossAxisSpacing: 16.0,
+                ),
+                itemCount: images.length,
+                itemBuilder: (context, index) {
+                  final imageUrl = images[index];
+                  final isSelected = _selectedImages.contains(imageUrl);
+                  return GestureDetector(
+                    onTap: () async {
+                      if (isSelected) {
+                        setState(() {
+                          _selectedImages.remove(imageUrl);
+                          _calculateTotal();
+                        });
+                      } else {
+                        // Vérifier si la photo est incompatible avec tous les formats
+                        if (_prices != null && _prices!.isNotEmpty) {
+                          final size = await _loadImageSizeLocal(imageUrl);
+                          double bestDpi = 0;
+                          for (final dim in _prices!.keys) {
+                            final d = computeDpi(size, dim);
+                            if (d > bestDpi) bestDpi = d;
+                          }
+                          
+                        }
+                        setState(() {
+                          _selectedImages.add(imageUrl);
+                          _calculateTotal();
+                        });
+                      }
+                    },
+                    child: Stack(
+                      children: [
+                        Card(
+                          clipBehavior: Clip.antiAlias,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0)),
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) =>
+                                progress == null
+                                    ? child
+                                    : const Center(
+                                        child: CircularProgressIndicator()),
+                            errorBuilder: (context, error, stack) =>
+                                const Icon(Icons.broken_image, size: 50),
+                          ),
+                        ),
+                        if (isSelected)
+                          const Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Icon(Icons.check_circle,
+                                color: AppColors.accent, size: 30),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            }
+          },
+        ),
       ),
     );
   }
 
-  void _clearCart() {
-    setState(() {
-      _selectedImages.clear();
-      _photoDetails.clear();
-      _calculateTotal(); // Recalculate total to 0
-    });
-  }
 
   Widget _buildCommandsTab() {
     if (_isLoadingPrices) {
@@ -525,7 +769,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       color: AppColors.background,
       padding:
-          const EdgeInsets.only(bottom: 120, top: 5), // Adjusted bottom padding
+          const EdgeInsets.only(bottom: 140, top: 5), // Adjusted bottom padding
       child: Stack(
         // Added Stack for background
         children: [
@@ -537,49 +781,80 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: SegmentedButton<CartMode>(
-                  segments: const [
-                    ButtonSegment(
-                        value: CartMode.detail, label: Text('Par détail')),
-                    ButtonSegment(
-                        value: CartMode.batch, label: Text('Par lot')),
-                  ],
-                  selected: {_selectedMode},
-                  onSelectionChanged: (Set<CartMode> newSelection) {
-                    setState(() {
-                      _selectedMode = newSelection.first;
-                      _calculateTotal();
-                    });
-                  },
-                ),
+                child: const SizedBox.shrink(),
               ),
               Expanded(
-                child: _selectedImages.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.shopping_cart_outlined,
-                                size: 80, color: AppColors.textSecondary),
-                            SizedBox(height: 16),
-                            Text(
-                              'Votre panier est vide.\nSélectionnez des photos pour commencer une commande !',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 18, color: AppColors.textSecondary),
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    await _fetchPrices();
+                  },
+                  color: AppColors.primary,
+                  child: _selectedImages.isEmpty
+                      ? ListView(
+                          children: const [
+                            SizedBox(height: 200),
+                            Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.shopping_cart_outlined,
+                                      size: 80, color: AppColors.textSecondary),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Votre panier est vide.\nSélectionnez des photos pour commencer une commande !',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 18, color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
-                        ),
-                      )
-                    : _selectedMode == CartMode.detail
-                        ? _buildDetailCart()
-                        : _buildBatchCart(),
+                        )
+                      : _buildDetailCart(),
+                ),
               ),
               if (_selectedImages.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.all(4.0),
                   child: Column(
                     children: [
+                      TextButton.icon(
+                        onPressed: () async {
+                          if (_prices == null || _prices!.isEmpty) return;
+                          // Copie des détails pour la preview — ne s'applique que si confirmé
+                          final tempImages = _selectedImages.toList();
+                          final tempDetails = <String, Map<String, dynamic>>{
+                            for (final e in _photoDetails.entries)
+                              e.key: Map<String, dynamic>.from(e.value),
+                          };
+                          final confirmed = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PhotoPreviewScreen(
+                                images: tempImages,
+                                photoDetails: tempDetails,
+                                prices: _prices!,
+                              ),
+                            ),
+                          );
+                          if (confirmed == true && mounted) {
+                            setState(() {
+                              // Applique les modifications de formats/quantités validées
+                              for (final e in tempDetails.entries) {
+                                if (_photoDetails.containsKey(e.key)) {
+                                  _photoDetails[e.key] = e.value;
+                                }
+                              }
+                              _calculateTotal();
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.crop, color: AppColors.primary),
+                        label: const Text(
+                          'Prévisualiser / Recadrer',
+                          style: TextStyle(color: AppColors.primary),
+                        ),
+                      ),
                       TextButton.icon(
                         onPressed: _clearCart,
                         icon: const Icon(Icons.delete_outline,
@@ -589,7 +864,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
-                        onPressed: _showValidationPopup,
+                        onPressed: _validateWithUnsuitableCheck,
                         icon: const Icon(Icons.check_circle_outline),
                         label: const Text('Valider'),
                         style: ElevatedButton.styleFrom(
@@ -632,172 +907,289 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDetailCart() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      itemCount: _selectedImages.length,
-      itemBuilder: (context, index) {
-        final imageUrl = _selectedImages.elementAt(index);
-        if (!_photoDetails.containsKey(imageUrl)) {
-          _photoDetails[imageUrl] = {'size': '10x15 cm', 'quantity': 1};
-        }
-        final photoDetails = _photoDetails[imageUrl]!;
-        final price = _prices![photoDetails['size']] ?? 0;
-        final subtotal = price * (photoDetails['quantity'] as int);
+    return Column(
+      children: [
+        // -- Liste des photos --
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            itemCount: _selectedImages.length,
+            itemBuilder: (context, index) {
+              final imageUrl = _selectedImages.elementAt(index);
+              if (!_photoDetails.containsKey(imageUrl)) {
+                _photoDetails[imageUrl] = {'size': '10x15 cm', 'quantity': 1};
+              }
+              final photoDetails = _photoDetails[imageUrl]!;
+              final price = _prices![photoDetails['size']] ?? 0;
+              final subtotal = price * (photoDetails['quantity'] as int);
 
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
-          clipBehavior: Clip.antiAlias,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: ExpansionTile(
-            key: ValueKey(imageUrl),
-            title: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  child: (imageUrl.startsWith('http'))
-                      ? Image.network(imageUrl,
-                          width: 60, height: 60, fit: BoxFit.cover)
-                      : Image.file(File(imageUrl),
-                          width: 60, height: 60, fit: BoxFit.cover),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: ExpansionTile(
+                  key: ValueKey(imageUrl),
+                  title: Row(
                     children: [
-                      Text('Photo ${index + 1}',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${subtotal.toStringAsFixed(0)} FCFA',
-                        style: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold),
+                      // -- Vignette + Badge DPI --
+                      FutureBuilder<Size>(
+                        future: _loadImageSizeLocal(imageUrl),
+                        builder: (ctx, snap) {
+                          final dimension = photoDetails['size'] as String? ?? '10x15 cm';
+                          Widget badge = const SizedBox.shrink();
+                          if (snap.hasData) {
+                            final dpi = computeDpi(snap.data!, dimension);
+                            final q = qualityFromDpi(dpi);
+                            badge = Positioned(
+                              top: 2, right: 2,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: qualityColor(q),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(qualityIcon(q),
+                                    size: 14, color: Colors.white),
+                              ),
+                            );
+                          }
+                          return Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8.0),
+                                child: (imageUrl.startsWith('http'))
+                                    ? Image.network(imageUrl,
+                                        width: 60, height: 60, fit: BoxFit.cover)
+                                    : Image.file(File(imageUrl),
+                                        width: 60, height: 60, fit: BoxFit.cover),
+                              ),
+                              badge,
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Photo ${index + 1}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${subtotal.toStringAsFixed(0)} FCFA',
+                              style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            // -- Mini badge qualite textuel --
+                            FutureBuilder<Size>(
+                              future: _loadImageSizeLocal(imageUrl),
+                              builder: (ctx, snap) {
+                                if (!snap.hasData) return const SizedBox.shrink();
+                                final dim = photoDetails['size'] as String? ?? '10x15 cm';
+                                final dpi = computeDpi(snap.data!, dim);
+                                final q = qualityFromDpi(dpi);
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(qualityIcon(q), size: 12, color: qualityColor(q)),
+                                      const SizedBox(width: 4),
+                                      Flexible( // Wrapped with Flexible to prevent overflow on small screens
+                                        child: Text(
+                                          '${qualityLabel(q)} (${dpi.round()} DPI)',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: qualityColor(q),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color.fromARGB(255, 236, 7, 7),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.delete,
+                              size: 18, color: Colors.white),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _selectedImages.remove(imageUrl);
+                            _photoDetails.remove(imageUrl);
+                            _calculateTotal();
+                          });
+                        },
                       ),
                     ],
                   ),
-                ),
-                IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Color.fromARGB(255, 236, 7, 7), // Blue background
-                      shape: BoxShape.circle, // Circular shape
-                    ),
-                    child: const Icon(Icons.delete,
-                        size: 18, color: Colors.white), // White icon
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _selectedImages.remove(imageUrl);
-                      _photoDetails.remove(imageUrl);
-                      _calculateTotal();
-                    });
-                  },
-                ),
-              ],
-            ),
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Taille :'),
-                        DropdownButton<String>(
-                          value: photoDetails['size'],
-                          items: _prices!.keys
-                              .map((size) => DropdownMenuItem(
-                                  value: size, child: Text(size)))
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _photoDetails[imageUrl]!['size'] = value;
-                                _calculateTotal();
-                              });
-                            }
-                          },
-                        ),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Text('Format :',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w500)),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                flex: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                        color:
+                                            AppColors.primary.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.straighten,
+                                          size: 14, color: AppColors.primary),
+                                      const SizedBox(width: 6),
+                                      Flexible( // Wrap text
+                                        child: Text(
+                                          photoDetails['size'] as String? ?? '---',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Quantite :'),
+                              Row(
+                                children: [
+                                  IconButton(
+                                      icon: const Icon(Icons.remove),
+                                      onPressed: () {
+                                        if (photoDetails['quantity'] > 1) {
+                                          setState(() {
+                                            _photoDetails[imageUrl]![
+                                                'quantity'] -= 1;
+                                            _calculateTotal();
+                                          });
+                                        }
+                                      }),
+                                  Text('${photoDetails['quantity']}'),
+                                  IconButton(
+                                      icon: const Icon(Icons.add),
+                                      onPressed: () {
+                                        setState(() {
+                                          _photoDetails[imageUrl]![
+                                              'quantity'] += 1;
+                                          _calculateTotal();
+                                        });
+                                      }),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Quantité :'),
-                        Row(
-                          children: [
-                            IconButton(
-                                icon: const Icon(Icons.remove),
-                                onPressed: () {
-                                  if (photoDetails['quantity'] > 1) {
-                                    setState(() {
-                                      _photoDetails[imageUrl]!['quantity'] -= 1;
-                                      _calculateTotal();
-                                    });
-                                  }
-                                }),
-                            Text('${photoDetails['quantity']}'),
-                            IconButton(
-                                icon: const Icon(Icons.add),
-                                onPressed: () {
-                                  setState(() {
-                                    _photoDetails[imageUrl]!['quantity'] += 1;
-                                    _calculateTotal();
-                                  });
-                                }),
-                          ],
-                        ),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.info_outline,
+                              size: 12, color: AppColors.textSecondary),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Pour changer le format, utilisez "Previsualiser / Recadrer"',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 
   Widget _buildBatchCart() {
-    // For batch mode, we need a way to set dimensions for all photos
     String? commonSize;
     if (_photoDetails.isNotEmpty) {
       final sizes =
           _photoDetails.values.map((d) => d['size'] as String).toSet();
-      if (sizes.length == 1) {
-        commonSize = sizes.first;
-      }
+      if (sizes.length == 1) commonSize = sizes.first;
     }
 
     return Column(
       children: [
+        // ── Sélecteur dimension globale + Suggestion ──
         Padding(
-          padding: const EdgeInsets.all(5.0),
-          child: Align(
-            alignment: Alignment.centerRight, // Align to the right
-            child: SizedBox(
-              width: 180, // Reduced width
-              child: DropdownButtonFormField<String>(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Dropdown compact
+              DropdownButtonFormField<String>(
                 value: commonSize,
+                isExpanded: true,
                 decoration: InputDecoration(
-                  labelText: 'Dimension', // Shorter label for smaller input
+                  labelText: 'Format pour toutes les photos',
+                  labelStyle: const TextStyle(fontSize: 12),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12), // Rounded borders
-                  ),
+                      borderRadius: BorderRadius.circular(10)),
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  prefixIcon:
-                      const Icon(Icons.straighten, size: 20), // Added icon
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  prefixIcon: const Icon(Icons.straighten, size: 16),
+                  isDense: true,
                 ),
                 items: _prices!.keys
                     .map((size) =>
-                        DropdownMenuItem(value: size, child: Text(size)))
+                        DropdownMenuItem(value: size, child: Text(size, style: const TextStyle(fontSize: 13))))
                     .toList(),
                 onChanged: (value) {
                   if (value != null) {
@@ -810,58 +1202,301 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
               ),
-            ),
+            ],
           ),
         ),
+
+        // ── Bannière synthèse qualité ──
+        if (commonSize != null)
+          _buildQualitySummaryBanner(commonSize!),
+
+        // ── Grille de photos ──
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: _selectedImages.length,
-            itemBuilder: (context, index) {
-              final imageUrl = _selectedImages.elementAt(index);
-              return Stack(
-                children: [
-                  (imageUrl.startsWith('http'))
-                      ? Image.network(imageUrl, fit: BoxFit.cover)
-                      : Image.file(File(imageUrl), fit: BoxFit.cover),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () {
+          child: commonSize == null
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Text(
+                      'Choisissez une dimension pour voir la compatibilité avec vos photos.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: _selectedImages.length,
+                  itemBuilder: (context, index) {
+                    final imageUrl = _selectedImages.elementAt(index);
+                    return _BatchPhotoTile(
+                      imageUrl: imageUrl,
+                      dimension: commonSize!,
+                      onRemove: () {
                         setState(() {
                           _selectedImages.remove(imageUrl);
                           _photoDetails.remove(imageUrl);
                           _calculateTotal();
                         });
                       },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color.fromARGB(
-                              255, 238, 33, 6), // Blue background
-                          borderRadius:
-                              BorderRadius.circular(10), // Keep rounded corners
-                        ),
-                        padding: const EdgeInsets.all(4),
-                        child: const Icon(Icons.close,
-                            size: 12, color: Colors.white), // White icon
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                    );
+                  },
+                ),
         ),
       ],
     );
   }
 
+  /// Bannière de synthèse : combien de photos sont recommandées/acceptables/déconseillées
+  Widget _buildQualitySummaryBanner(String dimension) {
+    final targetAspect = dimensionAspect(dimension);
+    final images = _selectedImages.toList();
+
+    return FutureBuilder<List<PrintQuality>>(
+      future: Future.wait(images.map((url) async {
+        final size = await _loadImageSizeLocal(url);
+        final keep = computeKeepFraction(size, targetAspect);
+        return qualityFromKeepFraction(keep);
+      })),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6),
+            child: LinearProgressIndicator(minHeight: 2),
+          );
+        }
+        final qualities = snap.data!;
+        final nbRec = qualities.where((q) => q == PrintQuality.perfect).length;
+        final nbAcc = qualities.where((q) => q == PrintQuality.correct).length;
+        final nbUns = qualities.where((q) => q == PrintQuality.tooSmall).length;
+        final hasIssues = nbUns > 0 || nbAcc > 0;
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: hasIssues
+                ? const Color(0xFFFFF8E1)
+                : const Color(0xFFE8F5E9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasIssues
+                  ? const Color(0xFFFFB300).withOpacity(0.5)
+                  : const Color(0xFF2E7D32).withOpacity(0.4),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              if (nbRec > 0)
+                _SummaryChip(
+                    count: nbRec,
+                    quality: PrintQuality.perfect),
+              if (nbAcc > 0)
+                _SummaryChip(
+                    count: nbAcc,
+                    quality: PrintQuality.correct),
+              if (nbUns > 0)
+                _SummaryChip(
+                    count: nbUns,
+                    quality: PrintQuality.tooSmall),
+              if (!hasIssues)
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_circle,
+                          size: 15, color: Color(0xFF2E7D32)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: FittedBox(
+                           fit: BoxFit.scaleDown,
+                           child: const Text('Toutes les photos sont compatibles !',
+                             style: TextStyle(
+                                 fontSize: 12,
+                                 color: Color(0xFF2E7D32),
+                                 fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ]),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Charge la taille d'une image (lecture rapide des headers)
+  final Map<String, Size> _batchSizeCache = {};
+  Future<Size> _loadImageSizeLocal(String imageUrl) async {
+    if (_batchSizeCache.containsKey(imageUrl)) {
+      return _batchSizeCache[imageUrl]!;
+    }
+    final size = await getImageDimensions(imageUrl);
+    _batchSizeCache[imageUrl] = size;
+    return size;
+  }
+
+
+  // ── Suggestion automatique de la meilleure dimension ──────────────────
+
+  /// Bottom sheet : photos déconseillées avec leur meilleure dimension individuelle
+  void _showUnsuitableAdaptDialog(
+      List<Map<String, dynamic>> unsuitablePhotos, String globalDim) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (_, scrollCtrl) => Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // Handle
+                Container(
+                  width: 40, height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Titre
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(children: [
+                        Icon(Icons.tune, color: AppColors.primary, size: 20),
+                        SizedBox(width: 8),
+                        Text('Dimensions recommandées',
+                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Ces ${unsuitablePhotos.length} photo(s) sont incompatibles avec "$globalDim". '
+                        'Voici la meilleure dimension pour chacune.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                // Liste des photos déconseillées
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollCtrl,
+                    itemCount: unsuitablePhotos.length,
+                    itemBuilder: (_, i) {
+                      final photo = unsuitablePhotos[i];
+                      final url = photo['url'] as String;
+                      final bestDim = photo['bestDim'] as String;
+                      final keep = ((photo['keepFraction'] as double) * 100).toInt();
+                      final q = qualityFromKeepFraction(photo['keepFraction'] as double);
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: url.startsWith('http')
+                              ? Image.network(url, width: 56, height: 56, fit: BoxFit.cover)
+                              : Image.file(File(url), width: 56, height: 56, fit: BoxFit.cover),
+                        ),
+                        title: Row(children: [
+                          Icon(qualityIcon(q), size: 14, color: qualityColor(q)),
+                          const SizedBox(width: 6),
+                          Text(bestDim,
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ]),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Conservation : $keep%',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                            if (q == PrintQuality.tooSmall)
+                              const Text(
+                                'Aucun format pleinement compatible — moins mauvaise option',
+                                style: TextStyle(fontSize: 10, color: Color(0xFFC62828)),
+                              ),
+                          ],
+                        ),
+                        trailing: Chip(
+                          label: Text(qualityLabel(q),
+                              style: TextStyle(fontSize: 11, color: qualityColor(q))),
+                          backgroundColor: qualityColor(q).withOpacity(0.1),
+                          side: BorderSide(color: qualityColor(q).withOpacity(0.3)),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // Bouton Appliquer
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      16, 8, 16, MediaQuery.of(context).padding.bottom + 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        setState(() {
+                          // Appliquer la dimension optimale à chaque photo déconseillée
+                          for (final p in unsuitablePhotos) {
+                            final url = p['url'] as String;
+                            final bestDim = p['bestDim'] as String;
+                            if (_photoDetails.containsKey(url)) {
+                              _photoDetails[url]!['size'] = bestDim;
+                            }
+                          }
+                          // Passer en mode Détail car les photos ont maintenant des tailles différentes
+                          _selectedMode = CartMode.detail;
+                          _calculateTotal();
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: const Text('Dimensions appliquées — passage en mode Détail'),
+                          backgroundColor: AppColors.primary,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ));
+                      },
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Appliquer & passer en mode Détail'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  Future<void> _validateWithUnsuitableCheck() async {
+    _showValidationPopup();
+  }
   void _showValidationPopup() {
     // Use a local variable for the state of the switch inside the dialog
     bool isExpressDelivery = _isExpress;
@@ -959,35 +1594,186 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(); // This tab is no longer shown, replaced by ProfilePage
   }
 
+  Future<void> _loadFeaturedContents() async {
+    try {
+      final contents = await ApiService.fetchActiveFeaturedContents();
+      if (mounted) setState(() => _featuredContents = contents);
+    } catch (_) {}
+  }
+
   Widget _buildTopCard() {
+    // Si des contenus mis en avant sont disponibles depuis la BDD
+    if (_featuredContents.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 8,
+          child: Column(
+            children: [
+              // Diaporama automatique des images de la BDD
+              CarouselSlider.builder(
+                itemCount: _featuredContents.length,
+                options: CarouselOptions(
+                  height: 200,
+                  autoPlay: true,
+                  autoPlayInterval: const Duration(milliseconds: 3500),
+                  autoPlayAnimationDuration: const Duration(milliseconds: 700),
+                  autoPlayCurve: Curves.easeInOut,
+                  viewportFraction: 1.0,
+                  enlargeCenterPage: false,
+                  enableInfiniteScroll: _featuredContents.length > 1,
+                ),
+                itemBuilder: (ctx, i, _) {
+                  final fc = _featuredContents[i];
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        fc.imageUrl.startsWith('/') 
+                            ? '${ApiService.rootUrl}${fc.imageUrl}' 
+                            : fc.imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, __, ___) => Image.asset(
+                          'assets/carousel/mxx.jpeg',
+                          fit: BoxFit.cover,
+                        ),
+                        loadingBuilder: (_, child, progress) => progress == null
+                            ? child
+                            : Container(
+                                color: AppColors.primary.withOpacity(0.05),
+                                child: const Center(
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                      ),
+                      // Gradient + titre en bas
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.7),
+                                Colors.transparent
+                              ],
+                            ),
+                          ),
+                          child: (fc.title as String).isNotEmpty
+                              ? Text(
+                                  fc.title as String,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                      // Petit bouton d'action avec flèche en bas à droite
+                      Positioned(
+                        bottom: 12,
+                        right: 12,
+                        child: GestureDetector(
+                          onTap: () async {
+                            final action = fc.buttonAction as String;
+                            if (action.isNotEmpty) {
+                              final url = Uri.parse(action);
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              }
+                            }
+                          },
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.black,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.help_outline, size: 24),
+                      label: const Text("Comment ça marche ?",
+                          style: TextStyle(fontSize: 16)),
+                      onPressed: () => _showHowItWorksDialog(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        elevation: 4,
+                      ),
+                    )
+                        .animate()
+                        .fade(duration: 800.ms, delay: 200.ms)
+                        .slideY(begin: 0.2, curve: Curves.easeOut),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        )
+            .animate()
+            .fade(duration: 500.ms)
+            .slideY(begin: 0.1, curve: Curves.easeOut),
+      );
+    }
+
+    // Fallback : image locale si pas de contenu depuis la BDD
     return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 16.0, vertical: 8.0), // Consistent padding
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Card(
-        clipBehavior: Clip.antiAlias, // Ensures content respects card borders
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        elevation: 8, // Slightly more prominent shadow
+        elevation: 8,
         child: Column(
           children: [
             AspectRatio(
-              aspectRatio: 16 / 9, // Common aspect ratio for images
+              aspectRatio: 16 / 9,
               child: Image.asset(
                 'assets/carousel/mxx.jpeg',
-                fit: BoxFit.cover, // Fill the space, crop if necessary
+                fit: BoxFit.cover,
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(10.0),
               child: Column(
                 children: [
-                  // Text(
-                  //   'Immortalisez vos moments précieux en un clic !',
-                  //   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  //     fontWeight: FontWeight.bold,
-                  //     color: AppColors.textPrimary,
-                  //   ),
-                  //   textAlign: TextAlign.center,
-                  // ),
                   const SizedBox(height: 8),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.help_outline, size: 24),
@@ -995,12 +1781,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(fontSize: 16)),
                     onPressed: () => _showHowItWorksDialog(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          AppColors.primary, // Primary color for the button
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(12)), // Rounded corners
+                          borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 12),
                       elevation: 4,
@@ -1022,17 +1806,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildQuickActions() {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+      padding: const EdgeInsets.fromLTRB(6.0, 2.0, 16.0, 0.0), //padding en bas de la page des actions
       child: GridView.builder(
         shrinkWrap: true, // Important for nested scroll views
         physics:
             const NeverScrollableScrollPhysics(), // Disable GridView's own scrolling
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3, // 3 items per row
           crossAxisSpacing: 16.0,
           mainAxisSpacing: 16.0,
-          childAspectRatio: 0.85, // Adjust aspect ratio for better look
+          childAspectRatio: screenWidth < 360 ? 0.75 : 0.85, // Adjust aspect ratio for better look on small screens
         ),
         itemCount: 6, // Total number of quick actions
         itemBuilder: (context, index) {
@@ -1069,20 +1854,22 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             case 3:
               return _buildAnimatedQuickActionButton(
-                icon: Icons.flash_on,
-                label: 'Commande rapide',
-                onTap: () =>
-                    _quickPhotoOrder(), // Directly call quick photo order
-                delay: 300.ms,
-              );
-            case 4:
-              return _buildAnimatedQuickActionButton(
                 icon: Icons.calendar_today, // Changed icon
                 label: 'Réserver', // Changed label
                 onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const BookingScreen())),
+                        builder: (context) => BookingScreen())),
+                delay: 300.ms,
+              );
+            case 4:
+              return _buildAnimatedQuickActionButton(
+                icon: Icons.checklist_rtl,
+                label: 'Mes réservations',
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => BookingStatusScreen())),
                 delay: 400.ms,
               );
             case 5:
@@ -1099,6 +1886,69 @@ class _HomeScreenState extends State<HomeScreen> {
               return Container(); // Fallback
           }
         },
+      ),
+    );
+  }
+
+  Widget _buildOrderNowButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 6.0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _quickPhotoOrder,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF2F5BFF),
+                  Color(0xFF4CA3FF),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withOpacity(0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+              border: Border.all(color: Colors.white.withOpacity(0.25)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.add_a_photo, color: Colors.white),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: const Text(
+                      'Passer ma Commande',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+              .animate()
+              .fade(duration: 450.ms)
+              .scale(begin: const Offset(0.98, 0.98), duration: 450.ms)
+              .shimmer(
+                duration: 1800.ms,
+                color: Colors.white.withOpacity(0.35),
+              ),
+        ),
       ),
     );
   }
@@ -1135,15 +1985,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Icon(icon, color: AppColors.primary, size: 36), // Larger icon
                   const SizedBox(height: 8),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1158,13 +2011,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHistorySection() {
-    final recentHistory = _mockHistory
-        .where((req) =>
-            req.date.isAfter(DateTime.now().subtract(const Duration(days: 7))))
-        .toList(); // Get all recent history
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 2.0, 16.0, 0.0),
       sliver: SliverToBoxAdapter(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1192,36 +2041,46 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            if (recentHistory.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    'Aucune activité récente.',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: recentHistory.length,
-                itemBuilder: (context, index) {
-                  final item = recentHistory[index];
-                  return _buildHistoryCard(item, index);
-                },
-              ),
+            const SizedBox(height: 8),
+            FutureBuilder<List<HistoryItem>>(
+              future: _historyFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final recentHistory = snapshot.data ?? [];
+                if (recentHistory.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        'Aucune activité récente.',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  itemCount: recentHistory.length,
+                  itemBuilder: (context, index) {
+                    final item = recentHistory[index];
+                    return _buildHistoryCard(item, index);
+                  },
+                );
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHistoryCard(RecentRequest item, int index) {
+  Widget _buildHistoryCard(HistoryItem item, int index) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: ClipRRect(
@@ -1258,11 +2117,17 @@ class _HomeScreenState extends State<HomeScreen> {
               trailing: const Icon(Icons.arrow_forward_ios,
                   size: 16, color: AppColors.textSecondary),
               onTap: () {
-                // Implement navigation to detailed history or relevant screen
-                Navigator.push(
+                if (item.type == HistoryItemType.booking) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const BookingStatusScreen()));
+                } else {
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (context) => const HistoryScreen()));
+                }
               },
             ),
           ),
@@ -1289,13 +2154,12 @@ class _HomeScreenState extends State<HomeScreen> {
     Widget buildItem(String path, bool isAsset) {
       return Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(
-            horizontal: 8.0), // Increased horizontal margin
+        margin: EdgeInsets.zero, // Remove margins for edge-to-edge look
         decoration: BoxDecoration(
           color: AppColors.card.withOpacity(0.4), // Glassmorphic background
           borderRadius: BorderRadius.circular(20), // Increased border radius
           border:
-              Border.all(color: Colors.white.withOpacity(0.2)), // Subtle border
+              Border.all(color: AppColors.primary.withOpacity(0.5), width: 1.0), // Fine blue border
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1), // Add shadow for depth
@@ -1307,14 +2171,15 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ClipRRect(
           borderRadius:
               BorderRadius.circular(20), // Match container's border radius
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Inner blur effect
-            child: isAsset
-                ? Image.asset(path,
-                    fit: BoxFit
-                        .cover) // Use BoxFit.cover for better image display
-                : Image.network(path, fit: BoxFit.cover),
-          ),
+          child: isAsset
+              ? Image.asset(path,
+                  fit: BoxFit.cover, // Ensures the image fills the container
+                  width: double.infinity,
+                  height: double.infinity)
+              : Image.network(path,
+                  fit: BoxFit.cover, // Ensures the image fills the container
+                  width: double.infinity,
+                  height: double.infinity),
         ),
       ).animate().fade(duration: 500.ms).slideX(
           begin: 0.1,
@@ -1329,8 +2194,8 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index, realIndex) =>
                 buildItem(localImages[index], true),
             options: CarouselOptions(
-                height: 140.0,
-                viewportFraction: 0.8,
+                height: 260.0,
+                viewportFraction: 0.92, // Back to standard fraction
                 enlargeCenterPage: false,
                 autoPlay: true,
                 autoPlayInterval: const Duration(seconds: 4)),
@@ -1348,8 +2213,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return _isOffline
         ? buildLocalCarousel(
             "Impossible de charger les promotions. Mode hors-ligne.")
-        : FutureBuilder<List<String>>(
-            future: Future.delayed(const Duration(seconds: 2), () => []),
+        : FutureBuilder<List<Promotion>>(
+            future: _promotionsFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SizedBox(
@@ -1362,51 +2227,100 @@ class _HomeScreenState extends State<HomeScreen> {
                 return buildLocalCarousel(
                     "Impossible de charger les promotions en ligne.");
               }
-              final onlineImages = snapshot.data!;
+              final onlinePromotions = snapshot.data!;
               return CarouselSlider.builder(
-                itemCount: onlineImages.length,
-                itemBuilder: (context, index, realIndex) =>
-                    buildItem(onlineImages[index], false),
+                itemCount: onlinePromotions.length,
+                itemBuilder: (context, index, realIndex) {
+                  final promo = onlinePromotions[index];
+                  // On gère l'URL de l'image (si relative au backend)
+                  final imageUrl = promo.imageUrl.startsWith('http')
+                      ? promo.imageUrl
+                      : '${ApiService.rootUrl}${promo.imageUrl}';
+
+                  return GestureDetector(
+                    onTap: () async {
+                      if (promo.targetUrl != null && promo.targetUrl!.isNotEmpty) {
+                        final uri = Uri.parse(promo.targetUrl!);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        }
+                      }
+                    },
+                    child: buildItem(imageUrl, false),
+                  );
+                },
                 options: CarouselOptions(
-                    height: 140.0,
+                    height: 150.0,
                     autoPlay: true,
                     autoPlayInterval: const Duration(seconds: 5),
                     enlargeCenterPage: false,
-                    viewportFraction: 0.8),
+                    viewportFraction: 0.92),
               );
             },
           );
   }
 
   Widget _buildFloatingBottomNavBar() {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary, width: 2),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: _onTabTapped,
-            backgroundColor: Colors.white.withOpacity(0.3),
-            selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.textPrimary.withOpacity(0.6),
-            elevation: 0,
-            type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.photo_album), label: 'Photos'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.shopping_cart), label: 'Commandes'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.person), label: 'Profil'),
-            ],
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding > 0 ? bottomPadding : 16.0),
+      child: Container(
+        height: 65,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary, width: 2),
+          color: Colors.transparent, // Let BackdropFilter handle the background blur
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              color: Colors.white.withOpacity(0.3),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildNavItem(Icons.home, 'Accueil', 0),
+                  _buildNavItem(Icons.shopping_cart, 'Commandes', 1),
+                  _buildNavItem(Icons.person, 'Profil', 2),
+                ],
+              ),
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? AppColors.primary : AppColors.textPrimary.withOpacity(0.6);
+    
+    return GestureDetector(
+      onTap: () => _onTabTapped(index),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 80,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
@@ -1416,27 +2330,27 @@ class _HomeScreenState extends State<HomeScreen> {
     final steps = [
       {
         'icon': Icons.photo_library_outlined,
-        'title': 'Étape 1: Sélectionnez vos photos',
+        'title': 'Sélectionnez vos photos',
         'subtitle':
-            'Parcourez votre galerie et choisissez les souvenirs que vous souhaitez immortaliser.',
+            'Parcourez votre galerie et choisissez vos meilleurs souvenirs.',
       },
       {
         'icon': Icons.straighten_outlined,
-        'title': 'Étape 2: Choisissez format et quantité',
+        'title': 'Format et quantité',
         'subtitle':
-            'Pour chaque photo, sélectionnez la taille d\'impression et le nombre de copies désirées.',
+            'Choisissez la taille d\'impression et le nombre de copies.',
       },
       {
         'icon': Icons.payment_outlined,
-        'title': 'Étape 3: Validez et payez',
+        'title': 'Validez et payez',
         'subtitle':
-            'Vérifiez votre commande, choisissez votre mode de paiement et réglez en toute sécurité.',
+            'Vérifiez votre commande et payez en toute sécurité.',
       },
       {
         'icon': Icons.local_shipping_outlined,
-        'title': 'Étape 4: Recevez votre commande',
+        'title': 'Recevez votre commande',
         'subtitle':
-            'Nous préparons vos photos avec soin et vous notifions dès qu\'elles sont prêtes !',
+            'Nous préparons vos photos et vous notifions dès qu\'elles sont prêtes !',
       },
     ];
 
@@ -1444,120 +2358,352 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      transitionDuration: const Duration(milliseconds: 400),
+      transitionDuration: const Duration(milliseconds: 500),
       pageBuilder: (context, animation, secondaryAnimation) => Container(),
       transitionBuilder: (context, anim1, anim2, child) {
-        return ScaleTransition(
-          scale: anim1,
-          child: AlertDialog(
-            backgroundColor: Colors.transparent,
-            contentPadding: EdgeInsets.zero,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-            content: Stack(
-              children: [
-                const ClipRRect(
-                  borderRadius: BorderRadius.all(Radius.circular(20)),
-                  child: GeometricBackground(),
-                ),
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        "Comment ça marche ?",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary),
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
+        return FadeTransition(
+          opacity: anim1,
+          child: ScaleTransition(
+            scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
+            child: AlertDialog(
+              backgroundColor: Colors.transparent,
+              contentPadding: EdgeInsets.zero,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20.0),
+              content: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    width: double.maxFinite,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.92)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(
+                        color: isDark ? Colors.white24 : AppColors.primary.withOpacity(0.2),
+                        width: 2,
                       ),
-                      const SizedBox(height: 20),
-                      ...steps.asMap().entries.map((entry) {
-                        int idx = entry.key;
-                        Map<String, Object> step = entry.value;
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8.0),
-                          color: AppColors.primary.withOpacity(0.05),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                            side: BorderSide(
-                                color: AppColors.primary.withOpacity(0.2)),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              children: [
-                                Icon(step['icon'] as IconData,
-                                    color: AppColors.primary, size: 40),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        step['title'] as String,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Background architectural elements
+                        const Positioned.fill(child: GeometricBackground()),
+
+                        Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: 8),
+                              Text(
+                                "Comment ça marche ?",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.5,
+                                  color: isDark ? Colors.white : AppColors.primary,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 10,
+                                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              // Steps with Timeline
+                              Stack(
+                                children: [
+                                  // Timeline Line
+                                  Positioned(
+                                    left: 24,
+                                    top: 40,
+                                    bottom: 60,
+                                    child: Container(
+                                      width: 2,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            AppColors.primary.withOpacity(0.5),
+                                            AppColors.primary.withOpacity(0.1),
+                                          ],
+                                        ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        step['subtitle'] as String,
-                                        style: const TextStyle(
-                                            color: AppColors.textSecondary,
-                                            fontSize: 14),
-                                      ),
-                                    ],
+                                    ),
+                                  ),
+                                  Column(
+                                    children: List.generate(steps.length, (idx) {
+                                      final step = steps[idx];
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 24.0),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // Icon Hub
+                                            Container(
+                                              width: 50,
+                                              height: 50,
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? AppColors.primary.withOpacity(0.3)
+                                                    : Colors.white,
+                                                shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppColors.primary.withOpacity(0.2),
+                                                    blurRadius: 12,
+                                                    spreadRadius: 2,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Center(
+                                                child: Icon(
+                                                  step['icon'] as IconData,
+                                                  color: AppColors.primary,
+                                                  size: 24,
+                                                ),
+                                              ),
+                                            ).animate().scale(
+                                              delay: (150 * idx).ms,
+                                              duration: 400.ms,
+                                              curve: Curves.elasticOut,
+                                            ),
+                                            const SizedBox(width: 20),
+                                            // Content
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    step['title'] as String,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.w800,
+                                                      fontSize: 18,
+                                                      color: isDark ? Colors.white : AppColors.textPrimary,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                    step['subtitle'] as String,
+                                                    style: TextStyle(
+                                                      color: isDark
+                                                          ? Colors.white.withOpacity(0.95)
+                                                          : AppColors.textPrimary,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w500,
+                                                      height: 1.4,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ).animate().fadeIn(delay: (100 * idx).ms).slideX(begin: 0.1);
+                                    }),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              // Bottom Button
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withOpacity(0.3),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text(
+                                    "C'EST PARTI !",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                    ),
                                   ),
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Top Right Close Button
+                        Positioned(
+                          top: 16,
+                          right: 16,
+                          child: InkWell(
+                            onTap: () => Navigator.of(context).pop(),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white10 : Colors.black12,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 20,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
                             ),
                           ),
-                        )
-                            .animate()
-                            .fadeIn(
-                                delay: (200 * (idx + 1)).ms, duration: 500.ms)
-                            .slideX(begin: -0.2, curve: Curves.easeOut);
-                      }).toList(),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: Colors.white,
-                          shape: const StadiumBorder(),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 32, vertical: 12),
                         ),
-                        child: const Text("J'ai compris !",
-                            style: TextStyle(fontSize: 16)),
-                      )
-                    ],
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child:
-                          const Icon(Icons.close, color: AppColors.textPrimary),
+                      ],
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         );
       },
     );
   }
+  
 }
+
+// ── Miniature photo avec indicateur de qualité (mode lot) ──────────────
+class _BatchPhotoTile extends StatelessWidget {
+  final String imageUrl;
+  final String dimension;
+  final VoidCallback onRemove;
+
+  const _BatchPhotoTile({
+    required this.imageUrl,
+    required this.dimension,
+    required this.onRemove,
+  });
+
+  Future<PrintQuality> _computeQuality() async {
+    final completer = Completer<Size>();
+    final ImageProvider provider = imageUrl.startsWith('http')
+        ? NetworkImage(imageUrl)
+        : FileImage(File(imageUrl)) as ImageProvider;
+    final stream = provider.resolve(const ImageConfiguration());
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (info, _) {
+        final size = Size(info.image.width.toDouble(), info.image.height.toDouble());
+        if (!completer.isCompleted) completer.complete(size);
+        stream.removeListener(listener);
+      },
+      onError: (_, __) {
+        if (!completer.isCompleted) completer.complete(const Size(1, 1));
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
+    final size = await completer.future;
+    final aspect = dimensionAspect(dimension);
+    final keep = computeKeepFraction(size, aspect);
+    return qualityFromKeepFraction(keep);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          imageUrl.startsWith('http')
+              ? Image.network(imageUrl, fit: BoxFit.cover)
+              : Image.file(File(imageUrl), fit: BoxFit.cover),
+          Positioned(
+            left: 0, right: 0, bottom: 0,
+            child: Container(
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 4, left: 4,
+            child: FutureBuilder<PrintQuality>(
+              future: _computeQuality(),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const SizedBox(
+                    width: 14, height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white),
+                  );
+                }
+                final q = snap.data!;
+                return Tooltip(
+                  message: qualityLabel(q),
+                  child: Icon(qualityIcon(q), size: 18, color: qualityColor(q),
+                      shadows: const [Shadow(color: Colors.black45, blurRadius: 4)]),
+                );
+              },
+            ),
+          ),
+          Positioned(
+            top: 4, right: 4,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                decoration: BoxDecoration(color: const Color(0xFFEE2106), borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.all(4),
+                child: const Icon(Icons.close, size: 12, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Chip de synthèse qualité ───────────────────────────────
+class _SummaryChip extends StatelessWidget {
+  final int count;
+  final PrintQuality quality;
+
+  const _SummaryChip({required this.count, required this.quality});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = qualityColor(quality);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(qualityIcon(quality), size: 15, color: color),
+        const SizedBox(width: 4),
+        Text('$count ${qualityLabel(quality)}',
+            style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+
+
+
+

@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Réservations - Studio Photo Admin</title>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
@@ -94,7 +96,8 @@
             border-left: 3px solid transparent;
         }
 
-        .nav-links a:hover, .nav-links a.active {
+        .nav-links a:hover,
+        .nav-links a.active {
             background: rgba(255, 255, 255, 0.1);
             color: white;
             border-left-color: white;
@@ -252,10 +255,21 @@
             color: white;
         }
 
-        .total-bookings .stat-icon { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); }
-        .pending-bookings .stat-icon { background: linear-gradient(135deg, var(--warning-color), #e67e22); }
-        .confirmed-bookings .stat-icon { background: linear-gradient(135deg, var(--success-color), #27ae60); }
-        .today-bookings .stat-icon { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .total-bookings .stat-icon {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .pending-bookings .stat-icon {
+            background: linear-gradient(135deg, var(--warning-color), #e67e22);
+        }
+
+        .confirmed-bookings .stat-icon {
+            background: linear-gradient(135deg, var(--success-color), #27ae60);
+        }
+
+        .today-bookings .stat-icon {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        }
 
         .stat-content {
             flex: 1;
@@ -330,7 +344,8 @@
             gap: 8px;
         }
 
-        .view-btn:hover, .view-btn.active {
+        .view-btn:hover,
+        .view-btn.active {
             background: var(--primary-color);
             color: white;
             border-color: var(--primary-color);
@@ -359,11 +374,13 @@
             box-shadow: var(--shadow);
         }
 
-        .dataTables_length, .dataTables_filter {
+        .dataTables_length,
+        .dataTables_filter {
             padding: 20px 20px 0;
         }
 
-        .dataTables_info, .dataTables_paginate {
+        .dataTables_info,
+        .dataTables_paginate {
             padding: 20px;
         }
 
@@ -527,8 +544,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Footer */
@@ -553,7 +575,8 @@
                 width: 250px;
             }
 
-            .logo-text, .nav-links span {
+            .logo-text,
+            .nav-links span {
                 opacity: 0;
                 transition: opacity 0.3s ease;
             }
@@ -567,7 +590,7 @@
                 margin-left: 70px;
             }
 
-            .sidebar:hover ~ .main-content {
+            .sidebar:hover~.main-content {
                 margin-left: 250px;
             }
         }
@@ -649,433 +672,450 @@
         }
     </style>
 </head>
+
 <body>
-<!-- Loading Overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
-</div>
-
-<!-- Sidebar Navigation -->
-<nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
-
-<!-- Main Content -->
-<div class="main-content">
-    <!-- Top Bar -->
-    <header class="top-bar">
-        <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Rechercher réservations...">
-        </div>
-        <div class="user-info">
-            <div class="user-details">
-                <div class="user-name" th:text="${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}"></div>
-                <div class="user-role" sec:authentication="principal.authorities"></div>
-            </div>
-            <div class="user-avatar" id="userInitials"></div>
-            <form th:action="@{/admin/logout}" method="post" style="display: inline;">
-                <button type="submit" class="btn btn-outline-danger btn-sm">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-            </form>
-        </div>
-    </header>
-
-    <!-- Content Wrapper -->
-    <div class="content-wrapper">
-        <!-- Page Header -->
-        <div class="page-header">
-            <h1><i class="fas fa-calendar-check"></i>Gestion des Réservations</h1>
-            <button class="btn btn-add-booking" data-toggle="modal" data-target="#bookingModal" id="addBookingBtn">
-                <i class="fas fa-plus-circle mr-2"></i>Nouvelle Réservation
-            </button>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="stats-cards">
-            <div class="stat-card total-bookings">
-                <div class="stat-icon">
-                    <i class="fas fa-calendar-alt"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="totalBookings">0</div>
-                    <div class="stat-label">Total Réservations</div>
-                    <div class="stat-change positive">
-                        <i class="fas fa-arrow-up mr-1"></i> 18% ce mois
-                    </div>
-                </div>
-            </div>
-            <div class="stat-card pending-bookings">
-                <div class="stat-icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="pendingBookings">0</div>
-                    <div class="stat-label">En Attente</div>
-                    <div class="stat-change negative">
-                        <i class="fas fa-arrow-down mr-1"></i> 5% ce mois
-                    </div>
-                </div>
-            </div>
-            <div class="stat-card confirmed-bookings">
-                <div class="stat-icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="confirmedBookings">0</div>
-                    <div class="stat-label">Confirmées</div>
-                    <div class="stat-change positive">
-                        <i class="fas fa-arrow-up mr-1"></i> 22% ce mois
-                    </div>
-                </div>
-            </div>
-            <div class="stat-card today-bookings">
-                <div class="stat-icon">
-                    <i class="fas fa-calendar-day"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="todayBookings">0</div>
-                    <div class="stat-label">Aujourd'hui</div>
-                    <div class="stat-change positive">
-                        <i class="fas fa-arrow-up mr-1"></i> 15% vs hier
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-            <div class="quick-actions-grid">
-                <a href="#" class="quick-action-btn" data-status="PENDING">
-                    <i class="fas fa-clock text-warning"></i>
-                    <div>Voir les en attente</div>
-                </a>
-                <a href="#" class="quick-action-btn" data-status="TODAY">
-                    <i class="fas fa-calendar-day text-primary"></i>
-                    <div>Réservations d'aujourd'hui</div>
-                </a>
-                <a href="#" class="quick-action-btn" data-action="export">
-                    <i class="fas fa-file-export text-success"></i>
-                    <div>Exporter les données</div>
-                </a>
-                <a href="#" class="quick-action-btn" data-action="calendar">
-                    <i class="fas fa-calendar text-info"></i>
-                    <div>Voir le calendrier</div>
-                </a>
-            </div>
-        </div>
-
-        <!-- View Toggle -->
-        <div class="view-toggle">
-            <div class="view-buttons">
-                <button class="view-btn active" data-view="table">
-                    <i class="fas fa-table"></i> Vue Tableau
-                </button>
-                <button class="view-btn" data-view="calendar">
-                    <i class="fas fa-calendar-alt"></i> Vue Calendrier
-                </button>
-            </div>
-        </div>
-
-        <!-- Calendar View -->
-        <div id="calendarView">
-            <div id="calendar"></div>
-        </div>
-
-        <!-- Filter Section -->
-        <div class="filter-section" id="tableSection">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="filterStatus">Statut</label>
-                    <select id="filterStatus" class="form-control select2">
-                        <option value="">Tous les statuts</option>
-                        <option value="PENDING">En attente</option>
-                        <option value="CONFIRMED">Confirmée</option>
-                        <option value="CANCELLED">Annulée</option>
-                        <option value="COMPLETED">Terminée</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterDateRange">Date</label>
-                    <select id="filterDateRange" class="form-control select2">
-                        <option value="">Toutes les dates</option>
-                        <option value="today">Aujourd'hui</option>
-                        <option value="tomorrow">Demain</option>
-                        <option value="this_week">Cette semaine</option>
-                        <option value="next_week">Semaine prochaine</option>
-                        <option value="this_month">Ce mois</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterUser">Client</label>
-                    <select id="filterUser" class="form-control select2">
-                        <option value="">Tous les clients</option>
-                        <option th:each="user : ${users}" th:value="${user.id}" th:text="${user.firstname + ' ' + user.lastname}"></option>
-                    </select>
-                </div>
-                <div class="filter-group d-flex align-items-end">
-                    <button class="btn btn-primary mr-2" id="applyFilters">
-                        <i class="fas fa-filter mr-2"></i>Filtrer
-                    </button>
-                    <button class="btn btn-outline-secondary" id="resetFilters">
-                        <i class="fas fa-redo mr-2"></i>Réinitialiser
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bookings Table -->
-        <div class="dataTables_wrapper" id="tableView">
-            <table id="bookingsTable" class="table table-hover" style="width:100%">
-                <thead>
-                <tr>
-                    <th>Client</th>
-                    <th>Titre</th>
-                    <th>Date</th>
-                    <th>Heure</th>
-                    <th>Durée</th>
-                    <th>Type</th>
-                    <th>Statut</th>
-                    <th>Montant</th>
-                    <th>Créé le</th>
-                    <th>Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                <!-- Données chargées via AJAX -->
-                </tbody>
-            </table>
-        </div>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <p>&copy; 2026 Studio Photo Admin. Tous droits réservés. | Version 2.1.0</p>
-    </footer>
-</div>
+    <!-- Sidebar Navigation -->
+    <nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
 
-<!-- Booking Modal (Add/Edit) -->
-<div class="modal fade" id="bookingModal" tabindex="-1" aria-labelledby="bookingModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="bookingModalLabel">Nouvelle Réservation</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Inclusion du header depuis le fragment -->
+        <div th:insert="~{admin/fragments/header :: mainHeader}"></div>
+
+        <!-- Content Wrapper -->
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1><i class="fas fa-calendar-check"></i>Gestion des Réservations</h1>
+                </div>
+                <div class="d-flex align-items-center">
+                    <button id="bulkDeleteBtn" class="btn btn-danger mr-3 d-none" onclick="handleBulkDelete()">
+                        <i class="fas fa-trash-alt mr-2"></i>Supprimer (<span id="selectedCount">0</span>)
+                    </button>
+                    <button class="btn btn-add-booking" data-toggle="modal" data-target="#bookingModal"
+                        id="addBookingBtn">
+                        <i class="fas fa-plus-circle mr-2"></i>Nouvelle Réservation
+                    </button>
+                </div>
             </div>
-            <div class="modal-body">
-                <form id="bookingForm" th:action="@{/admin/bookings/save}" method="post">
-                    <input type="hidden" id="bookingId" name="id">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="clientId">Client *</label>
-                                <select class="form-control select2" id="clientId" name="userId" style="width: 100%" required>
-                                    <option value="">Sélectionner un client</option>
-                                    <option th:each="user : ${users}" th:value="${user.id}" th:text="${user.firstname + ' ' + user.lastname}"></option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="bookingType">Type de réservation *</label>
-                                <select class="form-control select2" id="bookingType" name="type" style="width: 100%" required>
-                                    <option value="PHOTO_SESSION">Séance photo</option>
-                                    <option value="EVENT">Événement</option>
-                                    <option value="PORTRAIT">Portrait</option>
-                                    <option value="PRODUCT">Produit</option>
-                                    <option value="OTHER">Autre</option>
-                                </select>
-                            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-cards">
+                <div class="stat-card total-bookings">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalBookings">0</div>
+                        <div class="stat-label">Total Réservations</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up mr-1"></i> 18% ce mois
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="title">Titre *</label>
-                        <input type="text" class="form-control" id="title" name="title" required>
+                </div>
+                <div class="stat-card pending-bookings">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="startDate">Date de début *</label>
-                                <input type="datetime-local" class="form-control" id="startDate" name="startDate" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="endDate">Date de fin *</label>
-                                <input type="datetime-local" class="form-control" id="endDate" name="endDate" required>
-                            </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="pendingBookings">0</div>
+                        <div class="stat-label">En Attente</div>
+                        <div class="stat-change negative">
+                            <i class="fas fa-arrow-down mr-1"></i> 5% ce mois
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="amount">Montant (€)</label>
-                                <input type="number" class="form-control" id="amount" name="amount" step="0.01">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="status">Statut *</label>
-                                <select class="form-control select2" id="status" name="status" style="width: 100%" required>
-                                    <option value="PENDING">En attente</option>
-                                    <option value="CONFIRMED">Confirmée</option>
-                                    <option value="CANCELLED">Annulée</option>
-                                    <option value="COMPLETED">Terminée</option>
-                                </select>
-                            </div>
+                </div>
+                <div class="stat-card confirmed-bookings">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="confirmedBookings">0</div>
+                        <div class="stat-label">Confirmées</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up mr-1"></i> 22% ce mois
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="notes">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                </div>
+                <div class="stat-card today-bookings">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-day"></i>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary" id="saveBookingBtn">
-                            <i class="fas fa-save mr-2"></i>Enregistrer
+                    <div class="stat-content">
+                        <div class="stat-value" id="todayBookings">0</div>
+                        <div class="stat-label">Aujourd'hui</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up mr-1"></i> 15% vs hier
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <div class="quick-actions-grid">
+                    <a href="#" class="quick-action-btn" data-status="PENDING">
+                        <i class="fas fa-clock text-warning"></i>
+                        <div>Voir les en attente</div>
+                    </a>
+                    <a href="#" class="quick-action-btn" data-status="TODAY">
+                        <i class="fas fa-calendar-day text-primary"></i>
+                        <div>Réservations d'aujourd'hui</div>
+                    </a>
+                    <a href="#" class="quick-action-btn" data-action="export">
+                        <i class="fas fa-file-export text-success"></i>
+                        <div>Exporter les données</div>
+                    </a>
+                    <a href="#" class="quick-action-btn" data-action="calendar">
+                        <i class="fas fa-calendar text-info"></i>
+                        <div>Voir le calendrier</div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="view-toggle">
+                <div class="view-buttons">
+                    <button class="view-btn active" data-view="table">
+                        <i class="fas fa-table"></i> Vue Tableau
+                    </button>
+                    <button class="view-btn" data-view="calendar">
+                        <i class="fas fa-calendar-alt"></i> Vue Calendrier
+                    </button>
+                </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendarView">
+                <div id="calendar"></div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section" id="tableSection">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="filterStatus">Statut</label>
+                        <select id="filterStatus" class="form-control select2">
+                            <option value="">Tous les statuts</option>
+                            <option value="PENDING">En attente</option>
+                            <option value="CONFIRMED">Confirmée</option>
+                            <option value="CANCELLED">Annulée</option>
+                            <option value="COMPLETED">Terminée</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterDateRange">Date</label>
+                        <select id="filterDateRange" class="form-control select2">
+                            <option value="">Toutes les dates</option>
+                            <option value="today">Aujourd'hui</option>
+                            <option value="tomorrow">Demain</option>
+                            <option value="this_week">Cette semaine</option>
+                            <option value="next_week">Semaine prochaine</option>
+                            <option value="this_month">Ce mois</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterUser">Client</label>
+                        <select id="filterUser" class="form-control select2">
+                            <option value="">Tous les clients</option>
+                            <option th:each="user : ${users}" th:value="${user.id}"
+                                th:text="${user.firstname + ' ' + user.lastname}"></option>
+                        </select>
+                    </div>
+                    <div class="filter-group d-flex align-items-end">
+                        <button class="btn btn-primary mr-2" id="applyFilters">
+                            <i class="fas fa-filter mr-2"></i>Filtrer
+                        </button>
+                        <button class="btn btn-outline-secondary" id="resetFilters">
+                            <i class="fas fa-redo mr-2"></i>Réinitialiser
                         </button>
                     </div>
-                </form>
+                </div>
+            </div>
+
+            <!-- Bookings Table -->
+            <div class="dataTables_wrapper" id="tableView">
+                <table id="bookingsTable" class="table table-hover" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="selectAll">
+                                    <label class="custom-control-label" for="selectAll"></label>
+                                </div>
+                            </th>
+                            <th>Client</th>
+                            <th>Titre</th>
+                            <th>Date</th>
+                            <th>Heure</th>
+                            <th>Durée</th>
+                            <th>Type</th>
+                            <th>Statut</th>
+                            <th>Montant</th>
+                            <th>Créé le</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Données chargées via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 Studio Photo Admin. Tous droits réservés. | Version 2.1.0</p>
+        </footer>
+    </div>
+
+    <!-- Booking Modal (Add/Edit) -->
+    <div class="modal fade" id="bookingModal" tabindex="-1" aria-labelledby="bookingModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bookingModalLabel">Nouvelle Réservation</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="bookingForm" th:action="@{/admin/bookings/save}" method="post">
+                        <input type="hidden" id="bookingId" name="id">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="clientId">Client *</label>
+                                    <select class="form-control select2" id="clientId" name="userId" style="width: 100%"
+                                        required>
+                                        <option value="">Sélectionner un client</option>
+                                        <option th:each="user : ${users}" th:value="${user.id}"
+                                            th:text="${user.firstname + ' ' + user.lastname}"></option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="bookingType">Type de réservation *</label>
+                                    <select class="form-control select2" id="bookingType" name="type"
+                                        style="width: 100%" required>
+                                        <option value="PHOTO_SESSION">Séance photo</option>
+                                        <option value="EVENT">Événement</option>
+                                        <option value="PORTRAIT">Portrait</option>
+                                        <option value="PRODUCT">Produit</option>
+                                        <option value="OTHER">Autre</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="title">Titre *</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="startDate">Date de début *</label>
+                                    <input type="datetime-local" class="form-control" id="startDate" name="startDate"
+                                        required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="endDate">Date de fin *</label>
+                                    <input type="datetime-local" class="form-control" id="endDate" name="endDate"
+                                        required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="amount">Montant (FCFA)</label>
+                                    <input type="number" class="form-control" id="amount" name="amount" step="0.01">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="status">Statut *</label>
+                                    <select class="form-control select2" id="status" name="status" style="width: 100%"
+                                        required>
+                                        <option value="PENDING">En attente</option>
+                                        <option value="CONFIRMED">Confirmée</option>
+                                        <option value="CANCELLED">Annulée</option>
+                                        <option value="COMPLETED">Terminée</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="notes">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-primary" id="saveBookingBtn">
+                                <i class="fas fa-save mr-2"></i>Enregistrer
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Scripts -->
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/1.7.0/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.bootstrap4.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.html5.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/locale/fr.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://unpkg.com/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.7.0/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.bootstrap4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/locale/fr.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script th:inline="javascript">
-    /*<![CDATA[*/
-    $(document).ready(function() {
-        // Initialize Select2
-        $('.select2').select2({
-            width: '100%',
-            theme: 'bootstrap'
-        });
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        $(document).ready(function () {
+            // Initialize Select2
+            $('.select2').select2({
+                width: '100%',
+                theme: 'bootstrap'
+            });
 
-        // Initialize FullCalendar
-        $('#calendar').fullCalendar({
-            locale: 'fr',
-            header: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'month,agendaWeek,agendaDay'
-            },
-            events: '/admin/bookings/api/calendar',
-            eventClick: function(calEvent) {
-                editBooking(calEvent.id);
-            },
-            dayClick: function(date) {
-                $('#startDate').val(date.format('YYYY-MM-DDTHH:mm'));
-                $('#endDate').val(date.add(1, 'hour').format('YYYY-MM-DDTHH:mm'));
-                $('#bookingModal').modal('show');
-            }
-        });
-
-        // Initialize DataTable
-        var table = $('#bookingsTable').DataTable({
-            language: {
-                url: '/js/i18n/French.json'
-            },
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'excel', 'pdf'
-            ],
-            processing: true,
-            serverSide: true,
-            ajax: {
-                url: '/admin/bookings/api/datatable',
-                type: 'GET',
-                data: function(d) {
-                    d.status = $('#filterStatus').val();
-                    d.dateRange = $('#filterDateRange').val();
-                    d.userId = $('#filterUser').val();
+            // Initialize FullCalendar
+            $('#calendar').fullCalendar({
+                locale: 'fr',
+                header: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'month,agendaWeek,agendaDay'
+                },
+                events: '/admin/bookings/api/calendar',
+                eventClick: function (calEvent) {
+                    editBooking(calEvent.id);
+                },
+                dayClick: function (date) {
+                    $('#startDate').val(date.format('YYYY-MM-DDTHH:mm'));
+                    $('#endDate').val(date.add(1, 'hour').format('YYYY-MM-DDTHH:mm'));
+                    $('#bookingModal').modal('show');
                 }
-            },
-            columns: [
-                {
-                    data: null,
-                    render: function(data, type, row) {
-                        const initials = (row.user?.firstname?.[0] || '') + (row.user?.lastname?.[0] || '');
-                        const name = row.user ? row.user.firstname + ' ' + row.user.lastname : 'Non assigné';
-                        return `
+            });
+
+            // Initialize DataTable
+            var table = $('#bookingsTable').DataTable({
+                language: {
+                    url: '/js/i18n/French.json'
+                },
+                dom: 'Bfrtip',
+                buttons: [
+                    'copy', 'excel', 'pdf'
+                ],
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: '/admin/bookings/api/datatable',
+                    type: 'GET',
+                    data: function (d) {
+                        d.status = $('#filterStatus').val();
+                        d.dateRange = $('#filterDateRange').val();
+                        d.userId = $('#filterUser').val();
+                    }
+                },
+                columns: [
+                    {
+                        data: 'id',
+                        render: function (data) {
+                            return `
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input booking-checkbox" id="check-${data}" value="${data}">
+                                    <label class="custom-control-label" for="check-${data}"></label>
+                                </div>
+                            `;
+                        },
+                        orderable: false,
+                        width: '40px'
+                    },
+                    {
+                        data: null,
+                        render: function (data, type, row) {
+                            const initials = (row.user?.firstname?.[0] || '') + (row.user?.lastname?.[0] || '');
+                            const name = row.user ? row.user.firstname + ' ' + row.user.lastname : 'Non assigné';
+                            return `
                             <div class="customer-info">
                                 <div class="customer-avatar">${initials}</div>
                                 <div>
                                     <div class="font-weight-bold">${name}</div>
-                                    <small class="text-muted">${row.user?.email || ''}</small>
                                 </div>
                             </div>
                         `;
-                    }
-                },
-                { data: 'title' },
-                {
-                    data: 'startTime',
-                    render: function(data) {
-                        return moment(data).format('DD/MM/YYYY');
-                    }
-                },
-                {
-                    data: null,
-                    render: function(data) {
-                        const start = moment(data.startTime).format('HH:mm');
-                        const end = moment(data.endTime).format('HH:mm');
-                        return `${start} - ${end}`;
-                    }
-                },
-                {
-                    data: null,
-                    render: function(data) {
-                        const duration = moment.duration(moment(data.endTime).diff(moment(data.startTime)));
-                        return duration.hours() + 'h' + (duration.minutes() > 0 ? duration.minutes() + 'min' : '');
-                    }
-                },
-                { data: 'type' },
-                {
-                    data: 'status',
-                    render: function(data) {
-                        const statusClass = 'badge-' + data.toLowerCase();
-                        const statusText = {
-                            'PENDING': 'En attente',
-                            'CONFIRMED': 'Confirmée',
-                            'CANCELLED': 'Annulée',
-                            'COMPLETED': 'Terminée'
-                        }[data] || data;
-                        return `<span class="status-badge ${statusClass}">${statusText}</span>`;
-                    }
-                },
-                {
-                    data: 'amount',
-                    render: function(data) {
-                        return data ? data + ' €' : '-';
-                    }
-                },
-                {
-                    data: 'createdAt',
-                    render: function(data) {
-                        return data ? moment(data).fromNow() : '-';
-                    }
-                },
-                {
-                    data: null,
-                    orderable: false,
-                    render: function(data, type, row) {
-                        return `
+                        }
+                    },
+                    { data: 'title' },
+                    {
+                        data: 'startTime',
+                        render: function (data) {
+                            return moment(data).format('DD/MM/YYYY');
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function (data) {
+                            const start = moment(data.startTime).format('HH:mm');
+                            const end = moment(data.endTime).format('HH:mm');
+                            return `${start} - ${end}`;
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function (data) {
+                            const duration = moment.duration(moment(data.endTime).diff(moment(data.startTime)));
+                            return duration.hours() + 'h' + (duration.minutes() > 0 ? duration.minutes() + 'min' : '');
+                        }
+                    },
+                    { data: 'type' },
+                    {
+                        data: 'status',
+                        render: function (data) {
+                            const statusClass = 'badge-' + data.toLowerCase();
+                            const statusText = {
+                                'PENDING': 'En attente',
+                                'CONFIRMED': 'Confirmée',
+                                'CANCELLED': 'Annulée',
+                                'COMPLETED': 'Terminée'
+                            }[data] || data;
+                            return `<span class="status-badge ${statusClass}">${statusText}</span>`;
+                        }
+                    },
+                    {
+                        data: 'amount',
+                        render: function (data) {
+                            return data ? data + ' FCFA' : '-';
+                        }
+                    },
+                    {
+                        data: 'createdAt',
+                        render: function (data) {
+                            return data ? moment(data).fromNow() : '-';
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function (data, type, row) {
+                            return `
                             <div class="table-actions">
                                 <button class="btn btn-sm btn-outline-info edit-btn" data-id="${row.id}" title="Modifier">
                                     <i class="fas fa-edit"></i>
@@ -1091,324 +1131,409 @@
                                 </button>
                             </div>
                         `;
+                        }
                     }
+                ],
+                order: [2, 'desc'],
+                pageLength: 25,
+                responsive: true
+            });
+
+            // Bulk Delete Logic
+            const selectAll = $('#selectAll');
+            const bulkDeleteBtn = $('#bulkDeleteBtn');
+            const selectedCount = $('#selectedCount');
+
+            function updateBulkDeleteBtn() {
+                const checked = $('.booking-checkbox:checked').length;
+                selectedCount.text(checked);
+                if (checked > 0) {
+                    bulkDeleteBtn.removeClass('d-none');
+                } else {
+                    bulkDeleteBtn.addClass('d-none');
                 }
-            ],
-            order: [2, 'desc'],
-            pageLength: 25,
-            responsive: true
-        });
-
-        // Helper functions
-        function showLoading() {
-            $('#loadingOverlay').fadeIn();
-        }
-
-        function hideLoading() {
-            $('#loadingOverlay').fadeOut();
-        }
-
-        function loadStats() {
-            showLoading();
-            fetch('/admin/bookings/api/stats')
-                .then(response => response.json())
-                .then(stats => {
-                    $('#totalBookings').text(stats.totalBookings || 0);
-                    $('#pendingBookings').text(stats.pendingBookings || 0);
-                    $('#confirmedBookings').text(stats.confirmedBookings || 0);
-                    $('#todayBookings').text(stats.todayBookings || 0);
-                    hideLoading();
-                })
-                .catch(error => {
-                    console.error('Error loading stats:', error);
-                    hideLoading();
-                });
-        }
-
-        function editBooking(id) {
-            showLoading();
-            fetch(`/admin/bookings/api/${id}`)
-                .then(response => response.json())
-                .then(booking => {
-                    $('#bookingId').val(booking.id);
-                    $('#clientId').val(booking.user?.id).trigger('change');
-                    $('#bookingType').val(booking.type).trigger('change');
-                    $('#title').val(booking.title);
-                    $('#startDate').val(moment(booking.startTime).format('YYYY-MM-DDTHH:mm'));
-                    $('#endDate').val(moment(booking.endTime).format('YYYY-MM-DDTHH:mm'));
-                    $('#amount').val(booking.amount || '');
-                    $('#status').val(booking.status).trigger('change');
-                    $('#notes').val(booking.notes || '');
-                    $('#bookingModalLabel').text('Modifier Réservation');
-                    $('#bookingModal').modal('show');
-                    hideLoading();
-                })
-                .catch(error => {
-                    console.error('Error fetching booking:', error);
-                    alert('Erreur lors du chargement de la réservation');
-                    hideLoading();
-                });
-        }
-
-        // User initials
-        const userName = /*[[${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}]]*/ 'Admin';
-        const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
-        $('#userInitials').text(initials);
-
-        // View toggle
-        $('.view-btn').click(function() {
-            $('.view-btn').removeClass('active');
-            $(this).addClass('active');
-            const view = $(this).data('view');
-
-            if (view === 'calendar') {
-                $('#tableSection').hide();
-                $('#tableView').hide();
-                $('#calendarView').show();
-                $('#calendar').fullCalendar('refetchEvents');
-            } else {
-                $('#tableSection').show();
-                $('#tableView').show();
-                $('#calendarView').hide();
             }
-        });
 
-        // Quick actions
-        $('.quick-action-btn').click(function(e) {
-            e.preventDefault();
-            const status = $(this).data('status');
-            const action = $(this).data('action');
+            selectAll.on('change', function () {
+                $('.booking-checkbox').prop('checked', this.checked);
+                updateBulkDeleteBtn();
+            });
 
-            if (status) {
-                $('#filterStatus').val(status).trigger('change');
+            $(document).on('change', '.booking-checkbox', function () {
+                updateBulkDeleteBtn();
+                if (!this.checked) {
+                    selectAll.prop('checked', false);
+                } else if ($('.booking-checkbox:checked').length === $('.booking-checkbox').length) {
+                    selectAll.prop('checked', true);
+                }
+            });
+
+            window.handleBulkDelete = function () {
+                const selectedIds = $('.booking-checkbox:checked').map(function () {
+                    return $(this).val();
+                }).get();
+
+                if (selectedIds.length === 0) return;
+
+                Swal.fire({
+                    title: 'Action groupée',
+                    text: `Voulez-vous vraiment supprimer les ${selectedIds.length} réservations sélectionnées ?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#e74c3c',
+                    cancelButtonColor: '#95a5a6',
+                    confirmButtonText: 'Oui, supprimer tout',
+                    cancelButtonText: 'Annuler'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        showLoading();
+                        fetch('/admin/bookings/api/bulk-delete', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
+                            },
+                            body: JSON.stringify(selectedIds)
+                        }).then(response => {
+                            if (response.ok) {
+                                table.ajax.reload();
+                                loadStats();
+                                selectAll.prop('checked', false);
+                                updateBulkDeleteBtn();
+                                Swal.fire('Succès', 'Réservations supprimées.', 'success');
+                            } else {
+                                hideLoading();
+                                Swal.fire('Erreur', 'Une erreur est survenue lors de la suppression.', 'error');
+                            }
+                        }).catch(error => {
+                            hideLoading();
+                            Swal.fire('Erreur', 'Erreur de connexion.', 'error');
+                        });
+                    }
+                });
+            };
+
+            // Helper functions
+            function showLoading() {
+                $('#loadingOverlay').fadeIn();
+            }
+
+            function hideLoading() {
+                $('#loadingOverlay').fadeOut();
+            }
+
+            function loadStats() {
+                showLoading();
+                fetch('/admin/bookings/api/stats')
+                    .then(response => response.json())
+                    .then(stats => {
+                        $('#totalBookings').text(stats.totalBookings || 0);
+                        $('#pendingBookings').text(stats.pendingBookings || 0);
+                        $('#confirmedBookings').text(stats.confirmedBookings || 0);
+                        $('#todayBookings').text(stats.todayBookings || 0);
+                        hideLoading();
+                    })
+                    .catch(error => {
+                        console.error('Error loading stats:', error);
+                        hideLoading();
+                    });
+            }
+
+            function editBooking(id) {
+                showLoading();
+                fetch(`/admin/bookings/api/${id}`)
+                    .then(response => response.json())
+                    .then(booking => {
+                        $('#bookingId').val(booking.id);
+                        $('#clientId').val(booking.user?.id).trigger('change');
+                        $('#bookingType').val(booking.type).trigger('change');
+                        $('#title').val(booking.title);
+                        $('#startDate').val(moment(booking.startTime).format('YYYY-MM-DDTHH:mm'));
+                        $('#endDate').val(moment(booking.endTime).format('YYYY-MM-DDTHH:mm'));
+                        $('#amount').val(booking.amount || '');
+                        $('#status').val(booking.status).trigger('change');
+                        $('#notes').val(booking.notes || '');
+                        $('#bookingModalLabel').text('Modifier Réservation');
+                        $('#bookingModal').modal('show');
+                        hideLoading();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching booking:', error);
+                        alert('Erreur lors du chargement de la réservation');
+                        hideLoading();
+                    });
+            }
+
+            // User initials
+            const userName = /*[[${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}]]*/ 'Admin';
+            const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
+            $('#userInitials').text(initials);
+
+            // View toggle
+            $('.view-btn').click(function () {
+                $('.view-btn').removeClass('active');
+                $(this).addClass('active');
+                const view = $(this).data('view');
+
+                if (view === 'calendar') {
+                    $('#tableSection').hide();
+                    $('#tableView').hide();
+                    $('#calendarView').show();
+                    $('#calendar').fullCalendar('refetchEvents');
+                } else {
+                    $('#tableSection').show();
+                    $('#tableView').show();
+                    $('#calendarView').hide();
+                }
+            });
+
+            // Quick actions
+            $('.quick-action-btn').click(function (e) {
+                e.preventDefault();
+                const status = $(this).data('status');
+                const action = $(this).data('action');
+
+                if (status) {
+                    $('#filterStatus').val(status).trigger('change');
+                    table.ajax.reload();
+                } else if (action === 'calendar') {
+                    $('.view-btn[data-view="calendar"]').click();
+                } else if (action === 'export') {
+                    table.button('.buttons-excel').trigger();
+                }
+            });
+
+            // Filter functionality
+            $('#applyFilters').click(function () {
                 table.ajax.reload();
-            } else if (action === 'calendar') {
-                $('.view-btn[data-view="calendar"]').click();
-            } else if (action === 'export') {
-                table.button('.buttons-excel').trigger();
-            }
-        });
-
-        // Filter functionality
-        $('#applyFilters').click(function() {
-            table.ajax.reload();
-            loadStats();
-        });
-
-        $('#resetFilters').click(function() {
-            $('#filterStatus').val('').trigger('change');
-            $('#filterDateRange').val('').trigger('change');
-            $('#filterUser').val('').trigger('change');
-            table.ajax.reload();
-            loadStats();
-        });
-
-        // Add Booking Button
-        $('#addBookingBtn').click(function() {
-            $('#bookingForm')[0].reset();
-            $('#bookingId').val('');
-            $('#bookingModalLabel').text('Nouvelle Réservation');
-            $('.select2').trigger('change');
-
-            // Set default times
-            const now = moment();
-            $('#startDate').val(now.format('YYYY-MM-DDTHH:mm'));
-            $('#endDate').val(now.add(1, 'hour').format('YYYY-MM-DDTHH:mm'));
-        });
-
-        // Edit Booking
-        $('#bookingsTable tbody').on('click', '.edit-btn', function() {
-            const bookingId = $(this).data('id');
-            editBooking(bookingId);
-        });
-
-        // Confirm Booking
-        $('#bookingsTable tbody').on('click', '.confirm-btn', function() {
-            const bookingId = $(this).data('id');
-            Swal.fire({
-                title: 'Confirmation',
-                text: 'Êtes-vous sûr de vouloir confirmer cette réservation ?',
-                icon: 'info',
-                showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Oui, confirmer !',
-                cancelButtonText: 'Annuler'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    showLoading();
-                    fetch(`/admin/bookings/api/${bookingId}/confirm`, {
-                        method: 'POST'
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            table.ajax.reload();
-                            loadStats();
-                            $('#calendar').fullCalendar('refetchEvents');
-                            Swal.fire('Confirmé !', 'La réservation a été confirmée.', 'success');
-                        } else {
-                            Swal.fire('Erreur', 'Erreur lors de la confirmation de la réservation.', 'error');
-                        }
-                        hideLoading();
-                    })
-                    .catch(error => {
-                        console.error('Error confirming booking:', error);
-                        Swal.fire('Erreur', 'Erreur lors de la confirmation de la réservation.', 'error');
-                        hideLoading();
-                    });
-                }
+                loadStats();
             });
-        });
 
-        // Cancel Booking
-        $('#bookingsTable tbody').on('click', '.cancel-btn', function() {
-            const bookingId = $(this).data('id');
-            Swal.fire({
-                title: 'Confirmation',
-                text: 'Êtes-vous sûr de vouloir annuler cette réservation ?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Oui, annuler !',
-                cancelButtonText: 'Retour'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    showLoading();
-                    fetch(`/admin/bookings/api/${bookingId}/cancel`, {
-                        method: 'POST'
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            table.ajax.reload();
-                            loadStats();
-                            $('#calendar').fullCalendar('refetchEvents');
-                            Swal.fire('Annulé !', 'La réservation a été annulée.', 'success');
-                        } else {
-                            Swal.fire('Erreur', 'Erreur lors de l\'annulation de la réservation.', 'error');
-                        }
-                        hideLoading();
-                    })
-                    .catch(error => {
-                        console.error('Error cancelling booking:', error);
-                        Swal.fire('Erreur', 'Erreur lors de l\'annulation de la réservation.', 'error');
-                        hideLoading();
-                    });
-                }
+            $('#resetFilters').click(function () {
+                $('#filterStatus').val('').trigger('change');
+                $('#filterDateRange').val('').trigger('change');
+                $('#filterUser').val('').trigger('change');
+                table.ajax.reload();
+                loadStats();
             });
-        });
 
-        // Delete Booking
-        $('#bookingsTable tbody').on('click', '.delete-btn', function() {
-            const bookingId = $(this).data('id');
-            Swal.fire({
-                title: 'Êtes-vous sûr ?',
-                text: "Cette action est irréversible !",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Oui, supprimer !',
-                cancelButtonText: 'Annuler'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    showLoading();
-                    fetch(`/admin/bookings/api/${bookingId}`, {
-                        method: 'DELETE'
-                    })
+            // Add Booking Button
+            $('#addBookingBtn').click(function () {
+                $('#bookingForm')[0].reset();
+                $('#bookingId').val('');
+                $('#bookingModalLabel').text('Nouvelle Réservation');
+                $('.select2').trigger('change');
+
+                // Set default times
+                const now = moment();
+                $('#startDate').val(now.format('YYYY-MM-DDTHH:mm'));
+                $('#endDate').val(now.add(1, 'hour').format('YYYY-MM-DDTHH:mm'));
+            });
+
+            // Edit Booking
+            $('#bookingsTable tbody').on('click', '.edit-btn', function () {
+                const bookingId = $(this).data('id');
+                editBooking(bookingId);
+            });
+
+            // Confirm Booking
+            $('#bookingsTable tbody').on('click', '.confirm-btn', function () {
+                const bookingId = $(this).data('id');
+                Swal.fire({
+                    title: 'Confirmation',
+                    text: 'Êtes-vous sûr de vouloir confirmer cette réservation ?',
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Oui, confirmer !',
+                    cancelButtonText: 'Annuler'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        showLoading();
+                        fetch(`/admin/bookings/api/${bookingId}/confirm`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
+                            }
+                        })
+                            .then(response => {
+                                if (response.ok) {
+                                    table.ajax.reload();
+                                    loadStats();
+                                    $('#calendar').fullCalendar('refetchEvents');
+                                    Swal.fire('Confirmé !', 'La réservation a été confirmée.', 'success');
+                                } else {
+                                    Swal.fire('Erreur', 'Erreur lors de la confirmation de la réservation.', 'error');
+                                }
+                                hideLoading();
+                            })
+                            .catch(error => {
+                                console.error('Error confirming booking:', error);
+                                Swal.fire('Erreur', 'Erreur lors de la confirmation de la réservation.', 'error');
+                                hideLoading();
+                            });
+                    }
+                });
+            });
+
+            // Cancel Booking
+            $('#bookingsTable tbody').on('click', '.cancel-btn', function () {
+                const bookingId = $(this).data('id');
+                Swal.fire({
+                    title: 'Confirmation',
+                    text: 'Êtes-vous sûr de vouloir annuler cette réservation ?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Oui, annuler !',
+                    cancelButtonText: 'Retour'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        showLoading();
+                        fetch(`/admin/bookings/api/${bookingId}/cancel`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
+                            }
+                        })
+                            .then(response => {
+                                if (response.ok) {
+                                    table.ajax.reload();
+                                    loadStats();
+                                    $('#calendar').fullCalendar('refetchEvents');
+                                    Swal.fire('Annulé !', 'La réservation a été annulée.', 'success');
+                                } else {
+                                    Swal.fire('Erreur', 'Erreur lors de l\'annulation de la réservation.', 'error');
+                                }
+                                hideLoading();
+                            })
+                            .catch(error => {
+                                console.error('Error cancelling booking:', error);
+                                Swal.fire('Erreur', 'Erreur lors de l\'annulation de la réservation.', 'error');
+                                hideLoading();
+                            });
+                    }
+                });
+            });
+
+            // Delete Booking
+            $('#bookingsTable tbody').on('click', '.delete-btn', function () {
+                const bookingId = $(this).data('id');
+                Swal.fire({
+                    title: 'Êtes-vous sûr ?',
+                    text: "Cette action est irréversible !",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Oui, supprimer !',
+                    cancelButtonText: 'Annuler'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        showLoading();
+                        fetch(`/admin/bookings/api/${bookingId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
+                            }
+                        })
+                            .then(response => {
+                                if (response.ok) {
+                                    table.ajax.reload();
+                                    loadStats();
+                                    $('#calendar').fullCalendar('refetchEvents');
+                                    Swal.fire(
+                                        'Supprimé !',
+                                        'La réservation a été supprimée.',
+                                        'success'
+                                    );
+                                } else {
+                                    Swal.fire(
+                                        'Erreur !',
+                                        'Impossible de supprimer la réservation.',
+                                        'error'
+                                    );
+                                }
+                                hideLoading();
+                            })
+                            .catch(error => {
+                                console.error('Error deleting booking:', error);
+                                Swal.fire(
+                                    'Erreur !',
+                                    'Une erreur est survenue.',
+                                    'error'
+                                );
+                                hideLoading();
+                            });
+                    }
+                });
+            });
+
+            // Save Booking Form
+            $('#bookingForm').submit(function (e) {
+                e.preventDefault();
+
+                const formData = {
+                    id: $('#bookingId').val() || null,
+                    userId: $('#clientId').val(),
+                    type: $('#bookingType').val(),
+                    title: $('#title').val(),
+                    startTime: $('#startDate').val(),
+                    endTime: $('#endDate').val(),
+                    amount: $('#amount').val() || null,
+                    status: $('#status').val(),
+                    notes: $('#notes').val()
+                };
+
+                const method = formData.id ? 'PUT' : 'POST';
+                const url = formData.id ? `/admin/bookings/api/${formData.id}` : '/admin/bookings/api';
+
+                showLoading();
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
+                    },
+                    body: JSON.stringify(formData)
+                })
                     .then(response => {
                         if (response.ok) {
-                            table.ajax.reload();
-                            loadStats();
-                            $('#calendar').fullCalendar('refetchEvents');
-                            Swal.fire(
-                                'Supprimé !',
-                                'La réservation a été supprimée.',
-                                'success'
-                            );
+                            return response.json();
                         } else {
-                            Swal.fire(
-                                'Erreur !',
-                                'Impossible de supprimer la réservation.',
-                                'error'
-                            );
+                            return response.json().then(err => Promise.reject(err));
                         }
+                    })
+                    .then(() => {
+                        $('#bookingModal').modal('hide');
+                        table.ajax.reload();
+                        loadStats();
+                        $('#calendar').fullCalendar('refetchEvents');
                         hideLoading();
+                        Swal.fire(
+                            'Succès !',
+                            formData.id ? 'Réservation mise à jour.' : 'Réservation créée.',
+                            'success'
+                        );
                     })
                     .catch(error => {
-                        console.error('Error deleting booking:', error);
+                        console.error('Error saving booking:', error);
                         Swal.fire(
                             'Erreur !',
-                            'Une erreur est survenue.',
+                            error.message || 'Une erreur est survenue.',
                             'error'
                         );
                         hideLoading();
                     });
-                }
             });
+
+            // Initial load
+            loadStats();
         });
-
-        // Save Booking Form
-        $('#bookingForm').submit(function(e) {
-            e.preventDefault();
-
-            const formData = {
-                id: $('#bookingId').val() || null,
-                userId: $('#clientId').val(),
-                type: $('#bookingType').val(),
-                title: $('#title').val(),
-                startTime: $('#startDate').val(),
-                endTime: $('#endDate').val(),
-                amount: $('#amount').val() || null,
-                status: $('#status').val(),
-                notes: $('#notes').val()
-            };
-
-            const method = formData.id ? 'PUT' : 'POST';
-            const url = formData.id ? `/admin/bookings/api/${formData.id}` : '/admin/bookings/api';
-
-            showLoading();
-            fetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.json();
-                } else {
-                    return response.json().then(err => Promise.reject(err));
-                }
-            })
-            .then(() => {
-                $('#bookingModal').modal('hide');
-                table.ajax.reload();
-                loadStats();
-                $('#calendar').fullCalendar('refetchEvents');
-                hideLoading();
-                Swal.fire(
-                    'Succès !',
-                    formData.id ? 'Réservation mise à jour.' : 'Réservation créée.',
-                    'success'
-                );
-            })
-            .catch(error => {
-                console.error('Error saving booking:', error);
-                Swal.fire(
-                    'Erreur !',
-                    error.message || 'Une erreur est survenue.',
-                    'error'
-                );
-                hideLoading();
-            });
-        });
-
-        // Initial load
-        loadStats();
-    });
-    /*]]>*/
-</script>
+        /*]]>*/
+    </script>
 </body>
+
 </html>

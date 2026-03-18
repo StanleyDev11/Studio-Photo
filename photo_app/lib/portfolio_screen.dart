@@ -40,6 +40,13 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     );
   }
 
+  Future<void> _refreshDimensions() async {
+    setState(() {
+      _dimensionsFuture = ApiService.fetchDimensions();
+    });
+    await _dimensionsFuture;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,22 +71,34 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
       ),
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           SafeArea(
-            child: FutureBuilder<List<PhotoFormat>>(
+            child: RefreshIndicator(
+              onRefresh: _refreshDimensions,
+              color: AppColors.primary,
+              child: FutureBuilder<List<PhotoFormat>>(
               future: _dimensionsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Erreur: ${snapshot.error}'));
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('Aucune dimension trouvée.'));
-                }
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(height: 200),
+                          Center(child: Text('Aucune dimension trouvée.')),
+                        ],
+                      ),
+                    );
+                  }
 
                 final photoFormats = snapshot.data!;
-                return GridView.builder(
-                  padding: const EdgeInsets.all(16),
+                  return GridView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
                   gridDelegate:
                       const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
@@ -99,10 +118,11 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
               },
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }
 
 /// ===============================
@@ -157,17 +177,23 @@ class _TileInfo extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  format.dimension,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    format.dimension,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold),
+                  ),
                 ),
-                Text(
-                  currencyFormatter.format(format.price),
-                  style: const TextStyle(
-                      color: Colors.orangeAccent,
-                      fontWeight: FontWeight.w600),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    currencyFormatter.format(format.price),
+                    style: const TextStyle(
+                        color: Colors.orangeAccent,
+                        fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
@@ -276,19 +302,25 @@ class _DimensionDetailDialogState extends State<DimensionDetailDialog> {
                             mainAxisAlignment:
                                 MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                widget.format.dimension,
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.white),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  widget.format.dimension,
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.white),
+                                ),
                               ),
-                              Text(
-                                currencyFormatter
-                                    .format(widget.format.price),
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.orangeAccent,
-                                    fontWeight: FontWeight.bold),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  currencyFormatter
+                                      .format(widget.format.price),
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.orangeAccent,
+                                      fontWeight: FontWeight.bold),
+                                ),
                               ),
                             ],
                           )

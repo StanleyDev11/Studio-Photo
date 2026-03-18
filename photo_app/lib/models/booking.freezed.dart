@@ -24,10 +24,13 @@ mixin _$Booking {
   String get title => throw _privateConstructorUsedError;
   String? get description => throw _privateConstructorUsedError;
   int get userId =>
-      throw _privateConstructorUsedError; // User ID linked to the booking
+      throw _privateConstructorUsedError; // ID utilisateur lié à la réservation
   DateTime get startTime => throw _privateConstructorUsedError;
   DateTime get endTime => throw _privateConstructorUsedError;
   BookingStatus get status => throw _privateConstructorUsedError;
+  BookingType get type => throw _privateConstructorUsedError; // Nouveau champ
+  double get amount =>
+      throw _privateConstructorUsedError; // Nouveau champ (BigDecimal en Java -> double en Dart)
   String? get notes => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
@@ -54,6 +57,8 @@ abstract class $BookingCopyWith<$Res> {
       DateTime startTime,
       DateTime endTime,
       BookingStatus status,
+      BookingType type,
+      double amount,
       String? notes,
       DateTime createdAt,
       DateTime? updatedAt});
@@ -81,6 +86,8 @@ class _$BookingCopyWithImpl<$Res, $Val extends Booking>
     Object? startTime = null,
     Object? endTime = null,
     Object? status = null,
+    Object? type = null,
+    Object? amount = null,
     Object? notes = freezed,
     Object? createdAt = null,
     Object? updatedAt = freezed,
@@ -114,6 +121,14 @@ class _$BookingCopyWithImpl<$Res, $Val extends Booking>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as BookingStatus,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as BookingType,
+      amount: null == amount
+          ? _value.amount
+          : amount // ignore: cast_nullable_to_non_nullable
+              as double,
       notes: freezed == notes
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
@@ -145,6 +160,8 @@ abstract class _$$BookingImplCopyWith<$Res> implements $BookingCopyWith<$Res> {
       DateTime startTime,
       DateTime endTime,
       BookingStatus status,
+      BookingType type,
+      double amount,
       String? notes,
       DateTime createdAt,
       DateTime? updatedAt});
@@ -170,6 +187,8 @@ class __$$BookingImplCopyWithImpl<$Res>
     Object? startTime = null,
     Object? endTime = null,
     Object? status = null,
+    Object? type = null,
+    Object? amount = null,
     Object? notes = freezed,
     Object? createdAt = null,
     Object? updatedAt = freezed,
@@ -203,6 +222,14 @@ class __$$BookingImplCopyWithImpl<$Res>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as BookingStatus,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as BookingType,
+      amount: null == amount
+          ? _value.amount
+          : amount // ignore: cast_nullable_to_non_nullable
+              as double,
       notes: freezed == notes
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
@@ -230,6 +257,8 @@ class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
       required this.startTime,
       required this.endTime,
       required this.status,
+      required this.type,
+      required this.amount,
       this.notes,
       required this.createdAt,
       this.updatedAt});
@@ -245,13 +274,19 @@ class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
   final String? description;
   @override
   final int userId;
-// User ID linked to the booking
+// ID utilisateur lié à la réservation
   @override
   final DateTime startTime;
   @override
   final DateTime endTime;
   @override
   final BookingStatus status;
+  @override
+  final BookingType type;
+// Nouveau champ
+  @override
+  final double amount;
+// Nouveau champ (BigDecimal en Java -> double en Dart)
   @override
   final String? notes;
   @override
@@ -261,7 +296,7 @@ class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'Booking(id: $id, title: $title, description: $description, userId: $userId, startTime: $startTime, endTime: $endTime, status: $status, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Booking(id: $id, title: $title, description: $description, userId: $userId, startTime: $startTime, endTime: $endTime, status: $status, type: $type, amount: $amount, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -276,6 +311,8 @@ class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
       ..add(DiagnosticsProperty('startTime', startTime))
       ..add(DiagnosticsProperty('endTime', endTime))
       ..add(DiagnosticsProperty('status', status))
+      ..add(DiagnosticsProperty('type', type))
+      ..add(DiagnosticsProperty('amount', amount))
       ..add(DiagnosticsProperty('notes', notes))
       ..add(DiagnosticsProperty('createdAt', createdAt))
       ..add(DiagnosticsProperty('updatedAt', updatedAt));
@@ -295,6 +332,8 @@ class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
                 other.startTime == startTime) &&
             (identical(other.endTime, endTime) || other.endTime == endTime) &&
             (identical(other.status, status) || other.status == status) &&
+            (identical(other.type, type) || other.type == type) &&
+            (identical(other.amount, amount) || other.amount == amount) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
@@ -305,7 +344,7 @@ class _$BookingImpl with DiagnosticableTreeMixin implements _Booking {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, title, description, userId,
-      startTime, endTime, status, notes, createdAt, updatedAt);
+      startTime, endTime, status, type, amount, notes, createdAt, updatedAt);
 
   /// Create a copy of Booking
   /// with the given fields replaced by the non-null parameter values.
@@ -332,6 +371,8 @@ abstract class _Booking implements Booking {
       required final DateTime startTime,
       required final DateTime endTime,
       required final BookingStatus status,
+      required final BookingType type,
+      required final double amount,
       final String? notes,
       required final DateTime createdAt,
       final DateTime? updatedAt}) = _$BookingImpl;
@@ -345,13 +386,17 @@ abstract class _Booking implements Booking {
   @override
   String? get description;
   @override
-  int get userId; // User ID linked to the booking
+  int get userId; // ID utilisateur lié à la réservation
   @override
   DateTime get startTime;
   @override
   DateTime get endTime;
   @override
   BookingStatus get status;
+  @override
+  BookingType get type; // Nouveau champ
+  @override
+  double get amount; // Nouveau champ (BigDecimal en Java -> double en Dart)
   @override
   String? get notes;
   @override

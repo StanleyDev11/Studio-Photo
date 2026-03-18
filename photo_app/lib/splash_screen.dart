@@ -1,100 +1,69 @@
-import 'dart:async';
-import 'package:Picon/api_service.dart';
-import 'package:Picon/home_screen.dart';
-import 'package:Picon/login_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
+// import 'dart:async';
+// import 'package:Picon/api_service.dart';
+// import 'package:Picon/home_screen.dart';
+// import 'package:Picon/login_screen.dart';
+// import 'package:flutter/material.dart';
+// import 'package:flutter_animate/flutter_animate.dart';
 
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+// class SplashScreen extends StatefulWidget {
+//   const SplashScreen({super.key});
 
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
+//   @override
+//   State<SplashScreen> createState() => _SplashScreenState();
+// }
 
-class _SplashScreenState extends State<SplashScreen> {
-  VideoPlayerController? _controller;
-  int _currentVideoIndex = 0;
-  final List<String> _videoAssets = [
-    // 'assets/splash.mp4',
-    'assets/splash1.mp4',
-  ];
+// class _SplashScreenState extends State<SplashScreen> {
+//   bool _navigated = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _playVideo(index: 0);
-  }
+//   @override
+//   void initState() {
+//     super.initState();
+//     // Navigation occurs strictly after 3 seconds
+//     Future.delayed(const Duration(seconds: 3), () {
+//       _navigateToNextScreen();
+//     });
+//   }
 
-  void _playVideo({required int index}) {
-    if (index >= _videoAssets.length) {
-      _navigateToNextScreen();
-      return;
-    }
+//   void _navigateToNextScreen() {
+//     if (_navigated || !mounted) return;
+//     _navigated = true;
 
-    _currentVideoIndex = index;
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       if (!mounted) return;
+//       if (ApiService.authToken != null && ApiService.userId != null) {
+//         Navigator.of(context).pushReplacement(
+//           MaterialPageRoute(
+//             builder: (context) => HomeScreen(
+//               userName: ApiService.userName ?? 'Utilisateur',
+//               userLastName: ApiService.userLastName ?? '',
+//               userEmail: ApiService.userEmail ?? '',
+//               userId: ApiService.userId!,
+//             ),
+//           ),
+//         );
+//       } else {
+//         Navigator.of(context).pushReplacement(
+//           MaterialPageRoute(builder: (context) => const LoginScreen()),
+//         );
+//       }
+//     });
+//   }
 
-    _controller?.dispose();
-
-    _controller = VideoPlayerController.asset(_videoAssets[_currentVideoIndex])
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {});
-          _controller?.play();
-        }
-      })
-      ..addListener(() {
-        if (_controller!.value.position == _controller!.value.duration) {
-          if (mounted) {
-            _playVideo(index: _currentVideoIndex + 1);
-          }
-        }
-      });
-  }
-
-  void _navigateToNextScreen() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        if (ApiService.authToken != null && ApiService.userId != null) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => HomeScreen(
-                userName: ApiService.userName ?? 'Utilisateur',
-                userLastName: ApiService.userLastName ?? '',
-                userEmail: ApiService.userEmail ?? '',
-                userId: ApiService.userId!,
-              ),
-            ),
-          );
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-          );
-        }
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: _controller != null && _controller!.value.isInitialized
-            ? AspectRatio(
-                aspectRatio: _controller!.value.aspectRatio,
-                child: VideoPlayer(_controller!),
-              )
-            : const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-              ),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.white,
+//       body: Center(
+//         child: Image.asset(
+//           'assets/images/pro.png',
+//           width: 250,
+//         )
+//         .animate()
+//         .fadeIn(duration: 800.ms)
+//         .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.0, 1.0), duration: 800.ms, curve: Curves.easeOutBack)
+//         .then(delay: 400.ms)
+//         .shimmer(duration: 1200.ms, color: Colors.grey.withOpacity(0.3)),
+//       ),
+//     );
+//   }
+// }

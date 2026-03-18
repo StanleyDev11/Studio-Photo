@@ -66,10 +66,16 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } catch (e) {
         if (mounted) {
+          String errorMessage = e.toString();
+          if (errorMessage.startsWith('Exception: ')) {
+            errorMessage = errorMessage.substring(11);
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('Erreur de connexion: $e'),
-                backgroundColor: Colors.red),
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } finally {
@@ -93,10 +99,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          const GeometricBackground(),
+          GeometricBackground(),
           SafeArea(
             child: SingleChildScrollView(
               child: Column(
@@ -113,17 +120,20 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildHeader() {
+    final size = MediaQuery.of(context).size;
     return SizedBox(
-      height: 220,
+      height: size.height * 0.25,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 30),
-          Image.asset(
-            'assets/images/pro.png',
-            height: 180, // Adjust height as needed
-            width: 180, // Adjust width as needed
-            fit: BoxFit.contain,
+          Flexible(
+            child: Image.asset(
+              'assets/images/pro.png',
+              height: 180, // Nominally 180, Flexible helps scale down if needed
+              width: 180,
+              fit: BoxFit.contain,
+            ),
           ),
         ],
       ),
@@ -241,6 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: AppColors.textPrimary.withOpacity(0.9)),
                         ),
                       ),
+                      textInputAction: TextInputAction.next,
                       keyboardType: TextInputType.phone,
                       validator: (value) =>
                           (value?.isEmpty ?? true) ? 'Champ requis' : null,
@@ -250,6 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _emailController,
                         decoration: _glassyInputDecoration('Email',
                             icon: Icons.email_outlined),
+                        textInputAction: TextInputAction.next,
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.isEmpty)
@@ -315,14 +327,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("Pas de compte ?",
-                          style: textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.textPrimary)),
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/signup'),
-                        child: const Text('S\'inscrire',
-                            style: TextStyle(color: AppColors.primary)),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text("Pas de compte ?",
+                              style: textTheme.bodyMedium
+                                  ?.copyWith(color: AppColors.textPrimary)),
+                        ),
+                      ),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: TextButton(
+                            onPressed: () =>
+                                Navigator.pushNamed(context, '/signup'),
+                            child: const Text('S\'inscrire',
+                                style: TextStyle(color: AppColors.primary)),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -355,14 +377,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Text(
-                  'Téléphone',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _isLoginWithPhone
-                        ? Colors.white
-                        : AppColors.textPrimary.withOpacity(0.7),
-                    fontWeight: FontWeight.bold,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Téléphone',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _isLoginWithPhone
+                          ? Colors.white
+                          : AppColors.textPrimary.withOpacity(0.7),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -380,14 +405,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Text(
-                  'Email',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: !_isLoginWithPhone
-                        ? Colors.white
-                        : AppColors.textPrimary.withOpacity(0.7),
-                    fontWeight: FontWeight.bold,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Email',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: !_isLoginWithPhone
+                          ? Colors.white
+                          : AppColors.textPrimary.withOpacity(0.7),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),

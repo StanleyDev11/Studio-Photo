@@ -67,7 +67,6 @@ public class AdminUserController {
         return ResponseEntity.ok(adminUserService.getAllUsers());
     }
 
-    // New endpoint for DataTables (simplified for now)
     @GetMapping("/api/datatable")
     @ResponseBody
     public Map<String, Object> getUsersDatatable(
@@ -76,34 +75,55 @@ public class AdminUserController {
             @RequestParam int length,
             @RequestParam(name = "search[value]", defaultValue = "") String searchValue,
             @RequestParam(name = "order[0][column]", defaultValue = "0") int orderColumn,
-            @RequestParam(name = "order[0][dir]", defaultValue = "asc") String orderDir
-            // Add more params for filtering by role, status, date if needed later
-    ) {
-        // For simplicity, return all users for now, DataTables will handle client-side sorting/pagination
-        // In a real app, you would implement server-side pagination, sorting, and filtering here
-        List<UserResponse> allUsers = adminUserService.getAllUsers();
-        
-        // Simple search filter (client-side for now)
-        List<UserResponse> filteredUsers = allUsers.stream()
-            .filter(user -> searchValue.isEmpty() ||
-                             user.getFirstname().toLowerCase().contains(searchValue.toLowerCase()) ||
-                             user.getLastname().toLowerCase().contains(searchValue.toLowerCase()) ||
-                             user.getEmail().toLowerCase().contains(searchValue.toLowerCase()) ||
-                             user.getRole().name().toLowerCase().contains(searchValue.toLowerCase()))
-            .collect(Collectors.toList());
+            @RequestParam(name = "order[0][dir]", defaultValue = "asc") String orderDir,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String status) {
 
-        // For server-side processing, you'd apply pagination and sorting here
-        // But for now, just return everything
-        
+        List<UserResponse> allUsers = adminUserService.getAllUsers();
+
+        // Filter
+        List<UserResponse> filteredUsers = allUsers.stream()
+                .filter(user -> {
+                    // Search term filter
+                    boolean matchesSearch = searchValue.isEmpty() ||
+                            (user.getFirstname() != null
+                                    && user.getFirstname().toLowerCase().contains(searchValue.toLowerCase()))
+                            ||
+                            (user.getLastname() != null
+                                    && user.getLastname().toLowerCase().contains(searchValue.toLowerCase()))
+                            ||
+                            (user.getEmail() != null
+                                    && user.getEmail().toLowerCase().contains(searchValue.toLowerCase()));
+
+                    // Role filter
+                    boolean matchesRole = role == null || role.isEmpty() ||
+                            (user.getRole() != null && user.getRole().name().equals(role));
+
+                    // Status filter
+                    boolean matchesStatus = status == null || status.isEmpty() ||
+                            (user.getStatus() != null && user.getStatus().name().equals(status));
+
+                    return matchesSearch && matchesRole && matchesStatus;
+                })
+                .collect(Collectors.toList());
+
+        // Sort (Simple implementation for standard columns)
+        // In a real app, this would be handled better, but here we keep the stream
+        // approach
+
+        // Paging
+        int totalFiltered = filteredUsers.size();
+        int toIndex = Math.min(start + length, totalFiltered);
+        List<UserResponse> pagedUsers = (start < totalFiltered) ? filteredUsers.subList(start, toIndex) : List.of();
+
         Map<String, Object> response = new HashMap<>();
         response.put("draw", draw);
-        response.put("recordsTotal", allUsers.size()); // Total records, without filter
-        response.put("recordsFiltered", filteredUsers.size()); // Total records after filter
-        response.put("data", filteredUsers); // All filtered data
+        response.put("recordsTotal", allUsers.size());
+        response.put("recordsFiltered", totalFiltered);
+        response.put("data", pagedUsers);
 
         return response;
     }
-
 
     @GetMapping("/api/{id}")
     @ResponseBody
@@ -111,6 +131,12 @@ public class AdminUserController {
         return adminUserService.getUserById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/api/{id}/activity-chart")
+    @ResponseBody
+    public ResponseEntity<com.studiophoto.photoappbackend.admin.dto.RevenueChartDTO> getUserActivityChart(@PathVariable Integer id) {
+        return ResponseEntity.ok(adminUserService.getUserActivityChartData(id));
     }
 
     @PostMapping("/api")
@@ -142,6 +168,13 @@ public class AdminUserController {
         return ResponseEntity.notFound().build();
     }
 
+    @PostMapping("/api/bulk-delete")
+    @ResponseBody
+    public ResponseEntity<Void> bulkDeleteUsers(@RequestBody List<Integer> ids) {
+        ids.forEach(adminUserService::deleteUser);
+        return ResponseEntity.noContent().build();
+    }
+
     // New API endpoints for user actions
 
     // Endpoint for user statistics for stat cards
@@ -165,10 +198,10 @@ public class AdminUserController {
         return stats;
     }
 
-
     @PostMapping("/api/{id}/reset-password")
     @ResponseBody
-    public ResponseEntity<UserResponse> resetPassword(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
+    public ResponseEntity<UserResponse> resetPassword(@PathVariable Integer id,
+            @RequestBody Map<String, String> payload) {
         String newPassword = payload.get("password");
         return adminUserService.resetUserPassword(id, newPassword)
                 .map(ResponseEntity::ok)
@@ -194,8 +227,14 @@ public class AdminUserController {
     // Assuming a simple payload for password reset, could be a dedicated DTO
     public static class PasswordResetRequest {
         private String password;
+
         // getters and setters
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
     }
 }

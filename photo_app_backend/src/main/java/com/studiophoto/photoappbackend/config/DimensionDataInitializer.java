@@ -3,6 +3,7 @@ package com.studiophoto.photoappbackend.config;
 import com.studiophoto.photoappbackend.dimension.Dimension;
 import com.studiophoto.photoappbackend.dimension.DimensionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +12,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class DimensionDataInitializer implements CommandLineRunner {
 
     private final DimensionRepository dimensionRepository;
@@ -19,8 +21,6 @@ public class DimensionDataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         if (dimensionRepository.count() == 0) {
             // Utiliser les images existantes dans le dossier /uploads du backend comme placeholders
-            // Remplacez ces noms de fichiers par ceux que vous souhaitez utiliser pour les données initiales.
-            // Assurez-vous que ces fichiers existent bien dans votre dossier 'uploads'.
             List<String> placeholderImages = List.of(
                     "/uploads/51bc4427-68fb-4ee1-a483-8b9005c6684f-or.jpg",
                     "/uploads/52eadc05-e776-48b8-bc2d-b1897a5f6e11-WhatsApp_Image_2026-01-22_at_17.22.21.jpeg",
@@ -46,7 +46,7 @@ public class DimensionDataInitializer implements CommandLineRunner {
                     Dimension.builder().name("60x120 cm").price(new BigDecimal("6250")).images(placeholderImages.get(2)).title("Immersion Maximale").description("La plus grande taille disponible pour une immersion totale.").isPopular(false).build()
             );
             dimensionRepository.saveAll(dimensions);
-            System.out.println("Initialized " + dimensions.size() + " dimensions with placeholder images from /uploads/ directory.");
+            log.info("Initialized {} dimensions with placeholder images from /uploads/ directory.", dimensions.size());
         }
     }
 }

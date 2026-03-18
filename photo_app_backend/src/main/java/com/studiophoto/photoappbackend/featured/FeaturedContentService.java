@@ -8,15 +8,20 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-//@RequiredArgsConstructor // Removed because we will manually create constructor
+// @RequiredArgsConstructor // Removed because we will manually create
+// constructor
 public class FeaturedContentService {
 
     private final FeaturedContentRepository featuredContentRepository;
-    private final StorageService storageService; // NEW
+    private final StorageService storageService;
+    private final com.studiophoto.photoappbackend.service.NotificationService notificationService;
 
-    public FeaturedContentService(FeaturedContentRepository featuredContentRepository, StorageService storageService) {
+    public FeaturedContentService(FeaturedContentRepository featuredContentRepository,
+            StorageService storageService,
+            com.studiophoto.photoappbackend.service.NotificationService notificationService) {
         this.featuredContentRepository = featuredContentRepository;
         this.storageService = storageService;
+        this.notificationService = notificationService;
     }
 
     public Optional<FeaturedContent> getActiveFeaturedContent() {
@@ -32,7 +37,9 @@ public class FeaturedContentService {
     }
 
     public FeaturedContent saveFeaturedContent(FeaturedContent featuredContent) {
-        return featuredContentRepository.save(featuredContent);
+        FeaturedContent saved = featuredContentRepository.save(featuredContent);
+        notificationService.sendSyncNotification("FEATURED_UPDATED");
+        return saved;
     }
 
     public void deleteFeaturedContent(Long id) {
@@ -45,5 +52,6 @@ public class FeaturedContentService {
             }
         });
         featuredContentRepository.deleteById(id);
+        notificationService.sendSyncNotification("FEATURED_UPDATED");
     }
 }

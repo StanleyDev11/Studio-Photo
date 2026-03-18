@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,91 +12,1059 @@
             --primary-color: #4567b7;
             --primary-dark: #3455a0;
             --secondary-color: #3498db;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #3498db;
             --dark-color: #2c3e50;
             --light-color: #f8f9fa;
+            --gray-light: #ecf0f1;
             --shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 10px 30px rgba(0, 0, 0, 0.12);
             --transition: all 0.3s ease;
         }
-        body { background-color: #f5f7fb; }
-        .sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: 250px; background: linear-gradient(180deg, var(--primary-color) 0%, var(--primary-dark) 100%); z-index: 1000; }
-        .sidebar-header { padding: 25px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-        .logo { display: flex; align-items: center; color: white; text-decoration: none; }
-        .logo-icon { background: rgba(255, 255, 255, 0.2); width: 80px; height: 80px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px; }
-        .logo-text { font-size: 20px; font-weight: 700; }
-        .nav-links { padding: 20px 0; }
-        .nav-links li { list-style: none; }
-        .nav-links a { display: flex; align-items: center; padding: 15px 25px; color: rgba(255, 255, 255, 0.8); text-decoration: none; border-left: 3px solid transparent; transition: var(--transition); }
-        .nav-links a:hover, .nav-links a.active { background: rgba(255, 255, 255, 0.1); color: white; border-left-color: white; }
-        .nav-links i { margin-right: 12px; width: 20px; text-align: center; font-size: 18px; }
-        .main-content { margin-left: 250px; }
-        .top-bar { background: white; padding: 15px 30px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        .user-info { display: flex; align-items: center; }
-        .user-name { font-weight: 600; }
-        .content-wrapper { padding: 30px; }
-        .page-header { background: white; border-radius: 12px; padding: 25px; margin-bottom: 30px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary-color); }
-        .page-header h1 { font-size: 28px; font-weight: 700; margin: 0; }
-        .photo-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-        .photo-card { background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
-        .photo-card img { width: 100%; height: 200px; object-fit: cover; }
-        .photo-card-details { padding: 15px; }
-        .photo-card-details p { margin-bottom: 5px; }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+            color: var(--dark-color);
+            overflow-x: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 250px;
+            background: linear-gradient(180deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: var(--transition);
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            background: rgba(255, 255, 255, 0.2);
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-links {
+            padding: 20px 0;
+        }
+
+        .nav-links li {
+            list-style: none;
+        }
+
+        .nav-links a {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-left-color: white;
+        }
+
+        .nav-links i {
+            margin-right: 12px;
+            width: 20px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 250px;
+            padding: 0;
+            transition: var(--transition);
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-right: 12px;
+        }
+
+        .user-details {
+            margin-right: 20px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 2px;
+        }
+
+        .user-role {
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+
+        /* Content Wrapper */
+        .content-wrapper {
+            padding: 30px;
+        }
+
+        .page-header {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--dark-color);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .page-header h1 i {
+            color: var(--primary-color);
+        }
+
+        .page-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .btn-primary-action {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            box-shadow: 0 4px 15px rgba(69, 103, 183, 0.3);
+        }
+
+        .btn-primary-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(69, 103, 183, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-outline-action {
+            background: white;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline-action:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+            text-decoration: none;
+        }
+
+        /* Main Layout */
+        .order-details-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 992px) {
+            .order-details-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Info Cards */
+        .info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        .info-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            color: var(--primary-color);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .info-label i {
+            color: var(--primary-color);
+            width: 16px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .info-value-amount {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        /* Status Badge */
+        .status-badge-large {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .badge-pending {
+            background-color: rgba(243, 156, 18, 0.1);
+            color: var(--warning-color);
+            border: 2px solid rgba(243, 156, 18, 0.2);
+        }
+
+        .badge-confirmed {
+            background-color: rgba(46, 204, 113, 0.1);
+            color: var(--success-color);
+            border: 2px solid rgba(46, 204, 113, 0.2);
+        }
+
+        .badge-cancelled {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--danger-color);
+            border: 2px solid rgba(231, 76, 60, 0.2);
+        }
+
+        .badge-completed {
+            background-color: rgba(149, 165, 166, 0.1);
+            color: #95a5a6;
+            border: 2px solid rgba(149, 165, 166, 0.2);
+        }
+
+        /* Customer Info */
+        .customer-profile {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .customer-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 32px;
+        }
+
+        .customer-details h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .customer-details p {
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+
+        /* Photos Section */
+        .photos-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            margin-top: 30px; /* Added margin to separate from the layout above */
+        }
+
+        .photos-section:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .photos-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .photos-title i {
+            color: var(--primary-color);
+        }
+
+        .photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .photo-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        .photo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .photo-card img {
+            width: 100%;
+            aspect-ratio: 1/1; /* Added aspect ratio for consistent sizing */
+            object-fit: cover;
+            transition: var(--transition);
+            cursor: pointer; /* Indicate it's clickable */
+        }
+
+        /* Lightbox Overlay */
+        .lightbox-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9); /* Darker overlay */
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Lightbox Content */
+        .lightbox-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .lightbox-content img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px; /* Slightly rounded corners for the displayed image */
+        }
+
+        /* Lightbox Close Button */
+        .lightbox-close {
+            position: absolute;
+            top: 15px;
+            right: 25px;
+            color: white;
+            font-size: 50px; /* Larger close icon */
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10001;
+            line-height: 1; /* Adjust line height for better vertical alignment */
+        }
+
+        /* Lightbox Navigation Buttons */
+        .lightbox-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 60px; /* Larger arrows */
+            cursor: pointer;
+            z-index: 10001;
+            padding: 10px 15px; /* More padding */
+            background-color: rgba(0, 0, 0, 0.4); /* Semi-transparent background */
+            border-radius: 8px; /* Rounded corners */
+            user-select: none; /* Prevent text selection on click */
+            transition: background-color 0.3s ease;
+        }
+
+        .lightbox-nav-btn:hover {
+            background-color: rgba(0, 0, 0, 0.7); /* Darker on hover */
+        }
+
+        .lightbox-prev {
+            left: 20px;
+        }
+
+        .lightbox-next {
+            right: 20px;
+        }
+
+        .photo-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .photo-card-details {
+            padding: 20px;
+        }
+
+        .photo-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--dark-color);
+        }
+
+        .photo-specs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .photo-spec-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .photo-spec-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 3px;
+        }
+
+        .photo-spec-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .photo-group-header {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .photo-group-header:hover {
+            background-color: #e9ecef;
+        }
+
+        .photo-group-header h5 {
+            margin: 0;
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+
+        .photo-thumbnail {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .photo-thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        /* Timeline */
+        .timeline-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            margin-top: 30px;
+        }
+
+        .timeline {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 20px;
+            padding: 20px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .timeline-item:last-child {
+            border-bottom: none;
+        }
+
+        .timeline-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .timeline-date {
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+
+        /* Empty State */
+        .empty-photos {
+            text-align: center;
+            padding: 60px 30px;
+        }
+
+        .empty-icon {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 40px;
+            color: var(--primary-color);
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 10px;
+        }
+
+        .empty-text {
+            color: #7f8c8d;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 14px;
+            border-top: 1px solid var(--gray-light);
+            background: white;
+            margin-top: 30px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 70px;
+                overflow: hidden;
+            }
+
+            .sidebar:hover {
+                width: 250px;
+            }
+
+            .logo-text, .nav-links span {
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+
+            .sidebar:hover .logo-text,
+            .sidebar:hover .nav-links span {
+                opacity: 1;
+            }
+
+            .main-content {
+                margin-left: 70px;
+            }
+
+            .sidebar:hover ~ .main-content {
+                margin-left: 250px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .top-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .page-header h1 {
+                font-size: 24px;
+            }
+
+            .page-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .photos-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .content-wrapper {
+                padding: 20px;
+            }
+
+            .customer-profile {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .photo-specs {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
+
 <body>
 
-<!-- Sidebar Navigation -->
-<nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
+    <!-- Sidebar Navigation -->
+    <nav th:replace="~{admin/fragments/sidebar :: sidebar-fragment}"></nav>
 
-<!-- Main Content -->
-<div class="main-content">
-    <!-- Top Bar -->
-    <header class="top-bar">
-        <div><a th:href="@{/admin/orders}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Retour à la liste</a></div>
-        <div class="user-info">
-            <span class="user-name" th:text="${#authentication.principal.firstname + ' ' + #authentication.principal.lastname}"></span>
-            <form th:action="@{/logout}" method="post" style="display: inline; margin-left: 15px;">
-                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-sign-out-alt"></i></button>
-            </form>
-        </div>
-    </header>
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Inclusion du header depuis le fragment -->
+        <div th:insert="~{admin/fragments/header :: mainHeader}"></div>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper" th:if="${order}">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 th:text="'Détails de la Commande #' + ${order.id}"></h1>
+            <h1>
+                <i class="fas fa-file-alt"></i>
+                Détails de la Commande #<span th:text="${order.id}"></span>
+            </h1>
+            <div class="page-actions">
+                <a href="/admin/orders" class="btn-action btn-outline-action">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
+                <a th:href="@{/admin/orders/{id}/download-photos(id=${order.id})}" class="btn-action btn-primary-action">
+                    <i class="fas fa-file-archive"></i> Télécharger ZIP
+                </a>
+<!--                <a th:href="@{/admin/orders/{id}/download-pdf(id=${order.id})}" class="btn-action btn-primary-action">-->
+<!--                    <i class="fas fa-download"></i> Télécharger PDF-->
+<!--                </a>-->
+            </div>
         </div>
 
-        <!-- Order Summary Card -->
-        <div class="card mb-4">
-            <div class="card-header">
-                Résumé de la Commande
+        <!-- Main Details Layout -->
+        <div class="order-details-layout">
+            <!-- Order Information -->
+            <div class="info-card">
+                <h3 class="card-title">
+                    <i class="fas fa-clipboard-list"></i>
+                    Informations de la Commande
+                </h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-hashtag"></i> N° Commande</span>
+                        <span class="info-value" th:text="'#' + ${order.id}">#12345</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-calendar"></i> Date</span>
+                        <span class="info-value" th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm')}">29/01/2026 10:00</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-tag"></i> Statut</span>
+                        <span class="status-badge-large" th:classappend="'badge-' + ${#strings.toLowerCase(order.status.name())}" th:text="${order.status.displayName}">En attente</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-money-bill-wave"></i> Montant Total</span>
+                        <span class="info-value-amount" th:text="${#numbers.formatDecimal(order.totalAmount, 1, 'POINT', 2, 'COMMA') + ' FCFA'}">15 000 FCFA</span>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <p><strong>Client:</strong> <span th:text="${order.user?.email ?: 'N/A'}"></span></p>
-                <p><strong>Date:</strong> <span th:text="${#temporals.format(order.createdAt, 'dd-MM-yyyy HH:mm')}"></span></p>
-                <p><strong>Montant Total:</strong> <span th:text="${#numbers.formatDecimal(order.totalAmount, 1, 'POINT', 2, 'COMMA')} + ' FCFA'"></span></p>
-                <p><strong>Statut:</strong> <span th:text="${order.status.displayName}"></span></p>
+
+            <!-- Customer Information -->
+            <div class="info-card">
+                <h3 class="card-title">
+                    <i class="fas fa-user-circle"></i>
+                    Informations Client
+                </h3>
+                <div class="customer-profile">
+                    <div class="customer-avatar-large" th:text="${(order.user?.firstname?.substring(0,1) ?: '') + (order.user?.lastname?.substring(0,1) ?: '')}">JD</div>
+                    <div class="customer-details">
+                        <h3 th:text="${order.user?.firstname + ' ' + order.user?.lastname ?: 'Client anonyme'}">John Doe</h3>
+                        <p><i class="fas fa-envelope mr-2"></i> <span th:text="${order.user?.email ?: 'Non renseigné'}">john@email.com</span></p>
+                        <p><i class="fas fa-phone mr-2"></i> <span th:text="${order.user?.phone ?: 'Non renseigné'}">+33 1 23 45 67 89</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Information -->
+            <div class="info-card">
+                <h3 class="card-title">
+                    <i class="fas fa-credit-card"></i>
+                    Informations de Paiement
+                </h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-wallet"></i> Méthode</span>
+                        <span class="info-value" th:text="${order.paymentMethod}">Mobile Money</span>
+                    </div>
+
+
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-check-circle"></i> Statut</span>
+                        <span class="info-value" th:text="${order.paymentStatus ?: 'En attente'}">Payé</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delivery Information -->
+            <div class="info-card">
+                <h3 class="card-title">
+                    <i class="fas fa-truck"></i>
+                    Informations de Livraison
+                </h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label"><i class="fas fa-box"></i> Type</span>
+                        <span class="info-value" th:text="${order.deliveryType}">Standard</span>
+                    </div>
+
+                    <div class="info-item" style="grid-column: span 2;">
+                        <span class="info-label"><i class="fas fa-map-marker-alt"></i> Adresse de livraison</span>
+                        <span class="info-value" th:text="${order.deliveryAddress ?: 'Non renseignée'}">123 Rue de la Photo, 75001 Paris</span>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Photos Section -->
-        <h2>Photos de la Commande</h2>
-        <div class="photo-gallery" th:if="${!order.orderItems.isEmpty()}">
-            <div class="photo-card" th:each="item : ${order.orderItems}">
-                <img th:src="${item.imageUrl}" alt="Photo de commande">
-                <div class="photo-card-details">
-                    <p><strong>Format:</strong> <span th:text="${item.photoSize}"></span></p>
-                    <p><strong>Quantité:</strong> <span th:text="${item.quantity}"></span></p>
+        <div class="photos-section">
+            <h3 class="photos-title">
+                <i class="fas fa-camera-retro"></i>
+                Photos de la Commande (<span th:text="${order.orderItems?.size() ?: 0}"></span>)
+            </h3>
+
+            <div th:if="${order.orderItems != null and !order.orderItems.isEmpty()}">
+                <div class="photos-grid">
+                    <div class="photo-card" th:each="item : ${order.orderItems}">
+                        <img th:src="${item.imageUrl}" alt="Photo de commande" data-lightbox="order-photos" th:data-image-id="${item.id}">
+                        <div class="photo-card-details">
+                            <div class="photo-card-title">Photo #<span th:text="${item.id}"></span></div>
+                            <div class="photo-specs">
+                                <div class="photo-spec-item">
+                                    <span class="photo-spec-label">Format</span>
+                                    <span class="photo-spec-value" th:text="${item.photoSize}">20x30 cm</span>
+                                </div>
+                                <div class="photo-spec-item">
+                                    <span class="photo-spec-label">Quantité</span>
+                                    <span class="photo-spec-value" th:text="${item.quantity}">2</span>
+                                </div>
+                                <div class="photo-spec-item">
+                                    <span class="photo-spec-label">Prix unitaire</span>
+                                    <span class="photo-spec-value" th:text="${#numbers.formatDecimal(item.pricePerUnit, 1, 'POINT', 2, 'COMMA') + ' FCFA'}">1 500</span>
+                                </div>
+                                <div class="photo-spec-item">
+                                    <span class="photo-spec-label">Total</span>
+                                    <span class="photo-spec-value" th:text="${#numbers.formatDecimal(item.pricePerUnit * item.quantity, 1, 'POINT', 2, 'COMMA') + ' FCFA'}">3 000</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div th:if="${order.orderItems.isEmpty()}">
-            <p>Aucune photo trouvée pour cette commande.</p>
+
+            <div th:if="${order.orderItems.isEmpty()}" class="empty-photos">
+                <div class="empty-icon">
+                    <i class="fas fa-images"></i>
+                </div>
+                <h4 class="empty-title">Aucune photo trouvée</h4>
+                <p class="empty-text">Cette commande ne contient aucune photo pour le moment.</p>
+            </div>
         </div>
 
+        <!-- Order Timeline -->
+        <div class="timeline-card">
+            <h3 class="card-title">
+                <i class="fas fa-history"></i>
+                Historique de la Commande
+            </h3>
+            <ul class="timeline">
+                <li class="timeline-item">
+                    <div class="timeline-icon">
+                        <i class="fas fa-plus-circle"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Commande créée</div>
+                        <div class="timeline-date" th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm')}">29/01/2026 10:00</div>
+                    </div>
+                </li>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 Studio Photo Admin. Tous droits réservés. | Version 2.1.0</p>
+        </footer>
     </div>
+
+    <!-- Lightbox HTML Structure -->
+    <div id="lightboxOverlay" class="lightbox-overlay">
+        <span class="lightbox-close">&times;</span>
+        <span class="lightbox-nav-btn lightbox-prev">&#10094;</span>
+        <div class="lightbox-content">
+            <img src="" alt="Image en grand écran" id="lightboxImage">
+        </div>
+        <span class="lightbox-nav-btn lightbox-next">&#10095;</span>
+    </div>
+
 </div>
 
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://unpkg.com/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // User initials
+        const userName = $('.user-name').text();
+        const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
+        #userInitials.text(initials);
+
+        // Loading overlay
+        function showLoading() {
+            $('#loadingOverlay').fadeIn();
+        }
+
+        function hideLoading() {
+            $('#loadingOverlay').fadeOut();
+        }
+
+        // Show loading when returning to list
+        $('.btn-outline-action').on('click', function() {
+            showLoading();
+        });
+
+        // Lightbox functionality
+        const lightboxOverlay = $('#lightboxOverlay');
+        const lightboxImage = $('#lightboxImage');
+        const lightboxClose = $('.lightbox-close');
+        const lightboxPrev = $('.lightbox-prev');
+        const lightboxNext = $('.lightbox-next');
+        let currentImageIndex = 0;
+        let images = [];
+
+        // Open lightbox
+        $('[data-lightbox="order-photos"]').on('click', function() {
+            const clickedSrc = $(this).attr('th:src'); // Get the original th:src attribute
+            const actualSrc = $(this).attr('src'); // Get the rendered src attribute
+
+            images = $('[data-lightbox="order-photos"]').map(function() {
+                return $(this).attr('src');
+            }).get();
+
+            currentImageIndex = images.indexOf(actualSrc);
+            lightboxImage.attr('src', actualSrc);
+            lightboxOverlay.css('display', 'flex');
+            $('body').addClass('overflow-hidden'); // Prevent scrolling of background
+        });
+
+        // Close lightbox
+        lightboxClose.on('click', function() {
+            lightboxOverlay.css('display', 'none');
+            $('body').removeClass('overflow-hidden');
+        });
+
+        // Close lightbox on overlay click (but not on image itself)
+        lightboxOverlay.on('click', function(e) {
+            if ($(e.target).is(lightboxOverlay)) {
+                lightboxOverlay.css('display', 'none');
+                $('body').removeClass('overflow-hidden');
+            }
+        });
+
+        // Navigate previous
+        lightboxPrev.on('click', function(e) {
+            e.stopPropagation(); // Prevent overlay click from closing
+            currentImageIndex = (currentImageIndex > 0) ? currentImageIndex - 1 : images.length - 1;
+            lightboxImage.attr('src', images[currentImageIndex]);
+        });
+
+        // Navigate next
+        lightboxNext.on('click', function(e) {
+            e.stopPropagation(); // Prevent overlay click from closing
+            currentImageIndex = (currentImageIndex < images.length - 1) ? currentImageIndex + 1 : 0;
+            lightboxImage.attr('src', images[currentImageIndex]);
+        });
+
+        // Keyboard navigation
+        $(document).on('keydown', function(e) {
+            if (lightboxOverlay.is(':visible')) {
+                if (e.key === 'ArrowLeft') {
+                    lightboxPrev.trigger('click');
+                } else if (e.key === 'ArrowRight') {
+                    lightboxNext.trigger('click');
+                } else if (e.key === 'Escape') {
+                    lightboxClose.trigger('click');
+                }
+            }
+        });
+    });
+</script>
 </body>
+
 </html>

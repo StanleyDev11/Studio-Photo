@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 import java.util.Optional;
 
 @Service
@@ -15,6 +14,7 @@ import java.util.Optional;
 public class DimensionService {
 
     private final DimensionRepository dimensionRepository;
+    private final com.studiophoto.photoappbackend.service.NotificationService notificationService;
 
     public List<DimensionDto> getAllDimensions() {
         return dimensionRepository.findAll().stream()
@@ -33,15 +33,19 @@ public class DimensionService {
     }
 
     public Dimension save(Dimension dimension) {
-        return dimensionRepository.save(dimension);
+        Dimension saved = dimensionRepository.save(dimension);
+        notificationService.sendSyncNotification("DIMENSIONS_UPDATED");
+        return saved;
     }
 
     public void deleteById(Long id) {
         dimensionRepository.deleteById(id);
+        notificationService.sendSyncNotification("DIMENSIONS_UPDATED");
     }
 
     private DimensionDto mapToDto(Dimension dimension) {
-        List<String> imageList = dimension.getImages() != null ? Arrays.asList(dimension.getImages().split(",")) : List.of();
+        List<String> imageList = dimension.getImages() != null ? Arrays.asList(dimension.getImages().split(","))
+                : List.of();
         return DimensionDto.builder()
                 .dimension(dimension.getName())
                 .price(dimension.getPrice())

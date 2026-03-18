@@ -33,11 +33,9 @@ public class FedapayWebhookController {
         log.info("Received Fedapay webhook. Signature: {}, Payload: {}", fedapaySignature, payloadJson);
 
         // 1. Verify webhook signature (CRITICAL SECURITY STEP)
-        // TODO: Implement actual signature verification using FedapayService's SECRET_KEY
-        // Example (conceptual): if (!fedapayService.verifySignature(payloadJson, fedapaySignature)) {
-        //                         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid webhook signature");
-        //                      }
-        log.warn("Webhook signature verification is currently bypassed for development. Enable in production!");
+        if (!fedapayService.verifySignature(payloadJson, fedapaySignature)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid webhook signature");
+        }
 
         try {
             // Parse the payload
@@ -53,10 +51,22 @@ public class FedapayWebhookController {
                 String fedapayTransactionId = (String) transaction.get("id");
                 String description = (String) transaction.get("description"); // We embedded orderId here
 
-                // Extract our orderId from the description
-                // Assuming format: "Payment for Photo Order #<orderId>"
+                // Strategy 1: check custom_metadata (inside transaction)
+                Object metadataObj = transaction.get("custom_metadata");
                 Long orderId = null;
-                if (description != null && description.startsWith("Payment for Photo Order #")) {
+                if (metadataObj instanceof Map) {
+                    Map<String, Object> metadata = (Map<String, Object>) metadataObj;
+                    Object oid = metadata.get("orderId");
+                    if (oid != null) {
+                        try {
+                            orderId = Long.parseLong(oid.toString());
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+
+                // Strategy 2: fallback to description
+                if (orderId == null && description != null && description.startsWith("Payment for Photo Order #")) {
                     try {
                         orderId = Long.parseLong(description.substring("Payment for Photo Order #".length()));
                     } catch (NumberFormatException e) {
@@ -66,7 +76,7 @@ public class FedapayWebhookController {
 
                 if (orderId == null) {
                     log.error("Failed to extract orderId from Fedapay webhook description: {}", description);
-                    return ResponseEntity.badRequest().body("Order ID not found or invalid in description.");
+                    return ResponseEntity.badRequest().body("Order ID not found or invalid.");
                 }
 
                 log.info("Processing Fedapay transaction for orderId: {}, Fedapay ID: {}, Status: {}",
@@ -75,25 +85,26 @@ public class FedapayWebhookController {
                 OrderStatus newOrderStatus;
                 String paymentMethod = "Fedapay";
 
-                switch (transactionStatus) {
-                    case "approved":
-                        newOrderStatus = OrderStatus.PROCESSING; // Payment successful, ready for processing
-                        break;
-                    case "pending":
-                        newOrderStatus = OrderStatus.PENDING_PAYMENT; // Still pending, no change or ensure it's set
-                        break;
-                    case "canceled":
-                    case "failed":
-                        newOrderStatus = OrderStatus.CANCELLED; // Payment failed or canceled
-                        break;
-                    default:
-                        log.warn("Unhandled Fedapay transaction status: {}", transactionStatus);
-                        return ResponseEntity.ok("Unhandled status, no action taken.");
+                // Normalize status
+                String normalizedStatus = transactionStatus != null ? transactionStatus.toLowerCase() : "unknown";
+
+                if (normalizedStatus.equals("approved") ||
+                        normalizedStatus.equals("transferred") ||
+                        normalizedStatus.equals("transfered")) {
+                    newOrderStatus = OrderStatus.PROCESSING;
+                } else if (normalizedStatus.equals("pending")) {
+                    newOrderStatus = OrderStatus.PENDING_PAYMENT;
+                } else if (normalizedStatus.equals("canceled") || normalizedStatus.equals("failed")) {
+                    newOrderStatus = OrderStatus.CANCELLED;
+                } else {
+                    log.warn("Unhandled Fedapay transaction status: {}", transactionStatus);
+                    return ResponseEntity.ok("Unhandled status, no action taken.");
                 }
 
                 // Update the order in our database
                 orderService.updateOrderStatusAndPaymentMethod(orderId, newOrderStatus, paymentMethod);
-                log.info("Order {} updated to status {} with payment method {}", orderId, newOrderStatus, paymentMethod);
+                log.info("Order {} updated to status {} with payment method {}", orderId, newOrderStatus,
+                        paymentMethod);
             }
 
             return ResponseEntity.ok("Webhook received and processed successfully.");

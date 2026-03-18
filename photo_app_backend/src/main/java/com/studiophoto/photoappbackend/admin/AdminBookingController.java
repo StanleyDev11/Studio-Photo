@@ -23,7 +23,8 @@ public class AdminBookingController {
 
     @GetMapping
     public String bookingsManagement(Model model) {
-        model.addAttribute("users", userRepository.findAll()); // Pour le choix de l'utilisateur dans les filtres et formulaires
+        model.addAttribute("users", userRepository.findAll()); // Pour le choix de l'utilisateur dans les filtres et
+                                                               // formulaires
         return "admin/bookings-management";
     }
 }

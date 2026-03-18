@@ -22,11 +22,16 @@ class NotificationsScreen extends StatelessWidget {
               color: AppColors.textSecondary,
             ),
             SizedBox(height: 16),
-            Text(
-              'Aucune notification pour le moment',
-              style: TextStyle(
-                fontSize: 18,
-                color: AppColors.textSecondary,
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: const Text(
+                  'Aucune notification pour le moment',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
             ),
           ],
