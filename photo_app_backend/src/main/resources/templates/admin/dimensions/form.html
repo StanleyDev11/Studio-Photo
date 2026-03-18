@@ -197,6 +197,16 @@
             hideLoading(); // Hide if redirected back with error
             Swal.fire('Erreur', errorMessage, 'error');
         }
+
+        // Setup initials
+        const firstName = "[[${#authentication.principal instanceof T(com.studiophoto.photoappbackend.model.User) ? #authentication.principal.firstname : ''}]]";
+        const lastName = "[[${#authentication.principal instanceof T(com.studiophoto.photoappbackend.model.User) ? #authentication.principal.lastname : ''}]]";
+        if (firstName && lastName) {
+            const userInitials = document.getElementById('userInitials');
+            if (userInitials) {
+                userInitials.innerText = firstName.charAt(0) + lastName.charAt(0);
+            }
+        }
     });
     /*]]>*/
 </script>
