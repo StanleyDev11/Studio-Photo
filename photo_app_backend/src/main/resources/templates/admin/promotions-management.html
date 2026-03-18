@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Promotions - Studio Photo Admin</title>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
@@ -462,14 +464,21 @@
                         fetch(`/admin/promotions/delete/${promotionId}`, {
                             method: 'POST', // Utiliser POST pour la suppression selon le th:href original
                             headers: {
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
                             }
                         })
                             .then(response => {
                                 if (response.ok) {
-                                    // Recharger la page ou la DataTable après suppression réussie
-                                    location.reload(); // Page reloads, spinner will naturally disappear
-                                    // Le message de succès sera affiché via flashAttribute après la redirection
+                                    hideLoading();
+                                    Swal.fire({
+                                        title: 'Supprimé !',
+                                        text: 'La promotion a été supprimée.',
+                                        icon: 'success',
+                                        confirmButtonColor: '#4567b7'
+                                    }).then(() => {
+                                        location.reload();
+                                    });
                                 } else {
                                     Swal.fire('Erreur', 'Erreur lors de la suppression de la promotion.', 'error');
                                     hideLoading(); // Hide if there's an error and no reload

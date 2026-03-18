@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion du Contenu Mis en Avant - Studio Photo Admin</title>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
@@ -464,13 +466,21 @@
                         fetch(`/admin/featured-content/delete/${contentId}`, {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
                             }
                         })
                             .then(response => {
                                 if (response.ok) {
-                                    location.reload(); // Page reloads, spinner will naturally disappear
-                                    Swal.fire('Supprimé !', 'Le contenu mis en avant a été supprimé.', 'success');
+                                    hideLoading();
+                                    Swal.fire({
+                                        title: 'Supprimé !',
+                                        text: 'Le contenu mis en avant a été supprimé.',
+                                        icon: 'success',
+                                        confirmButtonColor: '#4567b7'
+                                    }).then(() => {
+                                        location.reload();
+                                    });
                                 } else {
                                     Swal.fire('Erreur', 'Erreur lors de la suppression du contenu mis en avant.', 'error');
                                     hideLoading(); // Hide if there's an error and no reload
@@ -542,7 +552,15 @@
                             body: JSON.stringify(selectedIds)
                         }).then(response => {
                             if (response.ok) {
-                                window.location.reload();
+                                hideLoading();
+                                Swal.fire({
+                                    title: 'Succès',
+                                    text: 'Éléments supprimés avec succès.',
+                                    icon: 'success',
+                                    confirmButtonColor: '#4567b7'
+                                }).then(() => {
+                                    window.location.reload();
+                                });
                             } else {
                                 hideLoading();
                                 Swal.fire('Erreur', 'Une erreur est survenue lors de la suppression.', 'error');

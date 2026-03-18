@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Utilisateurs - Studio Photo Admin</title>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
@@ -1469,13 +1471,23 @@
                     if (result.isConfirmed) {
                         showLoading();
                         fetch(`/admin/users/api/${userId}`, {
-                            method: 'DELETE'
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
+                            }
                         })
                             .then(response => {
                                 if (response.ok) {
-                                    table.ajax.reload();
-                                    loadStats();
-                                    Swal.fire('Supprimé !', 'L\'utilisateur a été supprimé.', 'success');
+                                    hideLoading();
+                                    Swal.fire({
+                                        title: 'Supprimé !',
+                                        text: 'L\'utilisateur a été supprimé.',
+                                        icon: 'success',
+                                        confirmButtonColor: '#4567b7'
+                                    }).then(() => {
+                                        table.ajax.reload();
+                                        loadStats();
+                                    });
                                 } else {
                                     Swal.fire('Erreur', 'Erreur lors de la suppression de l\'utilisateur.', 'error');
                                 }
@@ -1518,7 +1530,8 @@
                             fetch(`/admin/users/api/${userId}/reset-password`, {
                                 method: 'POST',
                                 headers: {
-                                    'Content-Type': 'application/json'
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
                                 },
                                 body: JSON.stringify({
                                     password: newPassword || null // newPassword can be null if user confirms empty
@@ -1563,7 +1576,10 @@
                     if (result.isConfirmed) {
                         showLoading();
                         fetch(`/admin/users/api/${userId}/${action}`, {
-                            method: 'POST'
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
+                            }
                         })
                             .then(response => {
                                 if (response.ok) {
@@ -1641,7 +1657,8 @@
                 fetch(url, {
                     method: method,
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
                     },
                     body: JSON.stringify(formData)
                 })
