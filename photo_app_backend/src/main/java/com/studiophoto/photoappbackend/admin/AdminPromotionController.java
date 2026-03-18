@@ -75,11 +75,10 @@ public class AdminPromotionController {
 
     // Endpoint pour supprimer une promotion
     @PostMapping("/delete/{id}")
-    public String deletePromotion(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        promotionService.deletePromotion(id); // La méthode deletePromotion dans le service gérera la suppression du
-                                              // fichier
-        redirectAttributes.addFlashAttribute("successMessage", "Promotion supprimée avec succès !");
-        return "redirect:/admin/promotions";
+    @ResponseBody
+    public ResponseEntity<Void> deletePromotion(@PathVariable Long id) {
+        promotionService.deletePromotion(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/bulk-delete")

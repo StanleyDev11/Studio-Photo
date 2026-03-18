@@ -106,15 +106,10 @@ public class AdminOrderController {
     }
 
     @PostMapping("/bulk-delete")
-    public String bulkDelete(@RequestBody List<Long> ids, RedirectAttributes redirectAttributes) {
-        try {
-            orderService.deleteAllByIdIn(ids);
-            redirectAttributes.addFlashAttribute("successMessage", ids.size() + " commandes supprimées avec succès.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage",
-                    "Erreur lors de la suppression en masse : " + e.getMessage());
-        }
-        return "redirect:/admin/orders";
+    @ResponseBody
+    public ResponseEntity<Void> bulkDelete(@RequestBody List<Long> ids) {
+        orderService.deleteAllByIdIn(ids);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/download-photos")
