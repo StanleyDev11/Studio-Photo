@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'payment_customer_info_screen.dart';
 import 'utils/colors.dart';
 import 'utils/geometric_background.dart';
+import 'widgets/auth_network_image.dart';
 
 class OrderSummaryScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
@@ -185,7 +186,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   }
 
   Widget _buildCartItem(String imageUrl, Map<String, dynamic> details) {
-    final isLocalFile = !imageUrl.startsWith('http');
+    final resolvedUrl = ApiService.getFullImageUrl(imageUrl);
+    final isLocalFile = !resolvedUrl.startsWith('http');
     final price = _prices?[details['size']] ?? 0;
 
     return Container(
@@ -213,9 +215,9 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: isLocalFile
-                      ? Image.file(File(imageUrl),
+                      ? Image.file(File(resolvedUrl),
                           width: 80, height: 80, fit: BoxFit.cover)
-                      : Image.network(imageUrl,
+                      : AuthNetworkImage(resolvedUrl,
                           width: 80, height: 80, fit: BoxFit.cover),
                 ),
                 const SizedBox(width: 16),

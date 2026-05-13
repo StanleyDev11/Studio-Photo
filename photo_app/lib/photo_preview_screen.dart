@@ -341,11 +341,19 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen>
   }
 
   Widget _buildImage(String url, {BoxFit fit = BoxFit.cover, Alignment alignment = Alignment.center}) {
-    if (url.startsWith('http')) {
+    // Résoudre les URLs relatives (ex: /uploads/...) en URLs absolues
+    final resolvedUrl = ApiService.getFullImageUrl(url);
+
+    if (resolvedUrl.startsWith('http')) {
+      final headers = <String, String>{};
+      if (ApiService.authToken != null) {
+        headers['Authorization'] = 'Bearer ${ApiService.authToken}';
+      }
       return Image.network(
-        url,
+        resolvedUrl,
         fit: fit,
         alignment: alignment,
+        headers: headers,
         errorBuilder: (context, error, stackTrace) => const Center(
           child: Icon(Icons.broken_image, color: Colors.grey, size: 30),
         ),
@@ -363,7 +371,7 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen>
       );
     } else {
       return Image.file(
-        File(url),
+        File(resolvedUrl),
         fit: fit,
         alignment: alignment,
         errorBuilder: (context, error, stackTrace) => const Center(

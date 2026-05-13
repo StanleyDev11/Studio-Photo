@@ -9,9 +9,21 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://109.176.197.158:8080/api';
-  static const String rootUrl = 'http://109.176.197.158:8080';
+  static const String baseUrl = 'https://api.photopicon.com/api';
+  static const String rootUrl = 'https://api.photopicon.com';
   static SharedPreferences? _preferences;
+
+  /// Construit une URL absolue à partir d'une URL relative ou absolue.
+  /// Ex: '/uploads/user_3/xxx/photo.jpg' → 'https://api.photopicon.com/uploads/user_3/xxx/photo.jpg'
+  /// Les chemins locaux Android (/storage/..., /data/...) sont retournés tels quels.
+  static String getFullImageUrl(String url) {
+    if (url.startsWith('http')) return url;
+    // Uniquement les chemins API relatifs (pas les fichiers locaux Android/iOS)
+    if (url.startsWith('/uploads/') || url.startsWith('/api/')) {
+      return '$rootUrl$url';
+    }
+    return url; // Chemin local → retourner tel quel
+  }
 
   // User details
   static String? _authToken;
@@ -246,12 +258,15 @@ class ApiService {
       String phone, String password, String pin) async {
     const url = '$baseUrl/auth/register';
 
-    String firstname = name;
+    String firstname = name.trim();
     String lastname = '';
     if (name.contains(' ')) {
-      final parts = name.split(' ');
+      final parts = name.trim().split(' ');
       firstname = parts.first;
       lastname = parts.sublist(1).join(' ');
+    } else {
+      // Si l'utilisateur n'a qu'un seul prénom, on l'utilise aussi comme nom
+      lastname = firstname;
     }
 
     final body = {

@@ -58,6 +58,7 @@ public class SecurityConfig {
                         // Public access for authentication and admin login page
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/admin/login").permitAll()
+                        .requestMatchers("/error").permitAll()
                         
                         // Admin paths should be authenticated and role-based
                         .requestMatchers("/admin/**").hasRole("ADMIN")

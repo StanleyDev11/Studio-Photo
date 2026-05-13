@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:Picon/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_size_getter/image_size_getter.dart' as isg;
 import 'package:image_size_getter/file_input.dart';
@@ -19,13 +20,20 @@ import 'package:path/path.dart' as p;
 /// Si la lecture échoue (format non supporté, fichier corrompu),
 /// retombe sur le décodeur Flutter classique.
 Future<ui.Size> getImageDimensions(String path) async {
-  // Fichier distant (URL) → fallback Flutter classique
-  if (path.startsWith('http')) {
-    return _getImageDimensionsFallback(path);
+  // Résoudre les URLs relatives (ex: /uploads/...) en URLs absolues
+  final resolvedPath = ApiService.getFullImageUrl(path);
+
+  // Fichier distant (URL) → fallback Flutter classique avec headers d'auth
+  if (resolvedPath.startsWith('http')) {
+    final headers = <String, String>{};
+    if (ApiService.authToken != null) {
+      headers['Authorization'] = 'Bearer ${ApiService.authToken}';
+    }
+    return _getImageDimensionsFallback(resolvedPath, headers: headers);
   }
 
   try {
-    final file = File(path);
+    final file = File(resolvedPath);
     if (!await file.exists()) return const ui.Size(1, 1);
 
     final imageSize = isg.ImageSizeGetter.getSize(FileInput(file));
@@ -33,18 +41,18 @@ Future<ui.Size> getImageDimensions(String path) async {
       return ui.Size(imageSize.width.toDouble(), imageSize.height.toDouble());
     }
     // Dimensions nulles → fallback
-    return _getImageDimensionsFallback(path);
+    return _getImageDimensionsFallback(resolvedPath);
   } catch (_) {
     // Format non supporté (ex: HEIC sur certains OS) → fallback
-    return _getImageDimensionsFallback(path);
+    return _getImageDimensionsFallback(resolvedPath);
   }
 }
 
 /// Fallback : décodage classique Flutter (charge l'image entière).
-Future<ui.Size> _getImageDimensionsFallback(String path) async {
+Future<ui.Size> _getImageDimensionsFallback(String path, {Map<String, String>? headers}) async {
   final completer = Completer<ui.Size>();
   final ImageProvider provider = path.startsWith('http')
-      ? NetworkImage(path)
+      ? NetworkImage(path, headers: headers)
       : FileImage(File(path)) as ImageProvider;
   final stream = provider.resolve(const ImageConfiguration());
   late ImageStreamListener listener;

@@ -32,6 +32,6 @@ public class RegisterRequest {
     private String phone;
 
     @NotBlank(message = "Le code PIN est obligatoire")
-    @Size(min = 4, max = 4, message = "Le code PIN doit contenir exactement 4 chiffres")
+    @Size(min = 6, max = 6, message = "Le code PIN doit contenir exactement 6 chiffres")
     private String pin;
 }

@@ -74,18 +74,10 @@ public class OrderController {
             return ResponseEntity.badRequest().body("Please select files to upload.");
         }
 
-        // In a real application, the base URL should be retrieved dynamically
-        // For example, from the request headers or a configuration file.
-        String baseUrl = "http://109.176.197.158:8080";
-
         List<String> fileUrls = new ArrayList<>();
         String uploadId = UUID.randomUUID().toString();
 
         try {
-            // Create a user-specific directory and a unique directory for this upload
-            Path userDirectory = Paths.get("uploads", "user_" + userId, uploadId);
-            Files.createDirectories(userDirectory);
-
             for (MultipartFile file : files) {
                 if (file.isEmpty()) {
                     continue;
@@ -99,6 +91,10 @@ public class OrderController {
                 // Clean the filename to prevent directory traversal issues
                 String sanitizedFilename = Paths.get(originalFilename).getFileName().toString();
 
+                // Stocker dans le dossier configuré (storage.location) / user_X / uploadId
+                Path userDirectory = storageService.load("user_" + userId + "/" + uploadId);
+                Files.createDirectories(userDirectory);
+
                 Path destinationFile = userDirectory.resolve(sanitizedFilename).normalize().toAbsolutePath();
 
                 // Double check to prevent saving files outside the intended directory
@@ -109,15 +105,14 @@ public class OrderController {
 
                 file.transferTo(destinationFile);
 
-                String fileUrl = baseUrl + "/uploads/user_" + userId + "/" + uploadId + "/" + sanitizedFilename;
+                // L'URL relative sera préfixée par le frontend avec le bon domaine
+                String fileUrl = "/uploads/user_" + userId + "/" + uploadId + "/" + sanitizedFilename;
                 fileUrls.add(fileUrl);
             }
 
             return ResponseEntity.ok(Collections.singletonMap("urls", fileUrls));
 
         } catch (IOException e) {
-            // Log the exception for debugging purposes
-            // logger.error("Failed to upload files for user {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload files.");
         }
     }
