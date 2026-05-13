@@ -960,14 +960,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ),
                             );
                           }
+                          
+                          final resolvedUrl = ApiService.getFullImageUrl(imageUrl);
+                          final isLocalFile = !resolvedUrl.startsWith('http');
+                          
                           return Stack(
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8.0),
-                                child: (imageUrl.startsWith('http'))
-                                    ? Image.network(imageUrl,
-                                        width: 60, height: 60, fit: BoxFit.cover)
-                                    : Image.file(File(imageUrl),
+                                child: isLocalFile
+                                    ? Image.file(File(resolvedUrl),
+                                        width: 60, height: 60, fit: BoxFit.cover,
+                                        errorBuilder: (ctx, err, stack) => const Icon(Icons.broken_image, size: 60))
+                                    : AuthNetworkImage(resolvedUrl,
                                         width: 60, height: 60, fit: BoxFit.cover),
                               ),
                               badge,
