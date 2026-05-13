@@ -57,6 +57,7 @@ class ConfirmationScreen extends StatelessWidget {
               ),
             ],
           ),
+            ),
           ),
         ),
       ),

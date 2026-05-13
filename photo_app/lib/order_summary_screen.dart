@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:Picon/api_service.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'payment_customer_info_screen.dart';
 import 'utils/colors.dart';
 import 'utils/geometric_background.dart';
-import 'widgets/auth_network_image.dart';
+import 'widgets/safe_photo_thumbnail.dart';
 
 class OrderSummaryScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
@@ -186,8 +185,6 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   }
 
   Widget _buildCartItem(String imageUrl, Map<String, dynamic> details) {
-    final resolvedUrl = ApiService.getFullImageUrl(imageUrl);
-    final isLocalFile = !resolvedUrl.startsWith('http');
     final price = _prices?[details['size']] ?? 0;
 
     return Container(
@@ -212,13 +209,12 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
             padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
-                ClipRRect(
+                SafePhotoThumbnail(
+                  imageUrl,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
                   borderRadius: BorderRadius.circular(12),
-                  child: isLocalFile
-                      ? Image.file(File(resolvedUrl),
-                          width: 80, height: 80, fit: BoxFit.cover)
-                      : AuthNetworkImage(resolvedUrl,
-                          width: 80, height: 80, fit: BoxFit.cover),
                 ),
                 const SizedBox(width: 16),
                 Expanded(

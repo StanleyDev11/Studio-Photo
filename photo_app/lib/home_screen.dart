@@ -34,6 +34,7 @@ import 'package:Picon/models/booking.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:Picon/utils/print_quality_utils.dart';
 import 'package:Picon/utils/image_helper.dart';
+import 'package:Picon/widgets/safe_photo_thumbnail.dart';
 
 // --- Model Class for Real History Data ---
 enum HistoryItemType { order, booking }
@@ -961,19 +962,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             );
                           }
                           
-                          final resolvedUrl = ApiService.getFullImageUrl(imageUrl);
-                          final isLocalFile = !resolvedUrl.startsWith('http');
-                          
                           return Stack(
                             children: [
-                              ClipRRect(
+                              SafePhotoThumbnail(
+                                imageUrl,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
                                 borderRadius: BorderRadius.circular(8.0),
-                                child: isLocalFile
-                                    ? Image.file(File(resolvedUrl),
-                                        width: 60, height: 60, fit: BoxFit.cover,
-                                        errorBuilder: (ctx, err, stack) => const Icon(Icons.broken_image, size: 60))
-                                    : AuthNetworkImage(resolvedUrl,
-                                        width: 60, height: 60, fit: BoxFit.cover),
                               ),
                               badge,
                             ],
@@ -1415,11 +1411,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
-                        leading: ClipRRect(
+                        leading: SafePhotoThumbnail(
+                          url,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
                           borderRadius: BorderRadius.circular(8),
-                          child: url.startsWith('http')
-                              ? Image.network(url, width: 56, height: 56, fit: BoxFit.cover)
-                              : Image.file(File(url), width: 56, height: 56, fit: BoxFit.cover),
                         ),
                         title: Row(children: [
                           Icon(qualityIcon(q), size: 14, color: qualityColor(q)),
@@ -2182,9 +2179,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   width: double.infinity,
                   height: double.infinity)
               : Image.network(path,
-                  fit: BoxFit.cover, // Ensures the image fills the container
+                  fit: BoxFit.cover,
                   width: double.infinity,
-                  height: double.infinity),
+                  height: double.infinity,
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    'assets/carousel/mxx.jpeg',
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  )),
         ),
       ).animate().fade(duration: 500.ms).slideX(
           begin: 0.1,
@@ -2633,9 +2636,12 @@ class _BatchPhotoTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          imageUrl.startsWith('http')
-              ? Image.network(imageUrl, fit: BoxFit.cover)
-              : Image.file(File(imageUrl), fit: BoxFit.cover),
+          Positioned.fill(
+            child: SafePhotoThumbnail(
+              imageUrl,
+              fit: BoxFit.cover,
+            ),
+          ),
           Positioned(
             left: 0, right: 0, bottom: 0,
             child: Container(
