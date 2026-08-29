@@ -1,6 +1,7 @@
 import 'package:Picon/api_service.dart';
 import 'package:Picon/models/app_notification.dart';
 import 'package:Picon/utils/colors.dart';
+import 'package:Picon/widgets/app_error_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -40,13 +41,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _showError(Object e) {
-    var msg = e.toString();
-    if (msg.startsWith('Exception: ')) {
-      msg = msg.substring(11);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
+    showAppError(context, e);
   }
 
   IconData _iconForType(String type) {

@@ -8,6 +8,7 @@ import 'utils/geometric_background.dart';
 import 'utils/order_line_pricing.dart';
 import 'widgets/auth_network_image.dart';
 import 'widgets/safe_photo_thumbnail.dart';
+import 'widgets/app_error_feedback.dart';
 
 class OrderSummaryScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
@@ -59,8 +60,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Erreur de chargement des prix: $e")));
+        await showAppError(context, e);
         setState(() {
           _isLoading = false;
         });

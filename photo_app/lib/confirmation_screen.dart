@@ -1,14 +1,19 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'history_screen.dart';
 import 'api_service.dart';
+import 'payment_success_screen.dart';
 import 'services/ussd_launch_service.dart';
 import 'utils/colors.dart';
+import 'utils/geometric_background.dart';
+import 'utils/google_play_tester.dart';
 import 'utils/mobile_operator_utils.dart';
 import 'utils/phone_payment_permissions.dart';
+import 'widgets/app_error_feedback.dart';
 
 class ConfirmationScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> orderDetails;
@@ -49,13 +54,68 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.launchUssdOnOpen) {
+    // Pas d'USSD auto pour le testeur Google Play (parcours sans paiement réel).
+    if (widget.launchUssdOnOpen && !isGooglePlayTester()) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_autoUssdLaunched) {
           _autoUssdLaunched = true;
           _launchUssd();
         }
       });
+    }
+  }
+
+  /// Termine le parcours commande pour le testeur Play Store uniquement.
+  /// Tente d'abord [ApiService.confirmOrderPayment] sans preuve USSD ;
+  /// en échec, simule la réussite côté UI uniquement.
+  Future<void> _continueGooglePlayTest() async {
+    if (!isGooglePlayTester() || _isConfirmingPayment) return;
+
+    setState(() => _isConfirmingPayment = true);
+    var backendConfirmed = false;
+
+    try {
+      await ApiService.confirmOrderPayment(
+        widget.orderId,
+        paymentReference: 'GOOGLE_PLAY_TEST',
+        paymentProofType: 'GOOGLE_PLAY_TEST',
+        paymentProofText:
+            'Parcours test Google Play — sans USSD réel ($kGooglePlayTesterEmail)',
+      );
+      backendConfirmed = true;
+    } catch (_) {
+      // Endpoints inchangés : si confirm échoue sans preuve, on continue en UI.
+    }
+
+    if (!mounted) return;
+
+    ApiService.clearPendingPayment();
+    ApiService.shouldClearCart = true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          backendConfirmed
+              ? 'Mode test Google : confirmation enregistrée (sans USSD réel).'
+              : 'Mode test Google : parcours simulé côté app (sans USSD réel). '
+                  'La commande peut rester en attente côté serveur.',
+        ),
+        backgroundColor: backendConfirmed ? Colors.green : Colors.orange,
+        duration: const Duration(seconds: 6),
+      ),
+    );
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => PaymentSuccessScreen(
+          orderId: widget.orderId.toString(),
+        ),
+      ),
+      (route) => false,
+    );
+
+    if (mounted) {
+      setState(() => _isConfirmingPayment = false);
     }
   }
 
@@ -279,12 +339,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Impossible d\'ouvrir WhatsApp : $e'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        await showAppError(context, e);
       }
     }
   }
@@ -311,40 +366,69 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   Widget build(BuildContext context) {
     const highlight = TextStyle(
       fontWeight: FontWeight.w700,
-      color: Colors.deepOrange,
+      color: AppColors.primary,
     );
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Finaliser le paiement'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
         automaticallyImplyLeading: false,
       ),
-      body: Container(
-        color: AppColors.background,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Icon(Icons.check_circle, color: AppColors.accent, size: 72),
-              const SizedBox(height: 12),
-              const Text(
-                'Commande enregistrée',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Paiement via ${widget.paymentMethod} — $_amount FCFA',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textSecondary),
-              ),
+      body: Stack(
+        children: [
+          const GeometricBackground(),
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.receipt_long_rounded,
+                          color: AppColors.primary,
+                          size: 36,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Commande enregistrée',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Paiement via ${widget.paymentMethod} — $_amount FCFA',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
               if (widget.paymentPhone != null &&
                   widget.paymentPhone!.trim().isNotEmpty) ...[
                 const SizedBox(height: 6),
@@ -368,13 +452,16 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                   height: 1.35,
                 ),
               ),
-              const SizedBox(height: 20),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.06, end: 0),
+              const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.08)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,6 +528,44 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
+              if (isGooglePlayTester()) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3E0),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFFB74D)),
+                  ),
+                  child: const Text(
+                    'Compte testeur Google Play détecté. '
+                    'Vous pouvez terminer la commande sans paiement USSD réel.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFFE65100),
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed:
+                      _isConfirmingPayment ? null : _continueGooglePlayTest,
+                  icon: _isConfirmingPayment
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.science_outlined),
+                  label: const Text('Continuer (mode test Google)'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFE65100),
+                    side: const BorderSide(color: Color(0xFFE65100)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               const Text(
                 'Capture d\'écran *',
@@ -505,9 +630,12 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               ElevatedButton.icon(
                 onPressed: _isConfirmingPayment ? null : _notifyPaymentDone,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.textOnPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: _isConfirmingPayment
                     ? const SizedBox(
@@ -530,9 +658,10 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                 onPressed: _goToHistory,
                 child: const Text('Retour à l\'accueil'),
               ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

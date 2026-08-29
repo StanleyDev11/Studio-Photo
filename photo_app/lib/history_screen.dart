@@ -6,6 +6,7 @@ import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
 import 'package:Picon/widgets/auth_network_image.dart';
 import 'package:Picon/widgets/safe_photo_thumbnail.dart';
+import 'package:Picon/widgets/app_error_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -59,13 +60,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       });
     } catch (e) {
       if (mounted) {
-        String errorMessage = e.toString();
-        if (errorMessage.startsWith('Exception: ')) {
-          errorMessage = errorMessage.substring(11);
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-        );
+        await showAppError(context, e);
       }
     }
   }
@@ -925,8 +920,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     content: Text('Commande annulée avec succès')));
                 _fetchAllHistory();
               } catch (e) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                if (context.mounted) {
+                  await showAppError(context, e);
+                }
               }
             },
             child: const Text('OUI, ANNULER',

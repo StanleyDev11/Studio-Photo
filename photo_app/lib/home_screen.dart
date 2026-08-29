@@ -36,6 +36,7 @@ import 'package:Picon/utils/image_helper.dart';
 import 'package:Picon/widgets/notification_bell_button.dart';
 import 'package:Picon/widgets/auth_network_image.dart';
 import 'package:Picon/widgets/safe_photo_thumbnail.dart';
+import 'package:Picon/widgets/app_error_feedback.dart';
 
 // --- Model Class for Real History Data ---
 enum HistoryItemType { order, booking }
@@ -243,12 +244,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     } catch (e) {
       if (mounted) {
-        String errorMessage = e.toString();
-        if (errorMessage.startsWith('Exception: ')) {
-          errorMessage = errorMessage.substring(11);
-        }
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(errorMessage)));
+        await showAppError(context, e);
         setState(() {
           _isLoadingPrices = false;
         });
@@ -398,14 +394,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           }
         }
       } catch (e) {
-        String errorMessage = e.toString();
-        if (errorMessage.startsWith('Exception: ')) {
-          errorMessage = errorMessage.substring(11);
-        }
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-          );
+          await showAppError(context, e);
         }
       } finally {
         if (mounted) {
@@ -669,7 +659,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return Center(child: Text('Erreur: ${snapshot.error}'));
+              return AppInlineError(
+                error: snapshot.error!,
+                onRetry: () {
+                  setState(() {
+                    _albumImagesFuture = ApiService.getAlbumImages(widget.userId);
+                  });
+                },
+              );
             } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return Center(
                 child: ListView(

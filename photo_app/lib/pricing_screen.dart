@@ -3,6 +3,7 @@ import 'package:Picon/api_service.dart';
 import 'package:Picon/models/photo_format.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
+import 'package:Picon/widgets/app_error_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -65,17 +66,19 @@ class _PricingScreenState extends State<PricingScreen> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                    String errorMessage = snapshot.error.toString();
-                    if (errorMessage.startsWith('Exception: ')) {
-                      errorMessage = errorMessage.substring(11);
-                    }
+                  if (snapshot.hasError) {
+                    return AppInlineError(
+                      error: snapshot.error!,
+                      onRetry: _refreshPrices,
+                    );
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return Center(
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        children: [
-                          const SizedBox(height: 200),
-                          Center(child: Text("Impossible de charger les tarifs. $errorMessage")),
+                        children: const [
+                          SizedBox(height: 200),
+                          Center(child: Text('Impossible de charger les tarifs.')),
                         ],
                       ),
                     );

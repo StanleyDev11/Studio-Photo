@@ -3,6 +3,7 @@ import 'package:Picon/home_screen.dart';
 import 'package:Picon/login_screen.dart';
 import 'package:Picon/screens/permissions_onboarding_screen.dart';
 import 'package:Picon/utils/app_permissions_service.dart';
+import 'package:Picon/utils/app_update_service.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:flutter/material.dart';
 
@@ -31,22 +32,24 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       _loading = false;
       _showPermissionsOnboarding = !done;
     });
+    _schedulePlayUpdateCheck();
   }
 
   void _onPermissionsComplete() {
     setState(() => _showPermissionsOnboarding = false);
+    _schedulePlayUpdateCheck();
+  }
+
+  /// Après splash / bootstrap, pas pendant l’écran permissions.
+  void _schedulePlayUpdateCheck() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _loading || _showPermissionsOnboarding) return;
+      AppUpdateService.instance.maybePrompt(context);
+    });
   }
 
   Widget _destination() {
-    if (ApiService.authToken != null && ApiService.userId != null) {
-      return HomeScreen(
-        userName: ApiService.userName ?? 'Utilisateur',
-        userLastName: ApiService.userLastName ?? '',
-        userEmail: ApiService.userEmail ?? '',
-        userId: ApiService.userId!,
-      );
-    }
-    return const LoginScreen();
+    return const _SessionGate();
   }
 
   @override
@@ -65,5 +68,60 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     }
 
     return _destination();
+  }
+}
+
+class _SessionGate extends StatefulWidget {
+  const _SessionGate();
+
+  @override
+  State<_SessionGate> createState() => _SessionGateState();
+}
+
+class _SessionGateState extends State<_SessionGate> {
+  bool _checking = true;
+  bool _valid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _verify();
+  }
+
+  Future<void> _verify() async {
+    if (ApiService.authToken == null || ApiService.userId == null) {
+      if (mounted) {
+        setState(() {
+          _checking = false;
+          _valid = false;
+        });
+      }
+      return;
+    }
+    final ok = await ApiService.ensureSession();
+    if (!mounted) return;
+    setState(() {
+      _checking = false;
+      _valid = ok;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_checking) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_valid) {
+      return HomeScreen(
+        userName: ApiService.userName ?? 'Utilisateur',
+        userLastName: ApiService.userLastName ?? '',
+        userEmail: ApiService.userEmail ?? '',
+        userId: ApiService.userId!,
+      );
+    }
+    return const LoginScreen();
   }
 }

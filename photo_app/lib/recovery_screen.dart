@@ -3,6 +3,7 @@ import 'package:Picon/api_service.dart';
 import 'package:Picon/models/contact_info.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
+import 'package:Picon/widgets/app_error_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -52,13 +53,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
         }
         } catch (e) {
         if (mounted) {
-          String errorMessage = e.toString();
-          if (errorMessage.startsWith('Exception: ')) {
-            errorMessage = errorMessage.substring(11);
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-          );
+          await showAppError(context, e);
         }
       } finally {
         if (mounted) {
@@ -618,9 +613,7 @@ class _NewPasswordDialogState extends State<_NewPasswordDialog> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur de réinitialisation: $e'), backgroundColor: Colors.red),
-          );
+          await showAppError(context, e);
         }
       } finally {
         if (mounted) {

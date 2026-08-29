@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:Picon/api_service.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
+import 'package:Picon/widgets/app_error_feedback.dart';
 import 'package:Picon/widgets/loading_button.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/material.dart';
@@ -447,14 +448,7 @@ class _PinCreationSheetState extends State<_PinCreationSheet> {
         // Pop the dialog to show the error on the main screen's scaffold
         Navigator.of(context, rootNavigator: true).pop();
         
-        String errorMessage = e.toString();
-        if (errorMessage.startsWith('Exception: ')) {
-          errorMessage = errorMessage.substring(11);
-        }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-        );
+        await showAppError(context, e);
       }
     } finally {
       if (mounted) {

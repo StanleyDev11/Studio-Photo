@@ -5,12 +5,15 @@ import 'package:Picon/screens/app_bootstrap_screen.dart';
 import 'package:Picon/signup_screen.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/police.dart';
+import 'package:Picon/utils/session_controller.dart';
 import 'package:Picon/widgets/connectivity_wrapper.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:device_preview/device_preview.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   await ApiService.init();
   runApp(
     DevicePreview(
@@ -29,6 +32,12 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    SessionController.bind(_navigatorKey);
+  }
 
   @override
   Widget build(BuildContext context) {

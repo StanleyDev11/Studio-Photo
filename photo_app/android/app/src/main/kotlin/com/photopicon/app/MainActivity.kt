@@ -1,4 +1,4 @@
-package com.example.picon
+package com.photopicon.app
 
 import android.Manifest
 import android.content.Context
@@ -15,6 +15,8 @@ import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -26,6 +28,22 @@ class MainActivity : FlutterActivity() {
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // FlutterActivity n'étend pas ComponentActivity : pas de enableEdgeToEdge().
+        // WindowCompat = même contrat Android 15 (insets), sans setStatusBarColor.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
+        super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = true
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -125,9 +143,6 @@ class MainActivity : FlutterActivity() {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    /**
-     * Lance le USSD sur la bonne SIM — sans « Ouvrir avec » (pas d'intent générique tel:).
-     */
     private fun launchUssdOnMatchingSim(
         ussdCode: String,
         paymentPhone: String?,
@@ -136,19 +151,16 @@ class MainActivity : FlutterActivity() {
         val subscriptionId = resolveSubscriptionId(paymentPhone, operatorHint)
         val telecomManager = getSystemService(Context.TELECOM_SERVICE) as TelecomManager
 
-        // 1) placeCall sur la bonne SIM (paiement marchand multi-étapes)
         if (launchUssdViaPlaceCall(ussdCode, subscriptionId, telecomManager)) {
             return mapOf("success" to true, "method" to "place_call")
         }
 
-        // 2) API USSD système
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && subscriptionId != null) {
             if (launchUssdViaTelephony(ussdCode, subscriptionId)) {
                 return mapOf("success" to true, "method" to "ussd_dialog")
             }
         }
 
-        // 3) Composeur téléphonique par défaut uniquement (jamais Zoom / autre app)
         if (launchUssdViaDefaultDialer(ussdCode)) {
             return mapOf("success" to true, "method" to "dialer_explicit")
         }
@@ -214,7 +226,6 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    /** Intent explicite vers le composeur par défaut — évite le sélecteur « Ouvrir avec ». */
     private fun launchUssdViaDefaultDialer(ussdCode: String): Boolean {
         val uri = ussdTelUri(ussdCode)
         val telecomManager = getSystemService(Context.TELECOM_SERVICE) as TelecomManager

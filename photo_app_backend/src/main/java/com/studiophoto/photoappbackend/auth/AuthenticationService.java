@@ -64,17 +64,7 @@ public class AuthenticationService {
 
         activityService.logActivity(savedUser.getEmail(), "REGISTER", "Nouvelle inscription via API");
 
-        String jwtToken = jwtService.generateToken(savedUser);
-
-        return AuthenticationResponse.builder()
-                .token(jwtToken)
-                .id(savedUser.getId())
-                .firstname(savedUser.getFirstname())
-                .lastname(savedUser.getLastname())
-                .email(savedUser.getEmail())
-                .phone(savedUser.getPhone())
-                .role(savedUser.getRole())
-                .build();
+        return toAuthResponse(savedUser);
     }
 
     public AuthenticationResponse authenticate(LoginRequest request) {
@@ -108,10 +98,35 @@ public class AuthenticationService {
 
         activityService.logActivity(user.getEmail(), "LOGIN", "Connexion réussie");
 
-        String jwtToken = jwtService.generateToken(user);
+        return toAuthResponse(user);
+    }
 
+    public AuthenticationResponse refresh(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank() || !jwtService.isRefreshToken(refreshToken)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Votre session a expiré. Reconnectez-vous.");
+        }
+        String username;
+        try {
+            username = jwtService.extractUsername(refreshToken);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Votre session a expiré. Reconnectez-vous.");
+        }
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Votre session a expiré. Reconnectez-vous."));
+        if (!user.isEnabled() || !jwtService.isTokenValid(refreshToken, user)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Votre session a expiré. Reconnectez-vous.");
+        }
+        return toAuthResponse(user);
+    }
+
+    private AuthenticationResponse toAuthResponse(User user) {
         return AuthenticationResponse.builder()
-                .token(jwtToken)
+                .token(jwtService.generateToken(user))
+                .refreshToken(jwtService.generateRefreshToken(user))
                 .id(user.getId())
                 .firstname(user.getFirstname())
                 .lastname(user.getLastname())

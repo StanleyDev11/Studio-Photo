@@ -8,6 +8,7 @@ import 'package:Picon/models/photo_frame.dart';
 import 'package:Picon/models/app_notification.dart';
 import 'package:Picon/models/order.dart';
 import 'package:Picon/models/promotion.dart';
+import 'package:Picon/utils/app_error.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +18,8 @@ class ApiService {
   static final String rootUrl = _resolveRootUrl(baseUrl);
   static SharedPreferences? _preferences;
 
+  static const String _productionApiBaseUrl = 'https://api.photopicon.com/api';
+
   static String _resolveApiBaseUrl() {
     const envApiBaseUrl = String.fromEnvironment('API_BASE_URL');
     if (envApiBaseUrl.isNotEmpty) {
@@ -24,19 +27,11 @@ class ApiService {
     }
 
     if (kDebugMode) {
-      if (!kIsWeb && Platform.isAndroid) {
-        // 10.0.2.2 = émulateur Android uniquement. Sur un vrai téléphone (USB/Wi‑Fi),
-        // lancer avec : --dart-define=API_BASE_URL=http://IP_DU_PC:8080/api
-        debugPrint(
-          '⚠️ API_BASE_URL non défini. Défaut émulateur: http://10.0.2.2:8080/api — '
-          'sur téléphone physique, utilisez l\'IP locale du PC (ex. http://192.168.1.75:8080/api).',
-        );
-        return 'http://10.0.2.2:8080/api';
-      }
-      return 'http://localhost:8080/api';
+      debugPrint('API: production ($_productionApiBaseUrl). '
+          'Backend local : --dart-define=API_BASE_URL=http://IP:8081/api');
     }
 
-    return 'https://api.photopicon.com/api';
+    return _productionApiBaseUrl;
   }
 
   static String _normalizeApiBaseUrl(String value) {
@@ -84,6 +79,8 @@ class ApiService {
 
   // User details
   static String? _authToken;
+  static String? _refreshToken;
+  static bool _refreshing = false;
   static int? _userId;
   static String? _userName;
   static String? _userLastName;
@@ -104,6 +101,7 @@ class ApiService {
   static Future<void> init() async {
     _preferences = await SharedPreferences.getInstance();
     _authToken = _preferences?.getString('authToken');
+    _refreshToken = _preferences?.getString('refreshToken');
     _userId = _preferences?.getInt('userId');
     _userName = _preferences?.getString('userName');
     _userLastName = _preferences?.getString('userLastName');
@@ -157,6 +155,7 @@ class ApiService {
 
   static Future<void> saveAuthDetails(Map<String, dynamic> authData) async {
     _authToken = authData['token'];
+    _refreshToken = authData['refreshToken'] as String? ?? _refreshToken;
     _userId = authData['id'];
     _userName = authData['firstname'];
     _userLastName = authData['lastname'];
@@ -164,6 +163,9 @@ class ApiService {
     _userPhone = authData['phone'];
 
     await _preferences?.setString('authToken', _authToken!);
+    if (_refreshToken != null && _refreshToken!.isNotEmpty) {
+      await _preferences?.setString('refreshToken', _refreshToken!);
+    }
     await _preferences?.setInt('userId', _userId!);
     await _preferences?.setString('userName', _userName!);
     await _preferences?.setString('userLastName', _userLastName!);
@@ -175,12 +177,14 @@ class ApiService {
 
   static Future<void> clearAuthDetails() async {
     _authToken = null;
+    _refreshToken = null;
     _userId = null;
     _userName = null;
     _userLastName = null;
     _userEmail = null;
     _userPhone = null;
     await _preferences?.remove('authToken');
+    await _preferences?.remove('refreshToken');
     await _preferences?.remove('userId');
     await _preferences?.remove('userName');
     await _preferences?.remove('userLastName');
@@ -198,100 +202,168 @@ class ApiService {
     return headers;
   }
 
-  /// Méthode privée pour effectuer une requête GET sécurisée
   static Future<http.Response> _safeGet(String url) async {
-    try {
-      return await http.get(Uri.parse(url), headers: _headers).timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw Exception(
-                'Délai dépassé. Impossible de joindre le serveur.'),
-          );
-    } catch (error) {
-      throw Exception(
-          'Erreur réseau : Impossible de se connecter au serveur. Vérifiez votre connexion et l\'adresse du serveur.');
-    }
+    return _withAuthRetry(() async {
+      try {
+        return await http.get(Uri.parse(url), headers: _headers).timeout(
+              const Duration(seconds: 15),
+              onTimeout: () => throw AppError.server(),
+            );
+      } catch (error) {
+        throw AppError.from(error);
+      }
+    });
   }
 
-  /// Méthode privée pour effectuer une requête POST sécurisée avec un corps JSON.
   static Future<http.Response> _safePost(
       String url, Map<String, dynamic> body) async {
+    return _withAuthRetry(() async {
+      try {
+        return await http
+            .post(
+              Uri.parse(url),
+              headers: _headers,
+              body: jsonEncode(body),
+            )
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () => throw AppError.server(),
+            );
+      } catch (error) {
+        throw AppError.from(error);
+      }
+    });
+  }
+
+  static Future<http.Response> _withAuthRetry(
+    Future<http.Response> Function() send,
+  ) async {
+    var response = await send();
+    if (response.statusCode == 401 && await _tryRefreshToken()) {
+      response = await send();
+    }
+    return response;
+  }
+
+  static Future<bool> _tryRefreshToken() async {
+    if (_refreshing || _refreshToken == null || _refreshToken!.isEmpty) {
+      return false;
+    }
+    _refreshing = true;
     try {
-      return await http
+      final response = await http
           .post(
-            Uri.parse(url),
-            headers: _headers,
-            body: jsonEncode(body),
+            Uri.parse('$baseUrl/auth/refresh'),
+            headers: {'Content-Type': 'application/json; charset=UTF-8'},
+            body: jsonEncode({'refreshToken': _refreshToken}),
           )
-          .timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw Exception(
-                'Délai dépassé. Impossible de joindre le serveur.'),
-          );
-    } catch (error) {
-      throw Exception(
-          'Erreur réseau : Impossible de se connecter au serveur. Vérifiez votre connexion et l\'adresse du serveur.');
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = _decodeJson(response);
+        if (data is Map<String, dynamic> && data['token'] is String) {
+          await saveAuthDetails(data);
+          return true;
+        }
+      }
+    } catch (_) {
+      // Le renouvellement a échoué : la session sera clôturée plus bas.
+    } finally {
+      _refreshing = false;
+    }
+    return false;
+  }
+
+  /// Vérifie le jeton au démarrage. Renvoie false si l’utilisateur doit se reconnecter.
+  static Future<bool> ensureSession() async {
+    if (_authToken == null || _userId == null) return false;
+    try {
+      final me = await getAuthDetails();
+      if (me != null) return true;
+      if (await _tryRefreshToken()) {
+        return await getAuthDetails() != null;
+      }
+      await clearAuthDetails();
+      return false;
+    } catch (e) {
+      final err = AppError.from(e);
+      if (err.kind == AppErrorKind.session) {
+        await clearAuthDetails();
+        return false;
+      }
+      // Serveur / réseau : on garde la session locale, l’UI affichera l’illustration.
+      return true;
     }
   }
 
-  /// Méthode générique pour gérer les réponses de l'API (erreurs HTTP et décodage JSON).
+  static dynamic _decodeJson(http.Response response) {
+    final raw = utf8.decode(response.bodyBytes).trim();
+    if (raw.isEmpty) return null;
+    if (raw.startsWith('<') ||
+        raw.toLowerCase().contains('error code:') ||
+        raw.toLowerCase().contains('cloudflare')) {
+      throw AppError.server();
+    }
+    try {
+      return jsonDecode(raw);
+    } on FormatException {
+      throw AppError.server();
+    }
+  }
+
   static dynamic _handleApiResponse(http.Response response) {
+    if (response.statusCode == 401 && _authToken != null) {
+      throw AppError.session();
+    }
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.body.isNotEmpty) {
-        return jsonDecode(utf8.decode(response.bodyBytes));
-      }
-      return null; // No content
-    } else {
+      if (response.body.isEmpty) return null;
+      return _decodeJson(response);
+    }
+
+    final decoded = () {
       try {
-        final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-        if (errorBody is Map<String, dynamic>) {
-          final errorMessage = errorBody['message'];
-          if (errorMessage is String && errorMessage.isNotEmpty) {
-            throw Exception(errorMessage);
-          }
+        return _decodeJson(response);
+      } on AppError {
+        throw AppError.from(
+          AppError.server(),
+          statusCode: response.statusCode,
+        );
+      }
+    }();
 
-          final detail = errorBody['detail'];
-          if (detail is String && detail.isNotEmpty) {
-            throw Exception(detail);
-          }
-
-          final errors = errorBody['errors'];
-          if (errors is List && errors.isNotEmpty) {
-            final firstError = errors.first;
-            if (firstError is String && firstError.isNotEmpty) {
-              throw Exception(firstError);
-            }
-            if (firstError is Map<String, dynamic>) {
-              final msg = firstError['defaultMessage'] ??
-                  firstError['message'] ??
-                  firstError['error'];
-              if (msg is String && msg.isNotEmpty) {
-                throw Exception(msg);
-              }
-            }
-          }
-
-          final error = errorBody['error'];
-          if (error is String && error.isNotEmpty) {
-            if (response.statusCode == 400 &&
-                error.toLowerCase() == 'bad request') {
-              throw Exception(
-                  'Requête refusée par le serveur. Vérifiez email, téléphone et mot de passe, ou utilisez un autre compte.');
-            }
-            throw Exception(error);
+    if (decoded is Map<String, dynamic>) {
+      final errorMessage = decoded['message'];
+      if (errorMessage is String && errorMessage.isNotEmpty) {
+        throw AppError.from(errorMessage, statusCode: response.statusCode);
+      }
+      final detail = decoded['detail'];
+      if (detail is String && detail.isNotEmpty) {
+        throw AppError.from(detail, statusCode: response.statusCode);
+      }
+      final errors = decoded['errors'];
+      if (errors is List && errors.isNotEmpty) {
+        final firstError = errors.first;
+        if (firstError is String && firstError.isNotEmpty) {
+          throw AppError.from(firstError, statusCode: response.statusCode);
+        }
+        if (firstError is Map<String, dynamic>) {
+          final msg = firstError['defaultMessage'] ??
+              firstError['message'] ??
+              firstError['error'];
+          if (msg is String && msg.isNotEmpty) {
+            throw AppError.from(msg, statusCode: response.statusCode);
           }
         }
-        throw Exception('Erreur serveur (${response.statusCode})');
-      } catch (e) {
-        if (e is Exception && !e.toString().contains('jsonDecode')) {
-          rethrow;
+      }
+      final error = decoded['error'];
+      if (error is String && error.isNotEmpty) {
+        if (response.statusCode == 400 && error.toLowerCase() == 'bad request') {
+          throw AppError.generic(
+              'Requête refusée. Vérifiez email, téléphone et mot de passe.');
         }
-        final rawBody = utf8.decode(response.bodyBytes).trim();
-        if (rawBody.isNotEmpty && rawBody.length < 250) {
-          throw Exception('Erreur serveur (${response.statusCode}) : $rawBody');
-        }
-        throw Exception('Erreur serveur. Code: ${response.statusCode}');
+        throw AppError.from(error, statusCode: response.statusCode);
       }
     }
+    throw AppError.from('Erreur serveur', statusCode: response.statusCode);
   }
 
   /// Méthode spécifique pour gérer les réponses d'authentification.
@@ -310,6 +382,9 @@ class ApiService {
         '$baseUrl/auth/me'; // Most backends have a /me or /profile endpoint
     try {
       final response = await _safeGet(url);
+      if (response.statusCode == 401) {
+        throw AppError.session();
+      }
       if (response.statusCode == 200) {
         final details = _handleApiResponse(response);
         if (details != null) {
@@ -327,7 +402,10 @@ class ApiService {
         return details;
       }
     } catch (e) {
-      // Erreur lors de la récupération des infos utilisateur — ignorée silencieusement
+      final err = AppError.from(e);
+      if (err.kind == AppErrorKind.session || err.kind == AppErrorKind.server) {
+        rethrow;
+      }
     }
     return null;
   }
@@ -463,11 +541,16 @@ class ApiService {
         .toList();
   }
 
-  static Future<FeaturedContent> fetchFeaturedContent() async {
-    final url = '$baseUrl/featured-content/active';
-    final response = await _safeGet(url);
-    final Map<String, dynamic> responseData = _handleApiResponse(response);
-    return FeaturedContent.fromJson(responseData);
+  static Future<FeaturedContent?> fetchFeaturedContent() async {
+    try {
+      // Prod expose la liste sur GET /featured-content (pas /active).
+      final list = await fetchActiveFeaturedContents();
+      if (list.isEmpty) return null;
+      return list.first;
+    } catch (e) {
+      debugPrint('fetchFeaturedContent: $e');
+      return null;
+    }
   }
 
   static Future<Booking> createBooking(Booking booking) async {
@@ -517,25 +600,49 @@ class ApiService {
 
   // fetch active featured contents
   static Future<List<FeaturedContent>> fetchActiveFeaturedContents() async {
-    final url = '$baseUrl/featured-content';
-    final response = await _safeGet(url);
-    final dynamic data = _handleApiResponse(response);
-    if (data == null) return [];
-    final list = data as List<dynamic>;
-    return list
-        .map((e) => FeaturedContent.fromJson(e as Map<String, Object?>))
-        .where((fc) => fc.active)
-        .toList()
-      ..sort((a, b) => a.priority.compareTo(b.priority));
+    try {
+      final url = '$baseUrl/featured-content';
+      final response = await _safeGet(url);
+      final dynamic data = _handleApiResponse(response);
+      if (data == null) return [];
+      if (data is! List) return [];
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map((e) => FeaturedContent.fromJson(e.cast<String, Object?>()))
+          .where((fc) => fc.active)
+          .toList()
+        ..sort((a, b) => a.priority.compareTo(b.priority));
+    } catch (e) {
+      debugPrint('fetchActiveFeaturedContents: $e');
+      return [];
+    }
   }
 
-// fetch contact info
+  /// Coordonnées studio de secours si l'API contact-info échoue (404/401/réseau).
+  static const ContactInfo defaultContactInfo = ContactInfo(
+    address: 'Kodjoviakopé',
+    phoneNumber: '+228 98526226 / 72683032',
+    whatsappNumber: '+228 98526226',
+    email: 'infos@photopicon.com',
+    openingHours: 'Lun-Dim: 8h00-20h00',
+    facebookUrl: 'https://www.facebook.com/share/1NncFmswZN/',
+  );
+
+  // fetch contact info
   static Future<ContactInfo> fetchContactInfo() async {
-    final url =
-        '$baseUrl/public/contact-info'; // Endpoint to fetch contact info
-    final response = await _safeGet(url);
-    final Map<String, dynamic> responseData = _handleApiResponse(response);
-    return ContactInfo.fromJson(responseData);
+    try {
+      final url = '$baseUrl/public/contact-info';
+      final response = await _safeGet(url);
+      final responseData = _handleApiResponse(response);
+      if (responseData is! Map<String, dynamic>) {
+        debugPrint('fetchContactInfo: réponse inattendue, fallback local');
+        return defaultContactInfo;
+      }
+      return ContactInfo.fromJson(Map<String, Object?>.from(responseData));
+    } catch (e) {
+      debugPrint('fetchContactInfo: $e — fallback local');
+      return defaultContactInfo;
+    }
   }
 
 // verify pin for password reset
@@ -753,7 +860,7 @@ class ApiService {
     if (_userId != null) {
       request.fields['userId'] = _userId.toString();
     } else {
-      throw Exception('User not authenticated. Cannot upload photos.');
+      throw AppError.session();
     }
 
     // Add files to the request
@@ -765,24 +872,42 @@ class ApiService {
     }
 
     try {
-      final streamedResponse =
+      var streamedResponse =
           await request.send().timeout(const Duration(minutes: 2));
-      final response = await http.Response.fromStream(streamedResponse);
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 401 && await _tryRefreshToken()) {
+        final retry = http.MultipartRequest('POST', Uri.parse(url));
+        retry.headers['Authorization'] = 'Bearer $_authToken';
+        if (_userId != null) {
+          retry.fields['userId'] = _userId.toString();
+        }
+        for (var imageFile in imageFiles) {
+          retry.files.add(await http.MultipartFile.fromPath(
+            'files',
+            imageFile.path,
+          ));
+        }
+        streamedResponse =
+            await retry.send().timeout(const Duration(minutes: 2));
+        response = await http.Response.fromStream(streamedResponse);
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final responseData = jsonDecode(utf8.decode(response.bodyBytes));
-        // Assuming the backend returns a JSON object with a key 'urls' which is a list of strings
+        final responseData = _decodeJson(response);
         if (responseData is Map && responseData.containsKey('urls')) {
           return List<String>.from(responseData['urls']);
-        } else {
-          throw Exception('Invalid response format from server.');
         }
-      } else {
-        throw Exception(
-            'Failed to upload photos. Server responded with status code ${response.statusCode}: ${response.body}');
+        throw AppError.generic(
+            'L\'envoi des photos a échoué. Réessayez dans un instant.');
       }
+      throw AppError.from(
+        'upload',
+        statusCode: response.statusCode,
+        body: utf8.decode(response.bodyBytes),
+      );
     } catch (e) {
-      throw Exception('Error uploading photos: $e');
+      throw AppError.from(e);
     }
   }
 

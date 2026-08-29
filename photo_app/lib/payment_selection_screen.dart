@@ -7,6 +7,7 @@ import 'package:Picon/utils/image_helper.dart';
 import 'package:Picon/utils/mobile_operator_utils.dart';
 import 'package:Picon/utils/studio_print_advice.dart';
 import 'package:Picon/widgets/music_wave_loader.dart';
+import 'package:Picon/widgets/app_error_feedback.dart';
 import 'package:flutter/material.dart';
 
 class PaymentSelectionScreen extends StatefulWidget {
@@ -63,13 +64,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
       }
     } catch (e) {
       if (mounted) {
-        String errorMessage = e.toString();
-        if (errorMessage.startsWith('Exception: ')) {
-          errorMessage = errorMessage.substring(11);
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        await showAppError(context, e);
         setState(() {
           _isLoadingPrices = false;
         });
@@ -339,13 +334,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
-        String errorMessage = e.toString();
-        if (errorMessage.startsWith('Exception: ')) {
-          errorMessage = errorMessage.substring(11);
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-        );
+        await showAppError(context, e);
       }
     } finally {
       if (mounted) {

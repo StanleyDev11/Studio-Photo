@@ -2,6 +2,7 @@ import 'package:Picon/api_service.dart';
 import 'package:Picon/models/booking.dart';
 import 'package:Picon/utils/colors.dart';
 import 'package:Picon/utils/geometric_background.dart';
+import 'package:Picon/widgets/app_error_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -133,13 +134,9 @@ class _BookingScreenState extends State<BookingScreen> {
         final createdBooking = await ApiService.createBooking(newBooking);
         _showSuccessDialog(createdBooking.id.toString());
       } catch (e) {
-        String errorMessage = e.toString();
-        if (errorMessage.startsWith('Exception: ')) {
-          errorMessage = errorMessage.substring(11);
+        if (mounted) {
+          await showAppError(context, e);
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-        );
       }
     }
   }
