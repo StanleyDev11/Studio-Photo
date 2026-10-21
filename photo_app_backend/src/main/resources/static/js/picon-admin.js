@@ -26,7 +26,7 @@
 
   function autoReveal() {
     if (reduced) return;
-    var hero = document.querySelector('.welcome-banner, .page-header, body.picon-login .form-section');
+    var hero = document.querySelector('.welcome-banner, .page-header');
     markReveal(hero, 'hero-load', '0s');
 
     document.querySelectorAll('.content-wrapper > .dashboard-section, .content-wrapper > .row, .filter-section, .dataTables_wrapper').forEach(function (el, i) {

@@ -95,6 +95,7 @@ html body .main-content {
 html body .top-bar {
   padding: 14px 28px;
   background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   box-shadow: 0 1px 0 #E3E8F0;
 }
@@ -238,75 +239,83 @@ html body .footer {
   z-index: 999;
 }
 
-/* Login */
+/* Login — carte compacte */
 body.picon-login {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 32px 16px;
 }
 
 body.picon-login .login-container {
-  display: flex;
+  display: block;
   width: 100%;
-  max-width: 1040px;
-  min-height: 620px;
+  max-width: 420px;
+  min-height: 0;
+  height: auto;
   background: #fff;
-  border-radius: 28px;
-  overflow: hidden;
-  box-shadow: 0 18px 40px rgba(3, 42, 133, 0.12);
+  border-radius: 22px;
+  overflow: visible;
+  box-shadow: 0 18px 40px rgba(1, 22, 62, 0.12);
 }
 
 body.picon-login .form-section {
-  flex: 1;
-  padding: 56px 48px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-body.picon-login .info-section {
-  flex: 1;
-  background: #01163E;
-  color: #fff;
-  padding: 56px 48px;
-  position: relative;
-  overflow: hidden;
-}
-
-body.picon-login .info-section::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
+  display: block;
+  width: auto;
+  flex: none;
+  padding: 36px 32px 28px;
 }
 
 body.picon-login .logo-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 14px;
   overflow: hidden;
-  margin-right: 14px;
+  margin-right: 12px;
+  background: #01163E;
+  box-shadow: none;
 }
 
 body.picon-login .logo-text {
   color: #01163E;
   font-weight: 800;
+  font-size: 22px;
   background: none;
+  -webkit-text-fill-color: #01163E;
+  opacity: 1;
+}
+
+body.picon-login .form-section h2 {
+  color: #01163E;
+  font-size: 22px;
+  margin-bottom: 22px;
+}
+
+body.picon-login .form-section h2::after {
+  background: #01163E;
 }
 
 body.picon-login .btn-login {
-  height: 52px;
+  height: 48px;
+  background: #01163E;
+  border-color: #01163E;
+  color: #fff;
+}
+
+body.picon-login .btn-login:hover {
+  background: #032A85;
+  border-color: #032A85;
+  color: #fff;
 }
 
 body.picon-login .form-control {
-  height: 52px;
-  padding-left: 48px;
+  height: 48px;
+  padding-left: 44px;
+  color: #1F2937;
+  background: #F8FAFC;
+  border: 1px solid #E3E8F0;
 }
 
 /* Motion */
@@ -364,7 +373,8 @@ body.picon-login .form-control {
   .picon-sidebar-backdrop.is-visible { display: block; }
   html body .logo-text,
   html body .nav-links span { opacity: 1; }
-  body.picon-login .login-container { flex-direction: column; min-height: auto; }
+  body.picon-login .login-container { max-width: 420px; min-height: 0; }
+  body.picon-login .form-section { padding: 28px 22px 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
