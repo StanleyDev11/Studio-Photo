@@ -3,13 +3,13 @@ import 'package:Picon/home_screen.dart';
 import 'package:Picon/login_screen.dart';
 import 'package:Picon/screens/app_bootstrap_screen.dart';
 import 'package:Picon/signup_screen.dart';
-import 'package:Picon/utils/colors.dart';
-import 'package:Picon/utils/police.dart';
+import 'package:Picon/splash_screen.dart';
+import 'package:Picon/utils/app_theme.dart';
 import 'package:Picon/utils/session_controller.dart';
 import 'package:Picon/widgets/connectivity_wrapper.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:device_preview/device_preview.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,30 +47,24 @@ class _MyAppState extends State<MyApp> {
         child = DevicePreview.appBuilder(context, child);
         return ConnectivityWrapper(child: child);
       },
-      navigatorKey: _navigatorKey, // Add navigator key
+      navigatorKey: _navigatorKey,
       title: 'Photo App',
-      theme: ThemeData(
-        primarySwatch: AppColors.primarySwatch,
-        primaryColor: AppColors.primary,
-        colorScheme: ColorScheme.light(
-          primary: AppColors.primary,
-          onPrimary: AppColors.textOnPrimary,
-          secondary: AppColors.accent,
-          onSecondary: AppColors.textOnPrimary,
-          surface: AppColors.card,
-        ),
-        scaffoldBackgroundColor: AppColors.background,
-        textTheme: buildPoppinsTextTheme(ThemeData.light().textTheme),
-        fontFamily: primaryFont.fontFamily,
-      ),
+      theme: buildPiconTheme(),
       debugShowCheckedModeBanner: false,
-      home: const AppBootstrapScreen(),
+      scrollBehavior: const _PiconScrollBehavior(),
+      home: const SplashScreen(),
       onGenerateRoute: (settings) {
         switch (settings.name) {
+          case '/splash':
+            return MaterialPageRoute(builder: (context) => const SplashScreen());
+          case '/bootstrap':
+            return MaterialPageRoute(
+              builder: (context) => const AppBootstrapScreen(),
+            );
           case '/login':
             return MaterialPageRoute(builder: (context) => const LoginScreen());
           case '/signup':
-             return MaterialPageRoute(builder: (context) => const SignupScreen());
+            return MaterialPageRoute(builder: (context) => const SignupScreen());
           case '/home':
             final args = settings.arguments as Map<String, dynamic>?;
             return MaterialPageRoute(
@@ -87,5 +81,17 @@ class _MyAppState extends State<MyApp> {
       },
     );
   }
+}
 
+class _PiconScrollBehavior extends MaterialScrollBehavior {
+  const _PiconScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
 }
